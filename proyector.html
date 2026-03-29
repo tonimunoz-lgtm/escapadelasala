@@ -995,6 +995,7 @@ function renderLivesBar(){
 function broadcastPhase(ph){
   const data={
     phase:currentPhase,
+    totalPhases: currentStory.phases.length,
     enigma:ph.enigma,
     phaseName:ph.name,
     narrativeTitle:ph.narrativeTitle,
@@ -1002,15 +1003,22 @@ function broadcastPhase(ph){
     answer:ph.answer,
     points:ph.points,
     storyId:currentStory.id,
+    storyTitle:currentStory.title,
+    storyEmoji:currentStory.emoji,
     storyColor:currentStory.color,
     storyBg:currentStory.bg,
-    hint: ph.hint ?? null,
+    hint: ph.hint || null,
+    minigame: ph.minigame || null,
+    visual: ph.visual || null,
+    lives: currentStory.lives || 3,
     isFinal:!!ph.isFinal,
     roomCode,
     ts:Date.now()
   };
   db.ref(`rooms/${roomCode}/phase`).set(data);
   db.ref(`rooms/${roomCode}/answers`).remove();
+  // Reset hint broadcast
+  db.ref(`rooms/${roomCode}/hintBroadcast`).remove();
 }
 
 // ── TIMER ──
@@ -1118,7 +1126,12 @@ function revealHint(){
   const ph=currentStory.phases[currentPhase];
   document.getElementById('gHint').textContent=ph.hint?.[lang]||'';
   showNotif(t('hint_rev'));
-  db.ref(`rooms/${roomCode}/hint`).set({text:ph.hint,ts:Date.now()});
+  // Broadcast hint to all mobile devices via a dedicated node
+  db.ref(`rooms/${roomCode}/hintBroadcast`).set({
+    text: ph.hint || null,
+    phase: currentPhase,
+    ts: Date.now()
+  });
 }
 
 function showMission(){
