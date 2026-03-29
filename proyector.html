@@ -481,19 +481,34 @@ const T = {
     time_up:"⏱️ ¡Tiempo agotado!",mission_note:"⚠️ Preparativo previo: el profesor debe haber dejado el sobre/pista en el lugar indicado antes del juego."
   }
 };
+// ── STATE (IMPORTANT: abans de tot) ──
+let currentStory = null;
+
+// ── LANG ──
 let lang = 'ca';
-function t(k){return T[lang][k]||k}
+
+function t(k){
+  return T[lang][k] || k;
+}
+
 function setLang(l){
-  lang=l;
-  document.getElementById('lb-ca').classList.toggle('on',l==='ca');
-  document.getElementById('lb-es').classList.toggle('on',l==='es');
-  document.querySelectorAll('[data-i18n]').forEach(el=>{
-    const k=el.dataset.i18n; if(T[l][k]) el.textContent=T[l][k];
+  lang = l;
+
+  document.getElementById('lb-ca').classList.toggle('on', l === 'ca');
+  document.getElementById('lb-es').classList.toggle('on', l === 'es');
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.dataset.i18n;
+    if (T[l][k]) el.textContent = T[l][k];
   });
- if (typeof currentStory !== "undefined" && currentStory) {
-  renderGamePhase();
+
+  // Ara ja és segur
+  if (currentStory) {
+    renderGamePhase();
+  }
 }
-}
+
+// Executar DESPRÉS de declarar currentStory
 setLang('ca');
 
 // ── STARS CANVAS ──
