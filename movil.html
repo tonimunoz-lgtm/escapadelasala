@@ -782,11 +782,22 @@ function buildGame(d){
   for(let i=0;i<(d.totalPhases||totPhases);i++){const dd=document.createElement('div');dd.className='pd'+(i===d.phase?' a':i<d.phase?' d':'');pd.appendChild(dd);}
   // Lives
   myLives=d.lives||3;buildLives();
-  // Scene background SVG in stage
+  // Scene background SVG in stage — smaller when minigame exists
   const scene=document.getElementById('stageScene');
   const arch=getArch(d.storyId||'');
-  scene.innerHTML=buildIntroScene(arch,d.phase,d.storyColor||'#ff6b00',d);
-  scene.style.opacity='1';
+  if(d.minigame){
+    // With minigame: show a compact atmospheric strip, not full scene
+    scene.innerHTML='';
+    scene.style.opacity='0';
+    document.getElementById('advStage').style.maxHeight='0';
+    document.getElementById('advStage').style.overflow='hidden';
+    document.getElementById('advStage').style.flex='0';
+  } else {
+    scene.innerHTML=buildIntroScene(arch,d.phase,d.storyColor||'#ff6b00',d);
+    scene.style.opacity='1';
+    document.getElementById('advStage').style.maxHeight='';
+    document.getElementById('advStage').style.flex='';
+  }
   // Narrative speaker
   document.getElementById('speakerName').textContent=(d.narrativeTitle?.[lang]||d.narrativeTitle?.ca||'').toUpperCase();
   // Story text with typewriter
@@ -1007,18 +1018,54 @@ function buildNavChallenge(c,d){
 
 // ── ROOM EXPLORER ──
 function buildRoomChallenge(c,d){
-  const objs=d.roomObjects||[{id:'a',x:12,y:30,e:'🪟',l:'Finestra',cl:'Codi: 7'},{id:'b',x:55,y:52,e:'🗃️',l:'Calaix',cl:'Lletra A'},{id:'c',x:78,y:18,e:'🕰️',l:'Rellotge',cl:'Marca les 3'},{id:'e',x:87,y:60,e:'🚪',l:'Porta',cl:'Tancada!'}];
-  const bg=d.roomBg||'linear-gradient(180deg,#0d0520,#050210)';
+  const objs=d.roomObjects||[
+    {id:'a',x:12,y:28,e:'🪟',l:'Finestra',cl:'Número gravat: 7'},
+    {id:'b',x:52,y:55,e:'🗃️',l:'Calaix',cl:'Paper amb lletra A'},
+    {id:'cc',x:76,y:18,e:'🕰️',l:'Rellotge',cl:'Marca les 3 en punt'},
+    {id:'d',x:30,y:62,e:'📚',l:'Llibres',cl:'El 4t és vermell'},
+    {id:'e',x:87,y:58,e:'🚪',l:'Porta',cl:'Tancada. Necessites el codi!'}
+  ];
+  const roomSvg=d.roomSvg||'cyber';
   let found=[],clues=[];
+
+  function buildRoomBg(){
+    const W=320,H=160;
+    const svgs={
+      cyber:'<svg viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%"><rect width="320" height="160" fill="#000d18"/><line x1="0" y1="32" x2="320" y2="32" stroke="rgba(0,245,255,.05)" stroke-width=".5"/><line x1="0" y1="64" x2="320" y2="64" stroke="rgba(0,245,255,.05)" stroke-width=".5"/><line x1="0" y1="96" x2="320" y2="96" stroke="rgba(0,245,255,.05)" stroke-width=".5"/><line x1="0" y1="128" x2="320" y2="128" stroke="rgba(0,245,255,.05)" stroke-width=".5"/><line x1="46" y1="0" x2="46" y2="160" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><line x1="92" y1="0" x2="92" y2="160" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><line x1="138" y1="0" x2="138" y2="160" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><line x1="184" y1="0" x2="184" y2="160" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><line x1="230" y1="0" x2="230" y2="160" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><line x1="276" y1="0" x2="276" y2="160" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><rect x="0" y="96" width="320" height="64" fill="rgba(0,20,30,.8)"/><rect x="10" y="15" width="80" height="50" rx="4" fill="rgba(0,30,45,.9)" stroke="rgba(0,245,255,.3)" stroke-width="1"/><rect x="10" y="15" width="80" height="8" rx="4" fill="rgba(0,245,255,.25)"/><rect x="14" y="26" width="20" height="5" rx="2" fill="rgba(0,245,255,.3)"/><rect x="14" y="35" width="35" height="5" rx="2" fill="rgba(0,245,255,.25)"/><rect x="14" y="44" width="28" height="5" rx="2" fill="rgba(0,245,255,.2)"/><rect x="14" y="53" width="42" height="5" rx="2" fill="rgba(0,245,255,.15)"/><rect x="110" y="10" width="55" height="35" rx="4" fill="rgba(0,30,45,.8)" stroke="rgba(168,85,247,.3)" stroke-width="1"/><rect x="114" y="14" width="15" height="5" rx="2" fill="rgba(168,85,247,.3)"/><rect x="114" y="23" width="23" height="5" rx="2" fill="rgba(168,85,247,.25)"/><rect x="114" y="32" width="31" height="5" rx="2" fill="rgba(168,85,247,.2)"/><rect x="240" y="8" width="70" height="45" rx="4" fill="rgba(0,20,35,.9)" stroke="rgba(255,107,0,.25)" stroke-width=".8"/><rect x="244" y="12" width="20" height="4" rx="2" fill="rgba(255,107,0,.25)"/><rect x="244" y="19" width="35" height="4" rx="2" fill="rgba(255,107,0,.2)"/><rect x="244" y="26" width="28" height="4" rx="2" fill="rgba(255,107,0,.18)"/><rect x="244" y="33" width="40" height="4" rx="2" fill="rgba(255,107,0,.15)"/><rect x="244" y="40" width="18" height="4" rx="2" fill="rgba(255,107,0,.2)"/><rect x="5" y="100" width="310" height="56" rx="4" fill="rgba(0,10,20,.7)" stroke="rgba(0,245,255,.1)" stroke-width=".5"/><rect x="15" y="106" width="42" height="44" rx="3" fill="rgba(0,30,50,.6)" stroke="rgba(0,245,255,.15)" stroke-width=".5"/><rect x="67" y="106" width="42" height="44" rx="3" fill="rgba(0,30,50,.6)" stroke="rgba(0,245,255,.15)" stroke-width=".5"/><rect x="119" y="106" width="42" height="44" rx="3" fill="rgba(0,30,50,.6)" stroke="rgba(0,245,255,.15)" stroke-width=".5"/><rect x="171" y="106" width="42" height="44" rx="3" fill="rgba(0,30,50,.6)" stroke="rgba(0,245,255,.15)" stroke-width=".5"/><rect x="223" y="106" width="42" height="44" rx="3" fill="rgba(0,30,50,.6)" stroke="rgba(0,245,255,.15)" stroke-width=".5"/><rect x="275" y="106" width="36" height="44" rx="3" fill="rgba(0,30,50,.6)" stroke="rgba(0,245,255,.15)" stroke-width=".5"/><rect x="0" y="156" width="320" height="4" fill="rgba(0,245,255,.15)"/></svg>',
+      spy:'<svg viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%"><rect width="320" height="160" fill="#050008"/><rect x="0" y="80" width="320" height="80" fill="#030006"/><rect x="10" y="80" width="44" height="72" fill="#080010" stroke="rgba(168,85,247,.12)" stroke-width=".5"/><rect x="64" y="80" width="44" height="72" fill="#080010" stroke="rgba(168,85,247,.12)" stroke-width=".5"/><rect x="118" y="80" width="44" height="72" fill="#080010" stroke="rgba(168,85,247,.12)" stroke-width=".5"/><rect x="172" y="80" width="44" height="72" fill="#080010" stroke="rgba(168,85,247,.12)" stroke-width=".5"/><rect x="226" y="80" width="44" height="72" fill="#080010" stroke="rgba(168,85,247,.12)" stroke-width=".5"/><rect x="280" y="80" width="36" height="72" fill="#080010" stroke="rgba(168,85,247,.12)" stroke-width=".5"/><rect x="20" y="8" width="80" height="42" rx="4" fill="rgba(0,0,20,.9)" stroke="rgba(168,85,247,.35)" stroke-width="1"/><rect x="20" y="8" width="80" height="8" rx="4" fill="rgba(168,85,247,.2)"/><rect x="24" y="20" width="25" height="4" rx="2" fill="rgba(168,85,247,.2)"/><rect x="24" y="27" width="33" height="4" rx="2" fill="rgba(168,85,247,.18)"/><rect x="24" y="34" width="41" height="4" rx="2" fill="rgba(168,85,247,.15)"/><text x="60" y="46" font-size="6" text-anchor="middle" fill="rgba(168,85,247,.4)" font-family="monospace">CLASSIFIED</text><rect x="200" y="10" width="50" height="38" rx="4" fill="rgba(0,0,20,.85)" stroke="rgba(0,245,255,.25)" stroke-width="1"/><rect x="204" y="14" width="10" height="3" rx="1" fill="rgba(0,245,255,.2)"/><rect x="204" y="20" width="15" height="3" rx="1" fill="rgba(0,245,255,.2)"/><rect x="204" y="26" width="20" height="3" rx="1" fill="rgba(0,245,255,.18)"/><rect x="204" y="32" width="25" height="3" rx="1" fill="rgba(0,245,255,.15)"/><rect x="204" y="38" width="30" height="3" rx="1" fill="rgba(0,245,255,.12)"/><circle cx="270" cy="28" r="18" fill="none" stroke="rgba(255,107,0,.3)" stroke-width="1"/><circle cx="270" cy="28" r="10" fill="none" stroke="rgba(255,107,0,.2)" stroke-width=".8"/><line x1="252" y1="28" x2="288" y2="28" stroke="rgba(255,107,0,.2)" stroke-width=".6"/><line x1="270" y1="10" x2="270" y2="46" stroke="rgba(255,107,0,.2)" stroke-width=".6"/><circle cx="270" cy="28" r="3" fill="rgba(255,107,0,.4)"/></svg>',
+      pirate:'<svg viewBox="0 0 320 160" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%"><rect width="320" height="160" fill="#1a0a00"/><rect x="0" y="88" width="320" height="72" fill="#0d0600"/><line x1="0" y1="88" x2="56" y2="160" stroke="rgba(139,90,20,.2)" stroke-width="2"/><line x1="56" y1="88" x2="96" y2="160" stroke="rgba(139,90,20,.15)" stroke-width="1.5"/><line x1="112" y1="88" x2="152" y2="160" stroke="rgba(139,90,20,.15)" stroke-width="1.5"/><line x1="168" y1="88" x2="208" y2="160" stroke="rgba(139,90,20,.15)" stroke-width="1.5"/><line x1="224" y1="88" x2="264" y2="160" stroke="rgba(139,90,20,.15)" stroke-width="1.5"/><line x1="280" y1="88" x2="320" y2="160" stroke="rgba(139,90,20,.2)" stroke-width="2"/><rect x="20" y="10" width="70" height="45" rx="3" fill="#2a1500" stroke="rgba(139,90,20,.5)" stroke-width="1.5"/><rect x="25" y="15" width="60" height="35" rx="2" fill="#1a0d00"/><line x1="25" y1="19" x2="85" y2="19" stroke="rgba(255,200,100,.15)" stroke-width=".8"/><line x1="25" y1="27" x2="85" y2="27" stroke="rgba(255,200,100,.12)" stroke-width=".8"/><line x1="25" y1="35" x2="85" y2="35" stroke="rgba(255,200,100,.1)" stroke-width=".8"/><line x1="25" y1="43" x2="85" y2="43" stroke="rgba(255,200,100,.1)" stroke-width=".8"/><text x="55" y="36" font-size="8" text-anchor="middle" fill="rgba(255,200,100,.25)" font-family="serif">Mapa del Tresor</text><circle cx="250" cy="28" r="22" fill="none" stroke="rgba(255,160,0,.3)" stroke-width="1.5"/><line x1="228" y1="28" x2="272" y2="28" stroke="rgba(255,160,0,.2)" stroke-width=".8"/><line x1="250" y1="6" x2="250" y2="50" stroke="rgba(255,160,0,.2)" stroke-width=".8"/><text x="250" y="32" font-size="11" text-anchor="middle" fill="rgba(255,160,0,.45)">🧭</text><rect x="120" y="15" width="90" height="40" rx="3" fill="#2a1500" stroke="rgba(139,90,20,.3)" stroke-width="1"/><text x="165" y="38" font-size="9" fill="rgba(255,200,100,.3)" font-family="serif" text-anchor="middle">X marks the spot</text><rect x="10" y="92" width="300" height="60" rx="4" fill="#0d0800" stroke="rgba(139,90,20,.15)" stroke-width=".5"/><rect x="18" y="98" width="50" height="48" rx="3" fill="#1a0c00" stroke="rgba(139,90,20,.2)" stroke-width=".5"/><rect x="80" y="98" width="50" height="48" rx="3" fill="#1a0c00" stroke="rgba(139,90,20,.2)" stroke-width=".5"/><rect x="142" y="98" width="50" height="48" rx="3" fill="#1a0c00" stroke="rgba(139,90,20,.2)" stroke-width=".5"/><rect x="204" y="98" width="50" height="48" rx="3" fill="#1a0c00" stroke="rgba(139,90,20,.2)" stroke-width=".5"/><rect x="266" y="98" width="44" height="48" rx="3" fill="#1a0c00" stroke="rgba(139,90,20,.2)" stroke-width=".5"/></svg>'
+    };
+    return svgs[roomSvg]||svgs.cyber;
+  }
+
   function r(){
     c.innerHTML=`
-    <div style="position:relative;width:100%;aspect-ratio:2/1;border-radius:10px;overflow:hidden;background:${bg};cursor:crosshair;margin-bottom:8px;flex-shrink:0">
-      <div style="position:absolute;bottom:0;left:0;right:0;height:28%;background:rgba(0,0,0,.2);border-top:1px solid rgba(255,255,255,.04)"></div>
-      ${objs.map(o=>`<div style="position:absolute;left:${o.x}%;top:${o.y}%;font-size:1.7rem;cursor:pointer;transition:all .2s;${found.includes(o.id)?'opacity:.25;filter:grayscale(1);pointer-events:none':''};transform:translate(-50%,-50%)" onclick="RE2('${o.id}')">${o.e}</div>`).join('')}
+    <div style="font-size:.62rem;color:rgba(255,255,255,.4);text-align:center;margin-bottom:6px">👆 Fes clic als objectes per trobar pistes</div>
+    <div style="position:relative;width:100%;height:160px;border-radius:10px;overflow:hidden;cursor:crosshair;margin-bottom:8px;border:1px solid var(--bd)">
+      ${buildRoomBg()}
+      ${objs.map(o=>`
+        <div style="position:absolute;left:${o.x}%;top:${o.y}%;cursor:pointer;transform:translate(-50%,-50%);z-index:10;user-select:none;transition:all .25s;${found.includes(o.id)?'opacity:.18;filter:grayscale(1);pointer-events:none':''}" onclick="RE2('${o.id}')">
+          <div style="font-size:1.7rem;filter:drop-shadow(0 2px 8px rgba(0,0,0,.8))">${o.e}</div>
+          ${!found.includes(o.id)?`<div style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:.48rem;color:rgba(255,255,255,.55);white-space:nowrap;background:rgba(0,0,0,.75);padding:1px 5px;border-radius:3px;pointer-events:none">${o.l}</div>`:''}
+        </div>`).join('')}
+      <div style="position:absolute;bottom:5px;right:8px;font-size:.52rem;color:rgba(255,255,255,.35);font-family:'Orbitron'">${found.length}/${objs.length}</div>
     </div>
-    ${clues.map(cl=>`<div style="padding:6px 10px;background:rgba(0,245,255,.06);border:1px solid rgba(0,245,255,.18);border-radius:8px;font-size:.78rem;color:var(--bl);margin-bottom:5px">💬 ${cl}</div>`).join('')}
-    <div style="font-size:.6rem;color:rgba(255,255,255,.25);text-align:center">${found.length}/${objs.length} explorats</div>`;
-    window.RE2=(id)=>{const o=objs.find(x=>x.id===id);if(!o||found.includes(id))return;found.push(id);snd('click');if(navigator.vibrate)navigator.vibrate(40);clues.push(o.cl);r();if(found.length>=objs.length){setTimeout(()=>{c.insertAdjacentHTML('beforeend','<div style="color:var(--gn);text-align:center;padding:8px;font-size:.85rem">✅ Tot explorat! Resol l\'enigma.</div>');},200);}};
+    <div id="clueList">
+      ${clues.length===0?`<div style="text-align:center;font-size:.72rem;color:rgba(255,255,255,.22);padding:5px;border:1px dashed rgba(255,255,255,.08);border-radius:8px">Cap pista trobada — explora la sala!</div>`:''}
+      ${clues.map(cl=>`<div style="padding:7px 10px;background:rgba(0,245,255,.06);border:1px solid rgba(0,245,255,.18);border-radius:8px;font-size:.78rem;color:var(--bl);margin-bottom:5px">💬 ${cl}</div>`).join('')}
+    </div>`;
+    window.RE2=(id)=>{
+      const o=objs.find(x=>x.id===id);if(!o||found.includes(id))return;
+      found.push(id);snd('click');if(navigator.vibrate)navigator.vibrate(40);
+      clues.push('<strong>'+o.l+':</strong> '+o.cl);
+      r();
+      if(found.length>=objs.length){
+        setTimeout(()=>{
+          const cl=document.getElementById('clueList');
+          if(cl)cl.insertAdjacentHTML('beforeend','<div style="text-align:center;padding:10px;color:var(--gn);font-weight:700;border:1px solid var(--gn);border-radius:10px;background:rgba(0,255,136,.08);margin-top:6px">✅ Sala explorada! Ara resol l\'enigma de sota.</div>');
+        },200);
+      }
+    };
   }r();
 }
 
@@ -1219,21 +1266,62 @@ function buildSliderChallenge(c,d){
 
 // ── 🗺️ MAP NAVIGATOR ──
 function buildMapChallenge(c,d){
-  const locs=d.mapLocations||[{id:'A',x:18,y:72,e:'🏛️',n:'Museu',ok:false},{id:'B',x:50,y:25,e:'🗼',n:'Torre',ok:false},{id:'C',x:78,y:58,e:'💎',n:'Destí',ok:true},{id:'D',x:35,y:50,e:'🌿',n:'Bosc',ok:false}];
+  const locs=d.mapLocations||[
+    {id:'A',x:18,y:72,e:'🏛️',n:'Museu',ok:false},
+    {id:'B',x:50,y:25,e:'🗼',n:'Torre',ok:false},
+    {id:'C',x:78,y:58,e:'💎',n:'Destí Secret',ok:true},
+    {id:'D',x:35,y:50,e:'🌿',n:'Bosc',ok:false}
+  ];
   const paths=d.mapPaths||[];
   let pos={x:8,y:85},vis=[];
+  const storyId=d.storyId||'';
+  const arch=storyId.includes('spy')||storyId.includes('enigma')?'spy':
+             storyId.includes('pirat')?'pirate':
+             storyId.includes('jungle')||storyId.includes('selva')?'jungle':'default';
+
+  function buildMapBg(){
+    const mapBgs={
+      spy:'<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%"><rect width="320" height="180" fill="#05000a"/><line x1="0" y1="0" x2="320" y2="180" stroke="rgba(168,85,247,.04)" stroke-width="40"/><rect x="20" y="20" width="60" height="40" rx="2" fill="#0a0015" stroke="rgba(168,85,247,.2)" stroke-width=".8"/><rect x="100" y="50" width="50" height="30" rx="2" fill="#0a0015" stroke="rgba(168,85,247,.15)" stroke-width=".8"/><rect x="200" y="15" width="70" height="45" rx="2" fill="#0a0015" stroke="rgba(168,85,247,.18)" stroke-width=".8"/><rect x="240" y="90" width="55" height="35" rx="2" fill="#0a0015" stroke="rgba(168,85,247,.12)" stroke-width=".8"/><rect x="50" y="110" width="45" height="50" rx="2" fill="#0a0015" stroke="rgba(168,85,247,.15)" stroke-width=".8"/><rect x="140" y="120" width="60" height="45" rx="2" fill="#0a0015" stroke="rgba(168,85,247,.12)" stroke-width=".8"/><line x1="0" y1="90" x2="320" y2="90" stroke="rgba(168,85,247,.08)" stroke-width=".5"/><line x1="160" y1="0" x2="160" y2="180" stroke="rgba(168,85,247,.06)" stroke-width=".5"/><text x="8" y="178" font-size="7" fill="rgba(168,85,247,.3)" font-family="monospace">SECTOR-7 CLASSIFIED MAP</text></svg>',
+      pirate:'<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%"><rect width="320" height="180" fill="#d4b483"/><rect width="320" height="180" fill="rgba(100,60,0,.3)"/><ellipse cx="60" cy="80" rx="45" ry="35" fill="#8B6914" opacity=".35"/><ellipse cx="160" cy="120" rx="55" ry="30" fill="#8B6914" opacity=".3"/><ellipse cx="260" cy="60" rx="40" ry="28" fill="#8B6914" opacity=".32"/><ellipse cx="80" cy="150" rx="30" ry="20" fill="#6B8A3A" opacity=".4"/><ellipse cx="240" cy="140" rx="35" ry="22" fill="#6B8A3A" opacity=".35"/><rect x="0" y="0" width="320" height="180" fill="none" stroke="#8B6914" stroke-width="8"/><rect x="6" y="6" width="308" height="168" fill="none" stroke="#8B6914" stroke-width="2" stroke-dasharray="6,3"/><text x="160" y="10" font-size="8" text-anchor="middle" fill="rgba(100,60,0,.5)" font-family="serif">MAPA DEL TRESOR — 1718</text></svg>',
+      jungle:'<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%"><rect width="320" height="180" fill="#001a00"/><ellipse cx="0" cy="90" rx="40" ry="90" fill="#003300" opacity=".8"/><ellipse cx="320" cy="90" rx="40" ry="90" fill="#003300" opacity=".8"/><ellipse cx="80" cy="0" rx="50" ry="40" fill="#003300" opacity=".6"/><ellipse cx="240" cy="0" rx="50" ry="40" fill="#003300" opacity=".6"/><ellipse cx="160" cy="180" rx="60" ry="35" fill="#002500" opacity=".7"/><rect x="145" y="60" width="30" height="60" rx="2" fill="#0a0800" stroke="rgba(255,200,0,.2)" stroke-width="1"/><polygon points="160,30 140,70 180,70" fill="#0a0800" stroke="rgba(255,200,0,.25)" stroke-width="1"/><text x="8" y="176" font-size="7" fill="rgba(0,200,0,.3)" font-family="monospace">MAPA ANCESTRAL</text></svg>',
+      default:'<svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%"><rect width="320" height="180" fill="#0a0e14"/><line x1="0" y1="0" x2="320" y2="180" stroke="rgba(0,245,255,.03)" stroke-width="30"/><line x1="0" y1="30" x2="320" y2="30" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><line x1="0" y1="60" x2="320" y2="60" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><line x1="0" y1="90" x2="320" y2="90" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><line x1="0" y1="120" x2="320" y2="120" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><line x1="0" y1="150" x2="320" y2="150" stroke="rgba(0,245,255,.04)" stroke-width=".5"/><line x1="64" y1="0" x2="64" y2="180" stroke="rgba(0,245,255,.03)" stroke-width=".5"/><line x1="128" y1="0" x2="128" y2="180" stroke="rgba(0,245,255,.03)" stroke-width=".5"/><line x1="192" y1="0" x2="192" y2="180" stroke="rgba(0,245,255,.03)" stroke-width=".5"/><line x1="256" y1="0" x2="256" y2="180" stroke="rgba(0,245,255,.03)" stroke-width=".5"/><text x="8" y="176" font-size="7" fill="rgba(0,245,255,.25)" font-family="monospace">MAPA INTERACTIU</text></svg>'
+    };
+    return mapBgs[arch]||mapBgs.default;
+  }
+
   function render(){
     c.innerHTML=`
-    <div style="position:relative;width:100%;height:180px;background:#0a0e14;border-radius:10px;overflow:hidden;border:1px solid var(--bd);margin-bottom:8px">
-      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(0,245,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,255,.03) 1px,transparent 1px);background-size:22px 22px"></div>
-      <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 100 100" preserveAspectRatio="none">
-        ${paths.map(([a,b])=>{const la=locs.find(l=>l.id===a),lb=locs.find(l=>l.id===b);return la&&lb?`<line x1="${la.x}" y1="${la.y}" x2="${lb.x}" y2="${lb.y}" stroke="rgba(0,245,255,.2)" stroke-width=".8" stroke-dasharray="3,2"/>`:'';}).join('')}
+    <div style="font-size:.62rem;color:rgba(255,255,255,.4);text-align:center;margin-bottom:5px">🗺️ Toca les icones per navegar · El punt verd ets tu</div>
+    <div style="position:relative;width:100%;height:175px;border-radius:10px;overflow:hidden;border:1px solid var(--bd);margin-bottom:8px">
+      ${buildMapBg()}
+      <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2" viewBox="0 0 100 100" preserveAspectRatio="none">
+        ${paths.map(([a,b])=>{const la=locs.find(l=>l.id===a),lb=locs.find(l=>l.id===b);return la&&lb?`<line x1="${la.x}" y1="${la.y}" x2="${lb.x}" y2="${lb.y}" stroke="rgba(255,215,0,.3)" stroke-width="1" stroke-dasharray="3,2"/>`:'';}).join('')}
       </svg>
-      <div id="mapy2" style="position:absolute;width:12px;height:12px;background:var(--gn);border-radius:50%;border:2px solid #fff;transform:translate(-50%,-50%);transition:all .6s;box-shadow:0 0 10px var(--gn);z-index:10;left:${pos.x}%;top:${pos.y}%"></div>
-      ${locs.map(l=>`<div style="position:absolute;left:${l.x}%;top:${l.y}%;font-size:1.4rem;cursor:pointer;transform:translate(-50%,-50%);z-index:5;user-select:none;${vis.includes(l.id)?'opacity:.25;pointer-events:none':''}" onclick="MV2('${l.id}')">${l.e}<div style="position:absolute;font-size:.55rem;color:var(--bl);white-space:nowrap;transform:translateX(-50%);bottom:-15px;pointer-events:none">${l.n}</div></div>`).join('')}
+      <div id="mapy2" style="position:absolute;width:14px;height:14px;background:var(--gn);border-radius:50%;border:2px solid #fff;transform:translate(-50%,-50%);transition:all .6s;box-shadow:0 0 12px var(--gn);z-index:15;left:${pos.x}%;top:${pos.y}%"></div>
+      ${locs.map(l=>`
+        <div style="position:absolute;left:${l.x}%;top:${l.y}%;cursor:pointer;transform:translate(-50%,-50%);z-index:10;user-select:none;${vis.includes(l.id)?'opacity:.2;pointer-events:none':''}" onclick="MV2('${l.id}')">
+          <div style="font-size:1.6rem;filter:drop-shadow(0 2px 6px rgba(0,0,0,.9))">${l.e}</div>
+          <div style="position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);font-size:.5rem;color:rgba(255,255,255,.7);white-space:nowrap;background:rgba(0,0,0,.8);padding:1px 5px;border-radius:3px;pointer-events:none;border:1px solid rgba(255,255,255,.1)">${l.n}</div>
+        </div>`).join('')}
     </div>
-    <div id="mfb2" style="min-height:24px;text-align:center;font-size:.82rem"></div>`;
-    window.MV2=(id)=>{const loc=locs.find(l=>l.id===id);if(!loc||vis.includes(id))return;vis.push(id);snd('click');pos={x:loc.x,y:loc.y};const you=document.getElementById('mapy2');if(you){you.style.left=loc.x+'%';you.style.top=loc.y+'%';}const fb=document.getElementById('mfb2');if(loc.ok){snd('ok');if(fb)fb.innerHTML=`<span style="color:var(--gn)">✅ ${loc.e} ${loc.n} — Destinació correcta!</span>`;setTimeout(()=>doSend(loc.id),700);}else{loseLife();if(fb)fb.innerHTML=`<span style="color:var(--rd)">❌ ${loc.n} no és aquí. Segueix buscant!</span>`;setTimeout(()=>{if(fb)fb.innerHTML='';},1800);}};
+    <div id="mfb2" style="min-height:28px;text-align:center;font-size:.82rem;padding:4px"></div>`;
+    window.MV2=(id)=>{
+      const loc=locs.find(l=>l.id===id);if(!loc||vis.includes(id))return;
+      vis.push(id);snd('click');
+      pos={x:loc.x,y:loc.y};
+      const you=document.getElementById('mapy2');
+      if(you){you.style.left=loc.x+'%';you.style.top=loc.y+'%';}
+      const fb=document.getElementById('mfb2');
+      if(loc.ok){
+        snd('ok');
+        if(fb)fb.innerHTML='<span style="color:var(--gn)">✅ '+loc.e+' '+loc.n+' — Destinació correcta!</span>';
+        setTimeout(()=>doSend(loc.id),700);
+      }else{
+        loseLife();
+        if(fb)fb.innerHTML='<span style="color:var(--rd)">❌ '+loc.n+' no és aquí. Segueix buscant!</span>';
+        setTimeout(()=>{if(document.getElementById('mfb2'))document.getElementById('mfb2').innerHTML='';},1800);
+      }
+    };
   }render();
 }
 </script>
