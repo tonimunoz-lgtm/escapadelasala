@@ -1204,20 +1204,21 @@ function startPhaseTimer(seconds){
 function broadcastPhase(ph){
   const data={
     phase:currentPhase,
-    enigma:ph.enigma||'',
+    enigma:ph.enigma||{},
     phaseName:ph.name||{},
     narrativeTitle:ph.narrativeTitle||{},
     narrativeText:ph.narrativeText||{},
     answer:ph.answer||'',
     points:ph.points||0,
     storyId:currentStory.id,
-    storyColor:currentStory.color,
-    storyBg:currentStory.bg,
+    storyColor:currentStory.color||'#ff6b00',
+    storyBg:currentStory.bg||'radial-gradient(ellipse at 30% 50%,#001a3a,#000010)',
     hint:ph.hint||null,
     isFinal:!!ph.isFinal,
     interaction:ph.interaction||'text',
-    choices:ph.choices||null,  // ← AQUÍ EL CANVI CLAU
+    choices:ph.choices ? ph.choices : null,  // ← AIXÒ ARREGLA L'ERROR!
     timeLimit:ph.timeLimit||300,
+    reward:ph.reward||null,
     roomCode,
     ts:Date.now()
   };
