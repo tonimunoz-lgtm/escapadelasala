@@ -1204,20 +1204,20 @@ function startPhaseTimer(seconds){
 function broadcastPhase(ph){
   const data={
     phase:currentPhase,
-    enigma:ph.enigma,
-    phaseName:ph.name,
-    narrativeTitle:ph.narrativeTitle,
-    narrativeText:ph.narrativeText,
-    answer:ph.answer,
-    points:ph.points,
+    enigma:ph.enigma||'',
+    phaseName:ph.name||{},
+    narrativeTitle:ph.narrativeTitle||{},
+    narrativeText:ph.narrativeText||{},
+    answer:ph.answer||'',
+    points:ph.points||0,
     storyId:currentStory.id,
     storyColor:currentStory.color,
     storyBg:currentStory.bg,
-    hint:ph.hint,
+    hint:ph.hint||null,
     isFinal:!!ph.isFinal,
     interaction:ph.interaction||'text',
-    choices:ph.choices,
-    timeLimit:ph.timeLimit,
+    choices:ph.choices||null,  // ← AQUÍ EL CANVI CLAU
+    timeLimit:ph.timeLimit||300,
     roomCode,
     ts:Date.now()
   };
