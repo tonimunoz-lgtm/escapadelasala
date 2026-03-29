@@ -490,7 +490,9 @@ function setLang(l){
   document.querySelectorAll('[data-i18n]').forEach(el=>{
     const k=el.dataset.i18n; if(T[l][k]) el.textContent=T[l][k];
   });
-  if(currentStory) renderGamePhase();
+ if (typeof currentStory !== "undefined" && currentStory) {
+  renderGamePhase();
+}
 }
 setLang('ca');
 
