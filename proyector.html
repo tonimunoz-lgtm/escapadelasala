@@ -8,6 +8,8 @@
 
 <!-- ══ STORIES EXTERNES — edita stories.js per afegir histories ══ -->
 <script src="stories.js"></script>
+<!-- ══ MINIJOCS VISUALS ══ -->
+<script src="minigames.js"></script>
 
 <!-- Firebase v9 compat (CDN) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -290,6 +292,40 @@ canvas#stars{position:absolute;inset:0;pointer-events:none;z-index:0}
 .win-btn.prim{background:var(--accent);border-color:var(--accent);color:#000}
 .win-btn:hover{transform:scale(1.03)}
 
+/* ── LIVES BAR ── */
+.lives-bar{display:flex;gap:6px;align-items:center;justify-content:flex-start;margin-bottom:10px}
+.life-heart{font-size:1.2rem;transition:all .4s;display:inline-block}
+.life-heart.lost{filter:grayscale(1) opacity(0.25);transform:scale(0.7)}
+.life-heart.pulse{animation:heartPulse .3s ease}
+@keyframes heartPulse{0%{transform:scale(1)}50%{transform:scale(1.5)}100%{transform:scale(1)}}
+
+/* ── VISUAL PANEL ── */
+.visual-panel{
+  background:rgba(0,0,0,.7);border-radius:16px;border:1px solid rgba(255,255,255,.08);
+  padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  margin-bottom:20px;min-height:180px;position:relative;overflow:hidden;
+  transition:all .5s ease
+}
+.visual-panel::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,var(--accent)08,transparent 70%);
+  pointer-events:none
+}
+.visual-label{
+  font-family:'Orbitron',sans-serif;font-size:.6rem;letter-spacing:3px;
+  color:var(--accent2);text-transform:uppercase;margin-bottom:12px;opacity:0.7
+}
+.visual-inner{width:100%;display:flex;justify-content:center;align-items:center}
+.visual-inner svg,.visual-inner div{max-width:100%}
+/* animate in visual on phase change */
+.visual-panel.anim-in{animation:visualSlide .6s cubic-bezier(.34,1.56,.64,1)}
+@keyframes visualSlide{from{opacity:0;transform:translateY(12px) scale(0.95)}to{opacity:1;transform:none}}
+
+/* ── GAME LAYOUT update: 3 cols on large screens ── */
+@media(min-width:1200px){
+  .game-main{grid-template-columns:1.6fr 1fr}
+}
+
 /* ── MISSION POPUP ── */
 .mission-popup{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.88);
   backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center}
@@ -435,6 +471,13 @@ canvas#stars{position:absolute;inset:0;pointer-events:none;z-index:0}
 
     <div class="game-main">
       <div class="narrative-panel">
+        <!-- LIVES BAR -->
+        <div class="lives-bar" id="livesBar"></div>
+        <!-- VISUAL PANEL (mapa, circuit, pixels, etc.) -->
+        <div class="visual-panel" id="visualPanel" style="display:none">
+          <div class="visual-label" id="visualLabel">RECURS VISUAL</div>
+          <div class="visual-inner" id="visualInner"></div>
+        </div>
         <div class="phase-lbl" id="gPhaseLbl"></div>
         <div class="narr-title" id="gNarrTitle"></div>
         <div class="narr-text" id="gNarrText"></div>
@@ -545,6 +588,7 @@ let activeFilter = 'all';
 let isSpeaking = false;
 let soundEnabled = true;
 let audioCtx = null, bgGainNode = null, bgSource = null;
+let teamLives = 3;  // vides actuals (es reinicien a cada partida)
 
 function t(k){return T[lang][k]||k}
 function setLang(l){
@@ -867,6 +911,7 @@ function listenTeams(){
 // ── START GAME ──
 function startGame(){
   if(teamsRef) teamsRef.off();
+  teamLives = currentStory.lives || 3;
   const mins=parseInt(currentStory.dur[lang])||45;
   timeLeft=mins*60;
   document.getElementById('gBg').style.background=currentStory.bg;
@@ -894,8 +939,57 @@ function renderGamePhase(){
   document.getElementById('missionBtn').style.display=ph.mission?'':'none';
   document.getElementById('ansList').innerHTML='';
   document.getElementById('ansCount').textContent='';
+
+  // ── VISUAL PANEL ──
+  const vPanel = document.getElementById('visualPanel');
+  const vInner = document.getElementById('visualInner');
+  const vLabel = document.getElementById('visualLabel');
+  if(ph.visual && window.MINIGAMES){
+    const {type, config} = ph.visual;
+    const LABELS = {
+      treasureMap: { ca: '🗺️ MAPA DEL TRESOR', es: '🗺️ MAPA DEL TESORO' },
+      cipherWheel: { ca: '🔄 RODA DE CODIS', es: '🔄 RUEDA DE CÓDIGOS' },
+      circuitPuzzle: { ca: '⚡ CIRCUIT ACTIU', es: '⚡ CIRCUITO ACTIVO' },
+      pixelSecret:  { ca: '🔍 MISSATGE AMAGAT', es: '🔍 MENSAJE OCULTO' },
+      starPattern:  { ca: '✨ PATRÓ ESTEL·LAR', es: '✨ PATRÓN ESTELAR' },
+      controlPanel: { ca: '🎛️ PANELL DE CONTROL', es: '🎛️ PANEL DE CONTROL' },
+      dnaHelix:     { ca: '🧬 SEQÜÈNCIA ADN', es: '🧬 SECUENCIA ADN' },
+    };
+    try {
+      const svg = window.MINIGAMES[type] ? window.MINIGAMES[type](config) : '';
+      vInner.innerHTML = svg;
+      vLabel.textContent = (LABELS[type]?.[lang]) || type.toUpperCase();
+      vPanel.style.display = '';
+      vPanel.classList.remove('anim-in');
+      void vPanel.offsetWidth; // reflow to re-trigger animation
+      vPanel.classList.add('anim-in');
+    } catch(e) {
+      vPanel.style.display = 'none';
+    }
+  } else {
+    vPanel.style.display = 'none';
+  }
+
+  // ── LIVES BAR ──
+  renderLivesBar();
+
   broadcastPhase(ph);
   playFx('phase');
+}
+
+function renderLivesBar(){
+  const maxLives = currentStory.lives || 3;
+  const bar = document.getElementById('livesBar');
+  if(!bar) return;
+  bar.innerHTML = '';
+  for(let i=0;i<maxLives;i++){
+    const span = document.createElement('span');
+    span.className = 'life-heart' + (i < teamLives ? '' : ' lost');
+    span.textContent = i < teamLives ? '❤️' : '🖤';
+    bar.appendChild(span);
+  }
+  // Only show if story has lives feature
+  bar.style.display = currentStory.lives ? 'flex' : 'none';
 }
 
 function broadcastPhase(ph){
@@ -944,7 +1038,22 @@ function listenAnswers(){
     const ph=currentStory.phases[currentPhase];
     const correct=ans.answer?.toLowerCase().trim()===ph.answer?.toLowerCase().trim()||ph.answer==='VARIABLE';
     displayAnswer(ans,correct);
-    if(correct) playFx('correct'); else playFx('wrong');
+    if(correct){
+      playFx('correct');
+    } else {
+      playFx('wrong');
+      // Pèrdua de vida per resposta incorrecta
+      if(currentStory.lives && teamLives > 0){
+        teamLives = Math.max(0, teamLives - 1);
+        renderLivesBar();
+        // Anima el cor perdut
+        const hearts = document.querySelectorAll('.life-heart');
+        if(hearts[teamLives]) hearts[teamLives].classList.add('pulse');
+        if(teamLives === 0){
+          setTimeout(()=>showNotif(lang==='ca'?'💀 Sense vides! Continueu intentant-ho!':'💀 Sin vidas! ¡Seguid intentándolo!', 4000),300);
+        }
+      }
+    }
     // Update score in Firebase
     if(correct){
       db.ref(`rooms/${roomCode}/scores/${ans.teamId}`).transaction(cur=>{
