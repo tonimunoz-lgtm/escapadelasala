@@ -815,42 +815,50 @@ function buildChallenge(d){
   const c=document.getElementById('challenge');
   const bbar=document.getElementById('bbar');
   c.innerHTML='';bbar.style.display='flex';
-
   const type=d.minigame;
-  if(type==='chessMove'||d.challenge==='chess')  buildChessChallenge(c,d);
+  if(type==='chessMove')           buildChessChallenge(c,d);
   else if(type==='influencerQuiz'||type==='socialMedia') buildQuizChallenge(c,d);
-  else if(type==='simon')    buildSimonChallenge(c,d);
-  else if(type==='lockPuzzle') buildLockChallenge(c,d);
-  else if(type==='memoryCards') buildMemoryChallenge(c,d);
-  else if(type==='wordSearch') buildWSChallenge(c,d);
-  else if(type==='rapBattle') buildRapChallenge(c,d);
-  else if(type==='swordDuel') buildSwordChallenge(c,d);
-  else if(type==='navigation') buildNavChallenge(c,d);
-  else if(type==='roomExplorer') buildRoomChallenge(c,d);
-  else{
-    // Default: show enigma as dramatic text challenge with choices if available
-    buildDefaultChallenge(c,d);
-  }
+  else if(type==='simon')          buildSimonChallenge(c,d);
+  else if(type==='lockPuzzle')     buildLockChallenge(c,d);
+  else if(type==='memoryCards')    buildMemoryChallenge(c,d);
+  else if(type==='wordSearch')     buildWSChallenge(c,d);
+  else if(type==='rapBattle')      buildRapChallenge(c,d);
+  else if(type==='swordDuel')      buildSwordChallenge(c,d);
+  else if(type==='navigation')     buildNavChallenge(c,d);
+  else if(type==='roomExplorer')   buildRoomChallenge(c,d);
+  else if(type==='cipherDial')     buildCipherChallenge(c,d);
+  else if(type==='puzzleSlider')   buildSliderChallenge(c,d);
+  else if(type==='mapNavigator')   buildMapChallenge(c,d);
+  else                             buildDefaultChallenge(c,d);
 }
 
 // ── DEFAULT CHALLENGE ──
 function buildDefaultChallenge(c,d){
   const enigma=d.enigma?.[lang]||d.enigma?.ca||'';
-  if(d.choices){
-    c.innerHTML=`<div style="font-size:.82rem;font-weight:700;color:#eee;margin-bottom:10px;line-height:1.4">${enigma}</div>
-    <div class="choice-grid" id="choices">
-      ${d.choices.map((ch,i)=>`<div class="choice" onclick="choicePick(${i})">${ch}</div>`).join('')}
-    </div><div id="chFb" style="display:none;padding:8px;border-radius:9px;font-size:.8rem;margin-top:8px"></div>`;
+  // If choices provided, render as interactive choice grid
+  if(d.choices&&d.choices.length){
+    c.innerHTML=`<div style="font-size:.88rem;font-weight:700;color:#eee;margin-bottom:10px;line-height:1.4">${enigma}</div>
+    <div class="choice-grid" id="choices">${d.choices.map((ch,i)=>`<div class="choice" onclick="choicePick(${i})">${ch}</div>`).join('')}</div>
+    <div id="chFb" style="display:none;padding:8px;border-radius:9px;font-size:.8rem;margin-top:8px"></div>`;
     let done=false;
     window.choicePick=(idx)=>{
       if(done)return;done=true;snd(idx===d.correctIdx?'ok':'ko');
       document.querySelectorAll('.choice').forEach((ch,i)=>ch.classList.add(i===d.correctIdx?'ok':i===idx&&i!==d.correctIdx?'ko':'locked'));
       const fb=document.getElementById('chFb');fb.style.display='block';
-      if(idx===d.correctIdx){fb.style.cssText='background:rgba(0,255,136,.1);color:var(--gn);display:block';fb.textContent='✅ '+(d.explanation?.[lang]||'Correcte!');setTimeout(()=>doSend(String(idx)),900);}
-      else{fb.style.cssText='background:rgba(255,51,51,.1);color:var(--rd);display:block';fb.textContent='❌ '+(d.explanation?.[lang]||'Incorrecte');loseLife();}
+      if(idx===d.correctIdx){fb.style.cssText='background:rgba(0,255,136,.1);color:var(--gn);display:block';fb.textContent='✅ '+(d.explanation?.[lang]||d.explanation?.ca||'Correcte!');setTimeout(()=>doSend(String(idx)),900);}
+      else{fb.style.cssText='background:rgba(255,51,51,.1);color:var(--rd);display:block';fb.textContent='❌ '+(d.explanation?.[lang]||d.explanation?.ca||'Incorrecte');loseLife();}
     };
+    return;
   }
-  // Show answer bar
+  // Otherwise show a visual enigma card — always visible, never empty
+  const hint=d.hint?.[lang]||d.hint?.ca||'';
+  c.innerHTML=`
+  <div style="padding:14px;background:rgba(255,107,0,.07);border:1px solid rgba(255,107,0,.2);border-radius:14px;margin-bottom:8px">
+    <div style="font-size:.58rem;color:var(--ac);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">🔐 ENIGMA</div>
+    <div style="font-size:.95rem;font-weight:600;color:#f0f0f0;line-height:1.55">${enigma}</div>
+  </div>
+  ${hint?`<div style="padding:10px;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.2);border-radius:12px;font-size:.82rem;color:var(--go);line-height:1.4">💡 <strong>Pista:</strong> ${hint}</div>`:''}
+  <div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-top:8px;text-align:center">Escriu la resposta al camp de sota</div>`;
 }
 
 // ── CHESS CHALLENGE — Posicions reals ──
@@ -1162,6 +1170,72 @@ function showWin(w){
 }
 function spawnConf(){const c=document.getElementById('confC');c.innerHTML='';['#ff6b00','#00f5ff','#ff0080','#ffd700','#00ff88'].forEach((col,ci)=>{for(let i=0;i<12;i++){const p=document.createElement('div');p.className='cf';p.style.cssText=`left:${ci*20+Math.random()*18}%;background:${col};width:${5+Math.random()*8}px;height:${5+Math.random()*8}px;animation-duration:${2+Math.random()*3}s;animation-delay:${Math.random()*2}s`;c.appendChild(p);}});}
 function speak(txt){if(!('speechSynthesis'in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.lang=lang==='ca'?'ca-ES':'es-ES';u.rate=.88;u.volume=.78;speechSynthesis.speak(u);}
+
+// ── 🔡 CIPHER DIAL ──
+function buildCipherChallenge(c,d){
+  const enc=d.encoded||'KHOOR';const tgtShift=d.shift||3;let sh=0;
+  function dec(txt,s){return txt.split('').map(ch=>/[A-Z]/.test(ch)?String.fromCharCode(((ch.charCodeAt(0)-65-s+26)%26)+65):ch).join('');}
+  function render(){
+    c.innerHTML=`<div style="text-align:center;padding:4px 0">
+      <div style="font-size:.62rem;color:rgba(255,255,255,.3);margin-bottom:6px">MISSATGE XIFRAT</div>
+      <div style="font-family:'Orbitron';font-size:1.2rem;letter-spacing:5px;color:var(--pk);padding:10px;border:1px solid rgba(255,0,128,.3);border-radius:10px;margin-bottom:14px">${enc}</div>
+      <div style="display:flex;align-items:center;gap:14px;justify-content:center;margin-bottom:12px">
+        <button onclick="CS2(-1)" style="width:40px;height:40px;background:rgba(255,255,255,.08);border:1px solid var(--bd);color:#fff;border-radius:50%;font-size:1.1rem;cursor:pointer">◀</button>
+        <div>
+          <div style="font-size:.58rem;color:rgba(255,255,255,.28);margin-bottom:2px">DESPLAÇAMENT</div>
+          <div style="font-family:'Orbitron';font-size:1.3rem;color:var(--go)" id="sv2">${sh}</div>
+        </div>
+        <button onclick="CS2(1)" style="width:40px;height:40px;background:rgba(255,255,255,.08);border:1px solid var(--bd);color:#fff;border-radius:50%;font-size:1.1rem;cursor:pointer">▶</button>
+      </div>
+      <div style="font-size:.62rem;color:rgba(255,255,255,.3);margin-bottom:4px">DESXIFRAT</div>
+      <div style="font-family:'Orbitron';font-size:1.3rem;letter-spacing:5px;color:var(--bl);padding:10px 16px;background:rgba(0,0,0,.55);border:2px solid var(--bl);border-radius:10px;margin-bottom:12px" id="cdsp2">${dec(enc,sh)}</div>
+      <button onclick="CCf2()" style="padding:12px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--pk));color:#fff;font-family:'Orbitron';font-size:.78rem;font-weight:700;cursor:pointer">✓ CONFIRMAR</button>
+    </div>`;
+    window.CS2=(dir)=>{sh=(sh+dir+26)%26;snd('click');const sv=document.getElementById('sv2');const cd=document.getElementById('cdsp2');if(sv)sv.textContent=sh;if(cd)cd.textContent=dec(enc,sh);};
+    window.CCf2=()=>doSend(dec(enc,sh));
+  }render();
+}
+
+// ── 🧩 PUZZLE SLIDER ──
+function buildSliderChallenge(c,d){
+  const sz=d.puzzleSize||3;const n=sz*sz;
+  const emojis=d.puzzleEmojis||['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','🔓'];
+  let board=Array.from({length:n},(_,i)=>i);
+  // Shuffle
+  for(let i=n-2;i>0;i--){const j=1+Math.floor(Math.random()*i);[board[i],board[j]]=[board[j],board[i]];}
+  let emptyI=board.indexOf(n-1);
+  function canMove(idx){const er=Math.floor(emptyI/sz),ec=emptyI%sz,cr=Math.floor(idx/sz),cc=idx%sz;return Math.abs(er-cr)+Math.abs(ec-cc)===1;}
+  function solved(){return board.every((v,i)=>v===i);}
+  function render(){
+    c.innerHTML=`<div style="text-align:center">
+      <div style="font-size:.62rem;color:rgba(255,255,255,.3);margin-bottom:8px">Ordena les peces</div>
+      <div style="display:grid;grid-template-columns:repeat(${sz},1fr);gap:3px;max-width:${sz*56}px;margin:0 auto;aspect-ratio:1">
+        ${board.map((v,i)=>`<div onclick="SL2(${i})" style="background:${v===n-1?'rgba(0,0,0,.25)':'rgba(255,255,255,.07)'};border-radius:9px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:${v===n-1?'default':'pointer'};border:2px solid ${v===n-1?'rgba(255,255,255,.06)':'var(--bd)'};transition:all .18s;user-select:none">${v===n-1?'':emojis[v]||v+1}</div>`).join('')}
+      </div>
+    </div>`;
+    window.SL2=(idx)=>{if(!canMove(idx)||board[idx]===n-1)return;[board[idx],board[emptyI]]=[board[emptyI],board[idx]];emptyI=idx;snd('click');render();if(solved()){snd('ok');c.insertAdjacentHTML('beforeend','<div style="text-align:center;padding:12px;color:var(--gn);font-size:1rem;font-weight:700">🔓 Completat!</div>');setTimeout(()=>doSend(d.answer||'PUZZLE'),500);}};
+  }render();
+}
+
+// ── 🗺️ MAP NAVIGATOR ──
+function buildMapChallenge(c,d){
+  const locs=d.mapLocations||[{id:'A',x:18,y:72,e:'🏛️',n:'Museu',ok:false},{id:'B',x:50,y:25,e:'🗼',n:'Torre',ok:false},{id:'C',x:78,y:58,e:'💎',n:'Destí',ok:true},{id:'D',x:35,y:50,e:'🌿',n:'Bosc',ok:false}];
+  const paths=d.mapPaths||[];
+  let pos={x:8,y:85},vis=[];
+  function render(){
+    c.innerHTML=`
+    <div style="position:relative;width:100%;height:180px;background:#0a0e14;border-radius:10px;overflow:hidden;border:1px solid var(--bd);margin-bottom:8px">
+      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(0,245,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,255,.03) 1px,transparent 1px);background-size:22px 22px"></div>
+      <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 100 100" preserveAspectRatio="none">
+        ${paths.map(([a,b])=>{const la=locs.find(l=>l.id===a),lb=locs.find(l=>l.id===b);return la&&lb?`<line x1="${la.x}" y1="${la.y}" x2="${lb.x}" y2="${lb.y}" stroke="rgba(0,245,255,.2)" stroke-width=".8" stroke-dasharray="3,2"/>`:'';}).join('')}
+      </svg>
+      <div id="mapy2" style="position:absolute;width:12px;height:12px;background:var(--gn);border-radius:50%;border:2px solid #fff;transform:translate(-50%,-50%);transition:all .6s;box-shadow:0 0 10px var(--gn);z-index:10;left:${pos.x}%;top:${pos.y}%"></div>
+      ${locs.map(l=>`<div style="position:absolute;left:${l.x}%;top:${l.y}%;font-size:1.4rem;cursor:pointer;transform:translate(-50%,-50%);z-index:5;user-select:none;${vis.includes(l.id)?'opacity:.25;pointer-events:none':''}" onclick="MV2('${l.id}')">${l.e}<div style="position:absolute;font-size:.55rem;color:var(--bl);white-space:nowrap;transform:translateX(-50%);bottom:-15px;pointer-events:none">${l.n}</div></div>`).join('')}
+    </div>
+    <div id="mfb2" style="min-height:24px;text-align:center;font-size:.82rem"></div>`;
+    window.MV2=(id)=>{const loc=locs.find(l=>l.id===id);if(!loc||vis.includes(id))return;vis.push(id);snd('click');pos={x:loc.x,y:loc.y};const you=document.getElementById('mapy2');if(you){you.style.left=loc.x+'%';you.style.top=loc.y+'%';}const fb=document.getElementById('mfb2');if(loc.ok){snd('ok');if(fb)fb.innerHTML=`<span style="color:var(--gn)">✅ ${loc.e} ${loc.n} — Destinació correcta!</span>`;setTimeout(()=>doSend(loc.id),700);}else{loseLife();if(fb)fb.innerHTML=`<span style="color:var(--rd)">❌ ${loc.n} no és aquí. Segueix buscant!</span>`;setTimeout(()=>{if(fb)fb.innerHTML='';},1800);}};
+  }render();
+}
 </script>
 </body>
 </html>
