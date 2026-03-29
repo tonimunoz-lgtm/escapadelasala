@@ -531,7 +531,21 @@ const T = {
     time_up:"⏱️ ¡Tiempo agotado!",mission_note:"⚠️ Preparativo previo: el profesor debe haber dejado el sobre/pista en el lugar indicado antes del juego."
   }
 };
+// ── ESTAT GLOBAL (declarat aviat per evitar TDZ amb let) ──
 let lang = 'ca';
+let currentStory = null;
+let currentPhase = 0;
+let roomCode = '';
+let teamsRef = null, scoresRef = null, phaseRef = null;
+let timerRef = null, ansRef = null;
+let gameTimer = null;
+let timeLeft = 0;
+let teamCount = 0;
+let activeFilter = 'all';
+let isSpeaking = false;
+let soundEnabled = true;
+let audioCtx = null, bgGainNode = null, bgSource = null;
+
 function t(k){return T[lang][k]||k}
 function setLang(l){
   lang=l;
@@ -540,7 +554,14 @@ function setLang(l){
   document.querySelectorAll('[data-i18n]').forEach(el=>{
     const k=el.dataset.i18n; if(T[l][k]) el.textContent=T[l][k];
   });
-  if(currentStory) renderGamePhase();
+  // Nomes re-renderitza el joc si hi ha una partida activa
+  if(currentStory && document.getElementById('s-game').classList.contains('active')){
+    renderGamePhase();
+  }
+  // Actualitza comptadors del filtre si estem al home
+  if(document.getElementById('s-home').classList.contains('active')){
+    updateCounts();
+  }
 }
 setLang('ca');
 
@@ -573,8 +594,6 @@ setLang('ca');
 })();
 
 // ── WEB AUDIO ENGINE ──
-let audioCtx=null, soundEnabled=true, bgGainNode=null, bgSource=null;
-
 function getAudioCtx(){
   if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
   if(audioCtx.state==='suspended') audioCtx.resume();
@@ -701,7 +720,6 @@ function playFx(type){
 }
 
 // ── VOICE NARRATION ──
-let isSpeaking=false;
 function speak(text){
   if(!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
@@ -723,9 +741,6 @@ function toggleVoice(){
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function showNotif(msg,dur=3000){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),dur)}
 
-// ── STATE ──
-let currentStory=null,currentPhase=0,roomCode='',teamsRef=null,scoresRef=null,phaseRef=null,timerRef=null,ansRef=null,gameTimer=null,timeLeft=0,teamCount=0;
-
 function genCode(){return Math.random().toString(36).substring(2,6).toUpperCase()}
 
 // ══════════════════════════════════════════════════
@@ -734,7 +749,6 @@ function genCode(){return Math.random().toString(36).substring(2,6).toUpperCase(
 // ══════════════════════════════════════════════════
 
 // ── RENDER HOME (amb filtre) ──
-let activeFilter='all';
 
 function setFilter(level){
   activeFilter=level;
