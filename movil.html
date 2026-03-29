@@ -8,6 +8,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
 <style>
 :root{
@@ -130,11 +131,29 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;
   color:rgba(240,230,211,.78);border:1px solid var(--border);
   max-height:130px;overflow-y:auto}
 
+/* Inventory bar */
+.inv-bar{background:rgba(0,0,0,.5);border-radius:10px;padding:10px 14px;margin-bottom:12px;
+  border:1px solid var(--border)}
+.inv-lbl{font-size:.6rem;letter-spacing:2px;color:var(--accent2);text-transform:uppercase;margin-bottom:5px}
+.inv-items{display:flex;gap:8px;font-size:1.4rem}
+
 .enigma-card{background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.22);
   border-radius:13px;padding:14px;margin-bottom:12px}
 .e-lbl{font-size:.6rem;letter-spacing:2px;color:var(--accent);
   text-transform:uppercase;margin-bottom:7px;display:block}
 .e-text{font-size:.92rem;font-weight:600;line-height:1.5}
+
+/* Choice buttons */
+.choice-container{display:flex;gap:10px;flex-direction:column;margin-top:15px}
+.choice-btn{padding:14px;background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);cursor:pointer;font-family:inherit;
+  font-size:.95rem;transition:all .3s;display:flex;align-items:center;gap:10px}
+.choice-btn:active{transform:scale(.98)}
+.choice-btn.selected{border-color:var(--accent);background:rgba(255,107,0,.15)}
+
+/* QR Scanner */
+#qr-reader{width:100%;max-width:300px;margin:0 auto 15px;border-radius:10px;overflow:hidden}
+#qr-reader video{border-radius:10px}
 
 .feedback-card{border-radius:13px;padding:14px;text-align:center;
   margin-bottom:12px;display:none;
@@ -150,8 +169,8 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;
 .ans-section{margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
 .ans-inp{width:100%;background:rgba(255,255,255,.06);border:2px solid var(--border);
   border-radius:13px;padding:14px;color:var(--text);
-  font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:700;
-  outline:none;transition:all .3s;text-align:center;-webkit-appearance:none;
+  font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:
+    outline:none;transition:all .3s;text-align:center;-webkit-appearance:none;
   letter-spacing:2px;text-transform:uppercase}
 .ans-inp:focus{border-color:var(--accent);background:rgba(255,107,0,.06)}
 .ans-inp.ok{border-color:var(--green);background:rgba(0,255,136,.06)}
@@ -169,6 +188,13 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);
   transform:translateX(-100%);animation:shim 2s infinite}
 @keyframes shim{to{transform:translateX(100%)}}
+
+/* Shake action button */
+.shake-btn{width:100%;padding:16px;border-radius:13px;border:1px solid var(--accent);
+  background:rgba(255,107,0,.1);color:var(--text);font-family:'Orbitron',sans-serif;
+  font-size:.92rem;font-weight:900;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:10px;margin-bottom:12px}
+.shake-btn:active{transform:scale(.95);background:rgba(255,107,0,.2)}
 
 .hint-row{background:rgba(255,255,255,.03);border:1px solid var(--border);
   border-radius:11px;padding:11px 14px;margin-bottom:12px;
@@ -284,9 +310,15 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;
 
   <div class="narr-text-m" id="narrTextM"></div>
 
+  <div class="inv-bar" id="invBar" style="display:none">
+    <div class="inv-lbl">🎒 INVENTARI</div>
+    <div class="inv-items" id="invItems"></div>
+  </div>
+
   <div class="enigma-card">
     <span class="e-lbl" data-i18n="enigma_lbl">🔐 ENIGMA</span>
     <div class="e-text" id="enigmaM"></div>
+    <div class="choice-container" id="choiceContainer" style="display:none"></div>
   </div>
 
   <div class="feedback-card" id="fbCard">
@@ -295,6 +327,9 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;
     <div class="fb-pts" id="fbPts"></div>
   </div>
 
+  <!-- QR Scanner container -->
+  <div id="qr-reader" style="display:none"></div>
+
   <div class="ans-section" id="ansSection">
     <input class="ans-inp" id="ansInp" type="text"
       placeholder="LA TEVA RESPOSTA" autocomplete="off" autocorrect="off" spellcheck="false"
@@ -302,6 +337,10 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;
       onkeypress="if(event.key==='Enter')submitAnswer()">
     <button class="submit-btn" onclick="submitAnswer()" id="submitBtn" data-i18n="submit_btn">ENVIAR RESPOSTA</button>
   </div>
+
+  <button class="shake-btn" id="shakeBtn" onclick="handleShake()" style="display:none">
+    📳 SACSEJA EL MÒBIL
+  </button>
 
   <button class="voice-btn-m" id="voiceBtnM" onclick="toggleVoiceMobile()">🔊 <span data-i18n="listen_narration">Escoltar narració</span></button>
 
@@ -333,7 +372,6 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;
   </div>
 </div>
 
-<!-- ════════════════════════════════ LOGIC ════════════════════════════════ -->
 <script>
 // ── FIREBASE ──
 const firebaseConfig={
@@ -362,6 +400,7 @@ const T={
     fill_all:"Omple tots els camps",phase:"FASE",of:"de",pts:"pts",
     already_ans:"Ja has enviat una resposta en aquesta fase",
     hint_hidden:"Toca per veure la pista",waiting_phase:"Esperant la fase següent...",
+    shake_btn:"📳 SACSEJA EL MÒBIL",qr_scan:"Escaneja el codi QR",inventory:"🎒 INVENTARI"
   },
   es:{join_sub:"Únete a la aventura",code_lbl:"CÓDIGO DE SALA",name_lbl:"NOMBRE DEL EQUIPO",
     members_lbl:"MIEMBROS (separados por coma)",emoji_lbl:"EMOJI DEL EQUIPO",
@@ -375,6 +414,7 @@ const T={
     fill_all:"Rellena todos los campos",phase:"FASE",of:"de",pts:"pts",
     already_ans:"Ya enviaste una respuesta en esta fase",
     hint_hidden:"Toca para ver la pista",waiting_phase:"Esperando la siguiente fase...",
+    shake_btn:"📳 SACUDE EL MÓVIL",qr_scan:"Escanea el código QR",inventory:"🎒 INVENTARIO"
   }
 };
 let lang='ca';
@@ -440,24 +480,38 @@ function playFx(type){
         og.gain.exponentialRampToValueAtTime(.001,st+.45);
         o.start(st);o.stop(st+.5);
       });
+    } else if(type==='shake'){
+      const o=ctx.createOscillator();o.type='sine';
+      o.frequency.setValueAtTime(200,ctx.currentTime);
+      o.frequency.linearRampToValueAtTime(100,ctx.currentTime+.1);
+      g.gain.setValueAtTime(.3,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.2);
+      o.connect(g);o.start();o.stop(ctx.currentTime+.2);
     }
   }catch(e){}
 }
 
 // Voice narration
-let isSpeakingM=false;
+let isSpeakingM=false,ainaAudio=null;
 function speakM(text){
   if(!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text);
   u.lang=lang==='ca'?'ca-ES':'es-ES';
   u.rate=.88;u.pitch=.85;u.volume=1;
+  const voices=speechSynthesis.getVoices();
+  const catalanVoice=voices.find(v=>v.lang.includes('ca'));
+  if(catalanVoice) u.voice=catalanVoice;
   u.onstart=()=>{isSpeakingM=true;document.getElementById('voiceBtnM').classList.add('spk')};
   u.onend=()=>{isSpeakingM=false;document.getElementById('voiceBtnM').classList.remove('spk')};
   speechSynthesis.speak(u);
 }
 function toggleVoiceMobile(){
-  if(isSpeakingM){speechSynthesis.cancel();isSpeakingM=false;document.getElementById('voiceBtnM').classList.remove('spk');return;}
+  if(isSpeakingM&&ainaAudio){
+    ainaAudio.pause();ainaAudio=null;
+    isSpeakingM=false;document.getElementById('voiceBtnM').classList.remove('spk');
+    return;
+  }
   if(!currentPhaseData) return;
   const narr=currentPhaseData.narrativeText?.[lang]||'';
   const enig=currentPhaseData.enigma?.[lang]||'';
@@ -487,7 +541,8 @@ function selectEmoji(e,el){
 // ── STATE ──
 let myTeam=null,myRoomCode='',myScore=0,myTeamId='';
 let currentPhaseData=null,lastPhaseIdx=-1,answerSubmitted=false,hintShown=false;
-let phaseRef=null,scoresRef=null,timerRef=null,winnerRef=null;
+let myInventory=[],myLives=3;
+let phaseRef=null,scoresRef=null,timerRef=null,winnerRef=null,qrScanner=null;
 
 // ── JOIN ──
 function joinRoom(){
@@ -500,26 +555,30 @@ function joinRoom(){
 
   myRoomCode=code;
   myTeamId=`team_${Date.now()}_${Math.random().toString(36).substr(2,5)}`;
-  myTeam={id:myTeamId,name,members,emoji:selectedEmoji};
+  myTeam={id:myTeamId,name,members,emoji:selectedEmoji,lives:3,inventory:[]};
+  myLives=3;
+  myInventory=[];
 
-  // Write team to Firebase
-  db.ref(`rooms/${code}/teams/${myTeamId}`).set(myTeam);
-
-  // Init score
-  db.ref(`rooms/${code}/scores/${myTeamId}`).set({name,emoji:selectedEmoji,score:0});
-
-  document.getElementById('wEmoji').textContent=selectedEmoji;
-  document.getElementById('wTeam').textContent=`${selectedEmoji} ${name}`;
-  document.getElementById('wCode').textContent=code;
-
-  playFx('join');
-  showScreen('s-wait');
-  startListening();
+  db.ref(`rooms/${code}/teams/${myTeamId}`).set(myTeam)
+    .then(()=>{
+      return db.ref(`rooms/${code}/scores/${myTeamId}`).set({name,emoji:selectedEmoji,score:0,lives:3});
+    })
+    .then(()=>{
+      document.getElementById('wEmoji').textContent=selectedEmoji;
+      document.getElementById('wTeam').textContent=`${selectedEmoji} ${name}`;
+      document.getElementById('wCode').textContent=code;
+      playFx('join');
+      showScreen('s-wait');
+      startListening();
+    })
+    .catch(err=>{
+      console.error("Firebase error:",err);
+      showErr("Error de connexió: "+err.message);
+    });
 }
 
 // ── FIREBASE LISTENERS ──
 function startListening(){
-  // Phase listener — triggers when game starts or phase changes
   if(phaseRef) phaseRef.off();
   phaseRef=db.ref(`rooms/${myRoomCode}/phase`);
   phaseRef.on('value',snap=>{
@@ -531,11 +590,18 @@ function startListening(){
       hintShown=false;
       answerSubmitted=false;
       document.getElementById('hintTxtM').textContent=t('hint_hidden');
+      document.getElementById('fbCard').classList.remove('show','ok','ko');
+      
+      // Afegir reward a inventari si existeix
+      if(data.reward){
+        myInventory.push(data.reward);
+        updateInventory();
+      }
+      
       enterGame(data);
     }
   });
 
-  // Timer sync
   if(timerRef) timerRef.off();
   timerRef=db.ref(`rooms/${myRoomCode}/timer`);
   timerRef.on('value',snap=>{
@@ -547,12 +613,19 @@ function startListening(){
     el.classList.toggle('urg',tl<120);
   });
 
-  // Scores
   if(scoresRef) scoresRef.off();
   scoresRef=db.ref(`rooms/${myRoomCode}/scores`);
-  scoresRef.on('value',snap=>renderRankMini(snap.val()||{}));
+  scoresRef.on('value',snap=>{
+    const data=snap.val()||{};
+    const myData=data[myTeamId];
+    if(myData){
+      myScore=myData.score||0;
+      myLives=myData.lives||3;
+      document.getElementById('myScoreEl').textContent=myScore;
+    }
+    renderRankMini(data);
+  });
 
-  // Winner
   if(winnerRef) winnerRef.off();
   winnerRef=db.ref(`rooms/${myRoomCode}/winner`);
   winnerRef.on('value',snap=>{
@@ -560,13 +633,23 @@ function startListening(){
     if(w&&w.ts) showWinner(w);
   });
 
-  // Hint listener
   db.ref(`rooms/${myRoomCode}/hint`).on('value',snap=>{
     const h=snap.val();
     if(!h||!h.text) return;
     const txt=h.text[lang]||'';
     if(txt) document.getElementById('hintTxtM').textContent=txt;
   });
+}
+
+function updateInventory(){
+  const bar=document.getElementById('invBar');
+  const items=document.getElementById('invItems');
+  if(myInventory.length>0){
+    bar.style.display='block';
+    items.innerHTML=myInventory.map(i=>`<span>${i}</span>`).join('');
+  } else {
+    bar.style.display='none';
+  }
 }
 
 // ── ENTER GAME ──
@@ -583,61 +666,205 @@ function enterGame(phaseData){
   // Reset answer UI
   const inp=document.getElementById('ansInp');
   inp.value='';inp.className='ans-inp';
-  document.getElementById('fbCard').classList.remove('show','ok','ko');
-  document.getElementById('ansSection').style.display='flex';
+  document.getElementById('ansSection').style.display='none';
   document.getElementById('submitBtn').disabled=false;
   answerSubmitted=false;
+
+  // Mostrar tipus d'interacció
+  const choiceContainer=document.getElementById('choiceContainer');
+  const qrReader=document.getElementById('qr-reader');
+  const shakeBtn=document.getElementById('shakeBtn');
+  
+  choiceContainer.style.display='none';
+  qrReader.style.display='none';
+  shakeBtn.style.display='none';
+  
+  // Aturar QR anterior si existeix
+  if(qrScanner){
+    qrScanner.stop().catch(()=>{});
+    qrScanner=null;
+  }
+
+  if(phaseData.interaction==='choice' && phaseData.choices){
+    choiceContainer.style.display='flex';
+    choiceContainer.innerHTML=phaseData.choices.map((c,i)=>`
+      <button class="choice-btn" onclick="submitChoice(${i})" id="choice-${i}">
+        <span style="font-size:1.3rem">${c.emoji||'•'}</span>
+        <span>${c.text[lang]}</span>
+      </button>
+    `).join('');
+  } else if(phaseData.interaction==='qr_scan'){
+    document.getElementById('ansSection').innerHTML=`
+      <div id="qr-reader" style="width:100%;max-width:300px;margin:0 auto 15px"></div>
+      <button class="submit-btn" onclick="startQrScanner()">📷 ${t('qr_scan')}</button>
+    `;
+    document.getElementById('ansSection').style.display='flex';
+  } else if(phaseData.interaction==='shake'){
+    shakeBtn.style.display='flex';
+    document.getElementById('ansSection').style.display='none';
+    initShakeDetection();
+  } else {
+    // Default text input
+    document.getElementById('ansSection').innerHTML=`
+      <input class="ans-inp" id="ansInp" type="text"
+        placeholder="LA TEVA RESPOSTA" autocomplete="off" autocorrect="off" spellcheck="false"
+        oninput="this.value=this.value.toUpperCase()"
+        onkeypress="if(event.key==='Enter')submitAnswer()">
+      <button class="submit-btn" onclick="submitAnswer()" id="submitBtn">${t('submit_btn')}</button>
+    `;
+    document.getElementById('ansSection').style.display='flex';
+  }
 
   playFx('phase');
   showScreen('s-game');
 
-  // Auto-narrate after 1.5s
   setTimeout(()=>{
     const narr=(phaseData.narrativeText?.[lang]||'')+' '+(phaseData.enigma?.[lang]||'');
     if(narr.trim()) speakM(narr);
   },1800);
 }
 
-// ── SUBMIT ANSWER ──
-function submitAnswer(){
+// ── QR SCANNER ──
+function startQrScanner(){
+  const reader=document.getElementById('qr-reader');
+  if(!reader) return;
+  
+  qrScanner=new Html5Qrcode("qr-reader");
+  qrScanner.start(
+    {facingMode:"environment"},
+    {fps:10,qrbox:{width:250,height:250}},
+    (decodedText)=>{
+      submitAnswer(decodedText);
+      qrScanner.stop().catch(()=>{});
+    },
+    (errorMessage)=>{}
+  ).catch(err=>{
+    console.error("QR Error:",err);
+    showErr("Error accedint a la càmara");
+  });
+}
+
+// ── SHAKE DETECTION ──
+function initShakeDetection(){
+  if(!window.DeviceMotionEvent){
+    showErr("El teu dispositiu no suporta detecció de moviment");
+    return;
+  }
+  
+  let lastX=0,lastY=0,lastZ=0;
+  let shakeCount=0;
+  const threshold=15;
+  const neededShakes=5;
+  
+  function handleMotion(event){
+    const acc=event.accelerationIncludingGravity;
+    if(!acc) return;
+    
+    const deltaX=Math.abs(acc.x-lastX);
+    const deltaY=Math.abs(acc.y-lastY);
+    const deltaZ=Math.abs(acc.z-lastZ);
+    
+    if(deltaX>threshold || deltaY>threshold || deltaZ>threshold){
+      shakeCount++;
+      playFx('shake');
+      if(shakeCount>=neededShakes){
+        window.removeEventListener('devicemotion',handleMotion);
+        submitAnswer('SHAKE_COMPLETE');
+        document.getElementById('shakeBtn').textContent='✅ COMPLETAT!';
+        navigator.vibrate?.([100,50,100,50,200]);
+      } else {
+        document.getElementById('shakeBtn').textContent=`📳 ${shakeCount}/${neededShakes}`;
+        navigator.vibrate?.(50);
+      }
+    }
+    
+    lastX=acc.x;lastY=acc.y;lastZ=acc.z;
+  }
+  
+  window.addEventListener('devicemotion',handleMotion);
+}
+
+function handleShake(){
+  // Botó manual per si el sensor falla
+  submitAnswer('SHAKE_COMPLETE');
+}
+
+// ── CHOICE SELECTION ──
+function submitChoice(idx){
   if(answerSubmitted) return;
-  const answer=document.getElementById('ansInp').value.trim();
+  answerSubmitted=true;
+  
+  const choice=currentPhaseData.choices[idx];
+  
+  // Marcar seleccionat
+  document.querySelectorAll('.choice-btn').forEach((btn,i)=>{
+    btn.classList.toggle('selected',i===idx);
+    btn.disabled=true;
+  });
+  
+  // Enviar a Firebase
+  db.ref(`rooms/${myRoomCode}/answers`).push({
+    teamId:myTeamId,teamName:myTeam.name,emoji:myTeam.emoji,
+    answer:choice.text[lang],choiceIdx:idx,correct:true,pts:currentPhaseData.points||100,
+    phase:currentPhaseData.phase,ts:Date.now()
+  });
+  
+  showFeedback(true,currentPhaseData.points||100);
+}
+
+// ── SUBMIT ANSWER ──
+function submitAnswer(ans){
+  if(answerSubmitted) return;
+  const answer=ans||document.getElementById('ansInp').value.trim();
   if(!answer) return;
+  
+  answerSubmitted=true;
   const phase=currentPhaseData;
   if(!phase) return;
 
   const correctAns=(phase.answer?.toLowerCase().trim()||'');
-  const correct=answer.toLowerCase()===correctAns||correctAns==='variable';
+  const correct=answer.toLowerCase()===correctAns||correctAns==='variable'||ans==='SHAKE_COMPLETE';
   const pts=correct?(phase.points||100):0;
 
-  // Feedback UI
   const fb=document.getElementById('fbCard');
   fb.classList.remove('ok','ko');
   fb.classList.add('show',correct?'ok':'ko');
   document.getElementById('fbEmoji').textContent=correct?'🎉':'❌';
   document.getElementById('fbTitle').textContent=correct?t('correct'):t('wrong');
   document.getElementById('fbPts').textContent=correct?`+${pts} ${t('pts')}`:'-';
-  document.getElementById('ansInp').className='ans-inp '+(correct?'ok':'ko');
+  
+  const inp=document.getElementById('ansInp');
+  if(inp) inp.className='ans-inp '+(correct?'ok':'ko');
 
   if(correct){
     myScore+=pts;
     document.getElementById('myScoreEl').textContent=myScore;
-    // Update Firebase score
     db.ref(`rooms/${myRoomCode}/scores/${myTeamId}`).transaction(cur=>{
-      const sc=cur||{name:myTeam.name,emoji:myTeam.emoji,score:0};
-      sc.score=(sc.score||0)+pts;
+      const sc=cur||{name:myTeam.name,emoji:myTeam.emoji,score:0,lives:3};
+      sc.score=myScore;
       return sc;
     });
+  } else {
+    myLives--;
+    if(navigator.vibrate) navigator.vibrate([200]);
   }
 
-  // Write answer to Firebase (for projector display)
   db.ref(`rooms/${myRoomCode}/answers`).push({
     teamId:myTeamId,teamName:myTeam.name,emoji:myTeam.emoji,
     answer,correct,pts,phase:phase.phase,ts:Date.now()
   });
 
-  answerSubmitted=true;
   document.getElementById('submitBtn').disabled=true;
+  playFx(correct?'correct':'wrong');
+}
+
+function showFeedback(correct,pts){
+  const fb=document.getElementById('fbCard');
+  fb.classList.remove('ok','ko');
+  fb.classList.add('show',correct?'ok':'ko');
+  document.getElementById('fbEmoji').textContent=correct?'🎉':'❌';
+  document.getElementById('fbTitle').textContent=correct?t('correct'):t('wrong');
+  document.getElementById('fbPts').textContent=correct?`+${pts} ${t('pts')}`:'-';
   playFx(correct?'correct':'wrong');
   if(navigator.vibrate) navigator.vibrate(correct?[80,40,80]:[200]);
 }
@@ -653,12 +880,17 @@ function toggleHint(){
 function renderRankMini(scores){
   const sorted=Object.entries(scores).sort((a,b)=>b[1].score-a[1].score);
   const medals=['🥇','🥈','🥉'];
-  document.getElementById('rankMini').innerHTML=sorted.slice(0,4).map(([id,d],i)=>`
-    <div class="ri-m${id===myTeamId?' ri-me':''}">
+  document.getElementById('rankMini').innerHTML=sorted.slice(0,4).map(([id,d],i)=>{
+    const isMe=id===myTeamId;
+    const lives='❤️'.repeat(d.lives||3);
+    const eliminated=d.eliminated?'💀':'';
+    return `<div class="ri-m${isMe?' ri-me':''}">
       <span style="font-size:.8rem">${medals[i]||i+1}</span>
       <span style="flex:1">${d.emoji||'⚡'} ${d.name}</span>
+      <span style="font-size:.75rem">${lives}${eliminated}</span>
       <span style="font-family:'Orbitron',sans-serif;font-size:.78rem;color:var(--accent2)">${d.score}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── WINNER ──
@@ -668,6 +900,9 @@ function showWinner(w){
   if(scoresRef) scoresRef.off();
   if(timerRef) timerRef.off();
   if(winnerRef) winnerRef.off();
+  if(qrScanner){
+    qrScanner.stop().catch(()=>{});
+  }
 
   document.getElementById('winNameM').textContent=w.name?`${w.emoji||'🏆'} ${w.name}`:(lang==='ca'?'Tots heu escapat!':'¡Todos escapasteis!');
   document.getElementById('myFinalScore').textContent=`${myScore} ${t('pts')}`;
@@ -710,9 +945,15 @@ function spawnConfettiM(){
 function resetToJoin(){
   myTeam=null;myRoomCode='';myScore=0;myTeamId='';
   currentPhaseData=null;lastPhaseIdx=-1;answerSubmitted=false;
+  myInventory=[];myLives=3;
   speechSynthesis.cancel();
+  if(qrScanner){
+    qrScanner.stop().catch(()=>{});
+    qrScanner=null;
+  }
   document.getElementById('codeInp').value='';
   document.getElementById('nameInp').value='';
+  document.getElementById('invBar').style.display='none';
   showScreen('s-join');
 }
 
