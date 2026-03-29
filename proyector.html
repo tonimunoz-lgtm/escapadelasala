@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESCAPE CLASS — Pantalla Proyector</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Orbitron:wght@400;700;900&family=Uncial+Antiqua&family=Creepster&family=Pirata+One&family=Exo+2:wght@300;700;900&family=IM+Fell+English:ital@1&family=Russo+One&family=Special+Elite&family=Rajdhani:wght@300;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --accent: #ff6b00;
+    --accent2: #00f5ff;
+    --text: #f0e6d3;
+    --panel: rgba(255,255,255,0.04);
+    --glow: 0 0 30px var(--accent);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background 1s, color 0.5s;
+  }
+
+  /* ═══════════════════════════════════════════════════
+     SCREENS
+  ═══════════════════════════════════════════════════ */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ═══════ LANGUAGE SWITCH ═══════ */
+  .lang-switch {
+    position: fixed; top: 16px; right: 16px; z-index: 9999;
+    display: flex; gap: 6px; align-items: center;
+  }
+  .lang-btn {
+    background: var(--panel); border: 1px solid var(--accent);
+    color: var(--text); padding: 6px 14px; border-radius: 20px;
+    cursor: pointer; font-family: 'Rajdhani', sans-serif;
+    font-weight: 700; font-size: 13px; letter-spacing: 1px;
+    transition: all 0.3s;
+  }
+  .lang-btn.active { background: var(--accent); color: #000; }
+
+  /* ═══════════════════════════════════════════════════
+     HOME SCREEN
+  ═══════════════════════════════════════════════════ */
+  #screen-home {
+    justify-content: center; align-items: center;
+    background: radial-gradient(ellipse at center, #1a0a2e 0%, #0a0a0f 70%);
+    padding: 40px;
+    position: relative; overflow: hidden;
+  }
+
+  .stars {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.8) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 50%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.9) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 70%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 30%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(2px 2px at 20% 80%, rgba(0,245,255,0.4) 0%, transparent 100%),
+      radial-gradient(2px 2px at 60% 40%, rgba(255,107,0,0.4) 0%, transparent 100%);
+    animation: twinkle 4s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle { from { opacity: 0.6; } to { opacity: 1; } }
+
+  .home-content { text-align: center; z-index: 1; max-width: 1200px; width: 100%; }
+
+  .logo-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(3rem, 8vw, 7rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, #ff6b00, #ff0080, #00f5ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    animation: pulseTitle 3s ease-in-out infinite;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  @keyframes pulseTitle {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.3) drop-shadow(0 0 20px #ff6b00); }
+  }
+
+  .logo-sub {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: clamp(1rem, 2.5vw, 1.6rem);
+    letter-spacing: 8px; color: var(--accent2);
+    text-transform: uppercase; margin-bottom: 60px;
+    font-weight: 300;
+  }
+
+  .stories-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  .story-card {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 24px 16px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative; overflow: hidden;
+    backdrop-filter: blur(10px);
+  }
+  .story-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--card-gradient, linear-gradient(135deg, #ff6b0020, #ff008020));
+    opacity: 0; transition: opacity 0.4s;
+    border-radius: 16px;
+  }
+  .story-card:hover { transform: translateY(-8px) scale(1.03); border-color: var(--card-color, #ff6b00); }
+  .story-card:hover::before { opacity: 1; }
+  .story-card:hover { box-shadow: 0 20px 40px var(--card-shadow, rgba(255,107,0,0.3)); }
+
+  .story-emoji { font-size: 2.5rem; margin-bottom: 10px; display: block; }
+  .story-title {
+    font-family: 'Orbitron', sans-serif; font-size: 0.75rem;
+    font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--card-color, #ff6b00); margin-bottom: 6px;
+  }
+  .story-desc {
+    font-size: 0.82rem; color: rgba(240,230,211,0.6); line-height: 1.4;
+  }
+
+  .difficulty-badge {
+    display: inline-block; margin-top: 10px;
+    padding: 2px 10px; border-radius: 20px; font-size: 0.7rem;
+    font-weight: 700; letter-spacing: 1px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  /* ═══════════════════════════════════════════════════
+     LOBBY SCREEN
+  ═══════════════════════════════════════════════════ */
+  #screen-lobby {
+    justify-content: center; align-items: center;
+    padding: 40px; position: relative;
+  }
+
+  .lobby-container {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 40px; width: 100%; max-width: 1200px; align-items: start;
+  }
+
+  .lobby-story-panel {
+    background: var(--panel); border-radius: 20px; padding: 40px;
+    border: 1px solid rgba(255,255,255,0.1);
+    position: relative; overflow: hidden;
+  }
+
+  .lobby-story-emoji { font-size: 6rem; display: block; margin-bottom: 20px; }
+  .lobby-story-title {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    font-weight: 900; margin-bottom: 10px;
+    line-height: 1.1;
+  }
+  .lobby-story-synopsis {
+    font-size: 1rem; color: rgba(240,230,211,0.7); line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  .lobby-right { display: flex; flex-direction: column; gap: 24px; }
+
+  .qr-section {
+    background: var(--panel); border-radius: 20px; padding: 30px;
+    text-align: center; border: 1px solid rgba(255,255,255,0.1);
+  }
+  .room-code-display {
+    font-family: 'Orbitron', sans-serif; font-size: 4rem;
+    font-weight: 900; letter-spacing: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: codePulse 2s ease-in-out infinite;
+  }
+  @keyframes codePulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.4); }
+  }
+  .room-code-label {
+    font-size: 0.8rem; letter-spacing: 3px; color: rgba(255,255,255,0.4);
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+  .url-display {
+    background: rgba(255,255,255,0.06); border-radius: 10px;
+    padding: 10px 16px; font-family: monospace; font-size: 0.9rem;
+    color: var(--accent2); margin-top: 12px; word-break: break-all;
+  }
+
+  .teams-section {
+    background: var(--panel); border-radius: 20px; padding: 24px;
+    border: 1px solid rgba(255,255,255,0.1); flex: 1;
+  }
+  .teams-title {
+    font-family: 'Orbitron', sans-serif; font-size: 0.75rem;
+    letter-spacing: 3px; color: var(--accent2); margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+  .teams-list { display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto; }
+  .team-item {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    animation: teamJoin 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes teamJoin {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .team-emoji { font-size: 1.5rem; }
+  .team-name { font-weight: 700; font-size: 1rem; }
+  .team-members { font-size: 0.8rem; color: rgba(255,255,255,0.4); }
+
+  .start-btn {
+    width: 100%; padding: 20px; border-radius: 16px; border: none;
+    font-family: 'Orbitron', sans-serif; font-size: 1.1rem;
+    font-weight: 900; letter-spacing: 3px; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), #ff0080);
+    color: white; text-transform: uppercase;
+    transition: all 0.3s; position: relative; overflow: hidden;
+  }
+  .start-btn:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,0,0.5); }
+  .start-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .start-btn::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transform: translateX(-100%); animation: shimmer 2s infinite;
+  }
+  @keyframes shimmer { to { transform: translateX(100%); } }
+
+  /* ═══════════════════════════════════════════════════
+     GAME SCREEN
+  ═══════════════════════════════════════════════════ */
+  #screen-game {
+    position: relative; min-height: 100vh;
+  }
+
+  .game-bg {
+    position: fixed; inset: 0; z-index: 0;
+    transition: background 1s;
+  }
+
+  .game-overlay {
+    position: fixed; inset: 0; z-index: 1;
+    background: rgba(0,0,0,0.6);
+  }
+
+  .game-content {
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column;
+    min-height: 100vh; padding: 24px;
+  }
+
+  .game-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .game-story-badge {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(0,0,0,0.5); border-radius: 50px;
+    padding: 8px 20px; border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+  }
+
+  .phase-indicator {
+    font-family: 'Orbitron', sans-serif; font-size: 0.7rem;
+    letter-spacing: 2px; color: var(--accent2);
+  }
+
+  .timer-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 900;
+    text-align: center; letter-spacing: 4px;
+    background: rgba(0,0,0,0.5); border-radius: 16px;
+    padding: 12px 30px; border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    transition: color 0.5s;
+  }
+  .timer-display.urgent { color: #ff3333; animation: timerPulse 0.5s ease-in-out infinite; }
+  @keyframes timerPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+  .game-main {
+    flex: 1; display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px; align-items: start;
+  }
+
+  .narrative-panel {
+    background: rgba(0,0,0,0.6); border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 40px; backdrop-filter: blur(20px);
+  }
+
+  .phase-title {
+    font-size: clamp(0.8rem, 1.5vw, 1rem); letter-spacing: 4px;
+    text-transform: uppercase; color: var(--accent2); margin-bottom: 12px;
+  }
+
+  .narrative-title {
+    font-weight: 900; font-size: clamp(1.8rem, 4vw, 3rem);
+    margin-bottom: 20px; line-height: 1.1;
+  }
+
+  .narrative-text {
+    font-size: clamp(0.95rem, 1.5vw, 1.15rem); line-height: 1.7;
+    color: rgba(240,230,211,0.85); margin-bottom: 30px;
+  }
+
+  .enigma-box {
+    background: rgba(255,255,255,0.05); border-radius: 16px;
+    padding: 28px; border: 1px solid rgba(255,255,255,0.15);
+    position: relative;
+  }
+  .enigma-label {
+    font-family: 'Orbitron', sans-serif; font-size: 0.7rem;
+    letter-spacing: 3px; color: var(--accent); margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .enigma-text {
+    font-size: clamp(1.1rem, 2vw, 1.4rem); font-weight: 700;
+    line-height: 1.4;
+  }
+  .enigma-hint {
+    margin-top: 12px; font-size: 0.85rem;
+    color: rgba(255,255,255,0.4); font-style: italic;
+  }
+
+  .voice-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50px; padding: 10px 20px; cursor: pointer;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: 0.9rem; color: var(--text); letter-spacing: 1px;
+    transition: all 0.3s; margin-top: 20px;
+  }
+  .voice-btn:hover { background: rgba(255,255,255,0.15); }
+  .voice-btn.speaking { background: rgba(255,107,0,0.2); border-color: var(--accent); }
+
+  .sidebar-panel {
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  .ranking-panel {
+    background: rgba(0,0,0,0.6); border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 24px; backdrop-filter: blur(20px);
+  }
+  .ranking-title {
+    font-family: 'Orbitron', sans-serif; font-size: 0.7rem;
+    letter-spacing: 3px; color: var(--accent); margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+  .ranking-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: all 0.5s;
+  }
+  .ranking-pos {
+    font-family: 'Orbitron', sans-serif; font-size: 1rem;
+    font-weight: 900; width: 30px; text-align: center;
+  }
+  .pos-1 { color: #FFD700; }
+  .pos-2 { color: #C0C0C0; }
+  .pos-3 { color: #CD7F32; }
+  .ranking-team { flex: 1; }
+  .ranking-team-name { font-weight: 700; font-size: 0.95rem; }
+  .ranking-score {
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    color: var(--accent2); font-size: 1rem;
+  }
+  .score-bar {
+    height: 4px; background: rgba(255,255,255,0.1);
+    border-radius: 2px; margin-top: 4px; overflow: hidden;
+  }
+  .score-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px; transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .answers-panel {
+    background: rgba(0,0,0,0.6); border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 24px; backdrop-filter: blur(20px);
+  }
+  .answer-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    animation: answerIn 0.4s ease;
+  }
+  @keyframes answerIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .answer-correct { color: #00ff88; }
+  .answer-wrong { color: #ff4444; }
+
+  .ctrl-panel {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    margin-top: 20px;
+  }
+  .ctrl-btn {
+    padding: 10px 24px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.05); color: var(--text);
+    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: 0.9rem; cursor: pointer; transition: all 0.3s; letter-spacing: 1px;
+  }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.12); }
+  .ctrl-btn.primary { background: var(--accent); border-color: var(--accent); color: #000; }
+  .ctrl-btn.danger { border-color: #ff4444; color: #ff4444; }
+  .ctrl-btn.danger:hover { background: rgba(255,68,68,0.15); }
+
+  /* ═══════════════════════════════════════════════════
+     WINNER SCREEN
+  ═══════════════════════════════════════════════════ */
+  #screen-winner {
+    justify-content: center; align-items: center;
+    background: radial-gradient(ellipse at center, #1a0d00 0%, #0a0a0f 70%);
+    text-align: center; padding: 40px; position: relative; overflow: hidden;
+  }
+
+  .confetti-container {
+    position: absolute; inset: 0; pointer-events: none;
+    overflow: hidden;
+  }
+  .confetti-piece {
+    position: absolute; width: 10px; height: 10px;
+    animation: confettiFall linear infinite;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  .winner-crown { font-size: 6rem; animation: crownBounce 1s ease-in-out infinite; }
+  @keyframes crownBounce {
+    0%, 100% { transform: translateY(0) rotate(-5deg); }
+    50% { transform: translateY(-15px) rotate(5deg); }
+  }
+
+  .winner-label {
+    font-family: 'Orbitron', sans-serif; font-size: 0.9rem;
+    letter-spacing: 6px; color: var(--accent2); margin: 20px 0 10px;
+    text-transform: uppercase;
+  }
+  .winner-name {
+    font-weight: 900; font-size: clamp(3rem, 8vw, 6rem);
+    background: linear-gradient(135deg, #FFD700, #ff6b00, #ff0080);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 20px; line-height: 1;
+  }
+  .winner-score {
+    font-family: 'Orbitron', sans-serif; font-size: 1.5rem;
+    color: var(--accent2); margin-bottom: 40px;
+  }
+
+  .podium-grid {
+    display: flex; align-items: flex-end; justify-content: center;
+    gap: 20px; margin: 30px 0;
+  }
+  .podium-item {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .podium-emoji { font-size: 2rem; }
+  .podium-team-name { font-weight: 700; font-size: 0.85rem; max-width: 100px; }
+  .podium-score-val { font-family: 'Orbitron', sans-serif; font-size: 0.9rem; color: var(--accent2); }
+  .podium-bar {
+    width: 80px; border-radius: 8px 8px 0 0;
+    background: linear-gradient(180deg, var(--accent), rgba(255,107,0,0.3));
+  }
+  .podium-bar.p1 { height: 120px; background: linear-gradient(180deg, #FFD700, rgba(255,215,0,0.3)); }
+  .podium-bar.p2 { height: 80px; background: linear-gradient(180deg, #C0C0C0, rgba(192,192,192,0.3)); }
+  .podium-bar.p3 { height: 50px; background: linear-gradient(180deg, #CD7F32, rgba(205,127,50,0.3)); }
+
+  .mission-badge {
+    background: rgba(255,107,0,0.1); border: 1px solid var(--accent);
+    border-radius: 12px; padding: 16px 24px; margin: 20px auto;
+    max-width: 600px; display: flex; align-items: center; gap: 12px;
+  }
+  .mission-badge-icon { font-size: 1.5rem; }
+  .mission-badge-text { font-size: 0.9rem; line-height: 1.5; color: rgba(255,255,255,0.8); }
+
+  /* ═══════════════════════════════════════════════════
+     TRANSITIONS
+  ═══════════════════════════════════════════════════ */
+  .fade-in { animation: fadeIn 0.8s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+  ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+  .notification {
+    position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-100px);
+    background: rgba(0,0,0,0.9); border: 1px solid var(--accent);
+    border-radius: 12px; padding: 16px 30px; z-index: 9999;
+    font-weight: 700; font-size: 1rem; letter-spacing: 1px;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter: blur(20px);
+  }
+  .notification.show { transform: translateX(-50%) translateY(0); }
+
+  .mission-popup {
+    position: fixed; inset: 0; z-index: 9998;
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+    display: none;
+  }
+  .mission-popup.show { display: flex; }
+  .mission-card {
+    background: linear-gradient(135deg, #1a0a2e, #0f0f1a);
+    border: 2px solid var(--accent); border-radius: 24px;
+    padding: 50px; max-width: 600px; text-align: center;
+    animation: missionAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes missionAppear {
+    from { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+    to { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  .mission-icon { font-size: 5rem; margin-bottom: 20px; }
+  .mission-title {
+    font-family: 'Orbitron', sans-serif; font-size: 1.5rem;
+    color: var(--accent); margin-bottom: 16px; letter-spacing: 3px;
+  }
+  .mission-desc { font-size: 1.1rem; line-height: 1.6; margin-bottom: 30px; }
+  .mission-secret {
+    background: rgba(255,107,0,0.1); border: 1px solid rgba(255,107,0,0.3);
+    border-radius: 10px; padding: 16px; font-size: 0.9rem;
+    color: rgba(255,255,255,0.6); margin-bottom: 24px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Language Switch -->
+<div class="lang-switch">
+  <button class="lang-btn active" onclick="setLang('es')" id="btn-es">ES</button>
+  <button class="lang-btn" onclick="setLang('ca')" id="btn-ca">CA</button>
+</div>
+
+<!-- Notification -->
+<div class="notification" id="notification"></div>
+
+<!-- Mission Popup -->
+<div class="mission-popup" id="missionPopup">
+  <div class="mission-card">
+    <div class="mission-icon" id="missionIcon">🎯</div>
+    <div class="mission-title" id="missionTitle"></div>
+    <div class="mission-desc" id="missionDesc"></div>
+    <div class="mission-secret" id="missionSecret"></div>
+    <button class="ctrl-btn primary" onclick="closeMission()" style="margin-top:10px;">
+      <span data-i18n="understood">¡Entendido!</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════ HOME SCREEN ═══════ -->
+<div class="screen active" id="screen-home">
+  <div class="stars"></div>
+  <div class="home-content fade-in">
+    <div class="logo-title">ESCAPE CLASS</div>
+    <div class="logo-sub" data-i18n="subtitle">Escoge tu aventura · Resuelve los enigmas · ¡Escapa!</div>
+    <div class="stories-grid" id="storiesGrid"></div>
+    <p style="color:rgba(255,255,255,0.3); font-size:0.8rem; letter-spacing:2px;" data-i18n="click_start">HAGA CLIC EN UNA HISTORIA PARA EMPEZAR</p>
+  </div>
+</div>
+
+<!-- ═══════ LOBBY SCREEN ═══════ -->
+<div class="screen" id="screen-lobby">
+  <div class="game-bg" id="lobbyBg"></div>
+  <div class="game-overlay"></div>
+  <div class="game-content fade-in">
+    <div class="lobby-container">
+      <div class="lobby-story-panel">
+        <span class="lobby-story-emoji" id="lobbyEmoji">🚀</span>
+        <div class="lobby-story-title" id="lobbyTitle"></div>
+        <div class="lobby-story-synopsis" id="lobbySynopsis"></div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+          <div class="difficulty-badge" id="lobbyDifficulty"></div>
+          <div class="difficulty-badge" id="lobbyDuration"></div>
+        </div>
+        <div style="margin-top:24px;">
+          <div style="font-family:'Orbitron',sans-serif; font-size:0.7rem; letter-spacing:3px; color:var(--accent2); margin-bottom:12px; text-transform:uppercase;" data-i18n="phases">FASES DEL JUEGO</div>
+          <div id="phasesList" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+      </div>
+      <div class="lobby-right">
+        <div class="qr-section">
+          <div class="room-code-label" data-i18n="room_code">CÓDIGO DE SALA</div>
+          <div class="room-code-display" id="roomCode">----</div>
+          <div style="font-size:0.8rem; color:rgba(255,255,255,0.4); margin-top:8px;" data-i18n="open_mobile">Abre en tu móvil:</div>
+          <div class="url-display" id="mobileUrl"></div>
+        </div>
+        <div class="teams-section">
+          <div class="teams-title">
+            <span data-i18n="teams_connected">EQUIPOS CONECTADOS</span>
+            <span id="teamsCount" style="color:var(--accent)"> (0)</span>
+          </div>
+          <div class="teams-list" id="teamsList">
+            <div style="color:rgba(255,255,255,0.2); font-size:0.85rem; font-style:italic;" data-i18n="waiting_teams">Esperando equipos...</div>
+          </div>
+        </div>
+        <button class="start-btn" id="startGameBtn" onclick="startGame()" disabled>
+          <span data-i18n="start_game">⚡ INICIAR AVENTURA</span>
+        </button>
+        <button class="ctrl-btn" onclick="showScreen('home')" style="width:100%;">
+          ← <span data-i18n="back">Volver</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ GAME SCREEN ═══════ -->
+<div class="screen" id="screen-game">
+  <div class="game-bg" id="gameBg"></div>
+  <div class="game-overlay"></div>
+  <div class="game-content">
+    <div class="game-header">
+      <div class="game-story-badge">
+        <span id="gameEmoji" style="font-size:1.5rem;">🚀</span>
+        <div>
+          <div style="font-weight:700; font-size:1rem;" id="gameTitle"></div>
+          <div class="phase-indicator" id="phaseIndicator"></div>
+        </div>
+      </div>
+      <div class="timer-display" id="timerDisplay">--:--</div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">
+          🔊 <span data-i18n="narrate">Narrar</span>
+        </button>
+        <button class="ctrl-btn danger" onclick="confirmReset()">✕</button>
+      </div>
+    </div>
+
+    <div class="game-main">
+      <div class="narrative-panel">
+        <div class="phase-title" id="gamePhaseName"></div>
+        <div class="narrative-title" id="gameNarrativeTitle"></div>
+        <div class="narrative-text" id="gameNarrativeText"></div>
+        <div class="enigma-box">
+          <div class="enigma-label" data-i18n="enigma">🔐 ENIGMA</div>
+          <div class="enigma-text" id="gameEnigmaText"></div>
+          <div class="enigma-hint" id="gameEnigmaHint"></div>
+        </div>
+        <div class="ctrl-panel">
+          <button class="ctrl-btn" onclick="revealHint()" id="hintBtn">
+            💡 <span data-i18n="hint">Pista</span>
+          </button>
+          <button class="ctrl-btn" onclick="showMission()" id="missionBtn">
+            🎯 <span data-i18n="mission">Misión exterior</span>
+          </button>
+          <button class="ctrl-btn primary" onclick="nextPhase()" id="nextPhaseBtn">
+            <span data-i18n="next_phase">Siguiente fase →</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar-panel">
+        <div class="ranking-panel">
+          <div class="ranking-title" data-i18n="ranking">🏆 RANKING EN VIVO</div>
+          <div id="rankingList"></div>
+        </div>
+        <div class="answers-panel">
+          <div class="ranking-title" data-i18n="answers">📬 RESPUESTAS RECIBIDAS</div>
+          <div id="answersList" style="max-height:200px; overflow-y:auto;"></div>
+          <div style="margin-top:10px; font-size:0.75rem; color:rgba(255,255,255,0.3);" id="answersCount"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ WINNER SCREEN ═══════ -->
+<div class="screen" id="screen-winner">
+  <div class="confetti-container" id="confettiContainer"></div>
+  <div style="z-index:1; text-align:center;">
+    <div class="winner-crown">🏆</div>
+    <div class="winner-label" data-i18n="winner">¡¡GANADORES!!</div>
+    <div class="winner-name" id="winnerName"></div>
+    <div class="winner-score" id="winnerScore"></div>
+    <div class="podium-grid" id="podiumGrid"></div>
+    <div class="mission-badge" id="finalMissionBadge" style="display:none;">
+      <div class="mission-badge-icon">🎖️</div>
+      <div class="mission-badge-text" id="finalMissionText"></div>
+    </div>
+    <div style="display:flex; gap:16px; justify-content:center; margin-top:30px;">
+      <button class="ctrl-btn primary" onclick="playAgain()" style="padding:16px 40px; font-size:1rem;">
+        🔄 <span data-i18n="play_again">Jugar de nuevo</span>
+      </button>
+      <button class="ctrl-btn" onclick="showScreen('home')" style="padding:16px 40px; font-size:1rem;">
+        🏠 <span data-i18n="menu">Menú</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// TRANSLATIONS
+// ═══════════════════════════════════════════════════
+const i18n = {
+  es: {
+    subtitle: "Escoge tu aventura · Resuelve los enigmas · ¡Escapa!",
+    click_start: "HAGA CLIC EN UNA HISTORIA PARA EMPEZAR",
+    room_code: "CÓDIGO DE SALA",
+    open_mobile: "Abre en tu móvil:",
+    teams_connected: "EQUIPOS CONECTADOS",
+    waiting_teams: "Esperando equipos...",
+    start_game: "⚡ INICIAR AVENTURA",
+    back: "Volver",
+    phases: "FASES DEL JUEGO",
+    narrate: "Narrar",
+    enigma: "🔐 ENIGMA",
+    hint: "Pista",
+    mission: "Misión exterior",
+    next_phase: "Siguiente fase →",
+    ranking: "🏆 RANKING EN VIVO",
+    answers: "📬 RESPUESTAS",
+    winner: "¡¡GANADORES!!",
+    play_again: "Jugar de nuevo",
+    menu: "Menú",
+    understood: "¡Entendido!",
+    correct: "✓ Correcta",
+    wrong: "✗ Incorrecta",
+    time_up: "⏱️ ¡Tiempo agotado!",
+    hint_revealed: "💡 Pista revelada",
+    phase: "FASE",
+    of: "de",
+    pts: "pts",
+  },
+  ca: {
+    subtitle: "Tria la teva aventura · Resol els enigmes · Escapa!",
+    click_start: "FES CLIC EN UNA HISTÒRIA PER COMENÇAR",
+    room_code: "CODI DE SALA",
+    open_mobile: "Obre al teu mòbil:",
+    teams_connected: "EQUIPS CONNECTATS",
+    waiting_teams: "Esperant equips...",
+    start_game: "⚡ INICIAR AVENTURA",
+    back: "Tornar",
+    phases: "FASES DEL JOC",
+    narrate: "Narrar",
+    enigma: "🔐 ENIGMA",
+    hint: "Pista",
+    mission: "Missió exterior",
+    next_phase: "Fase següent →",
+    ranking: "🏆 RÀNQUING EN VIU",
+    answers: "📬 RESPOSTES",
+    winner: "!!GUANYADORS!!",
+    play_again: "Jugar de nou",
+    menu: "Menú",
+    understood: "Entès!",
+    correct: "✓ Correcta",
+    wrong: "✗ Incorrecta",
+    time_up: "⏱️ Temps esgotat!",
+    hint_revealed: "💡 Pista revelada",
+    phase: "FASE",
+    of: "de",
+    pts: "pts",
+  }
+};
+
+let currentLang = 'es';
+function setLang(lang) {
+  currentLang = lang;
+  document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+  document.getElementById('btn-ca').classList.toggle('active', lang === 'ca');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (i18n[lang][key]) el.textContent = i18n[lang][key];
+  });
+  if (currentStory) renderGamePhase();
+}
+function t(key) { return i18n[currentLang][key] || key; }
+
+// ═══════════════════════════════════════════════════
+// STORIES DATA
+// ═══════════════════════════════════════════════════
+const STORIES = [
+  {
+    id: 'space',
+    emoji: '🚀',
+    color: '#00f5ff',
+    gradient: 'linear-gradient(135deg, #000428, #004e92)',
+    bgGradient: 'radial-gradient(ellipse at 30% 50%, #001a3a, #000010)',
+    font: "'Orbitron', sans-serif",
+    difficulty: { es: '★★★ Difícil', ca: '★★★ Difícil' },
+    duration: { es: '45 min', ca: '45 min' },
+    title: { es: 'Nave Espacial AURORA-7', ca: 'Nau Espacial AURORA-7' },
+    desc: { es: 'Sci-fi · Sabotaje · Supervivencia', ca: 'Sci-fi · Sabotatge · Supervivència' },
+    synopsis: { es: 'La tripulación despierta en órbita sin recuerdos. Los sistemas fallan uno a uno. Alguien entre vosotros saboteó la nave. Tenéis 45 minutos antes de que el reactor explote.', ca: "La tripulació desperta en òrbita sense records. Els sistemes fallen un per un. Algú entre vosaltres va sabotejar la nau. Teniu 45 minuts abans que el reactor exploti." },
+    phases: [
+      {
+        name: { es: 'DESPERTAR', ca: 'DESPERTAR' },
+        narrativeTitle: { es: 'Sistema de vida: CRÍTICO', ca: 'Sistema de vida: CRÍTIC' },
+        narrativeText: { es: 'Las luces de emergencia tiñen todo de rojo. El oxígeno escasea. En la pantalla central parpadea un mensaje: SABOTAJE DETECTADO — ACCESO NIVEL 1 REQUERIDO. Alguien dejó una nota codificada cerca del panel de control...', ca: "Els llums d'emergència ho tenyeixen tot de vermell. L'oxigen escasseja. A la pantalla central parpelleja un missatge: SABOTATGE DETECTAT — ACCÉS NIVELL 1 REQUERIT. Algú va deixar una nota codificada prop del panell de control..." },
+        enigma: { es: 'El código de acceso es la suma de los dígitos del año de lanzamiento de la primera estación espacial MIR (1986) multiplicada por el número de tripulantes visibles en la foto de emergencia (4).', ca: "El codi d'accés és la suma dels dígits de l'any de llançament de la primera estació espacial MIR (1986) multiplicada pel nombre de tripulants visibles a la foto d'emergència (4)." },
+        answer: '96',
+        hint: { es: '1+9+8+6 = 24. ¿Y 24 × 4?', ca: '1+9+8+6 = 24. I 24 × 4?' },
+        mission: { es: 'Un tripulante debe ir a la biblioteca y buscar el libro con el código "AURORA" en el lomo. Dentro hay una tarjeta con el siguiente fragmento de la clave.', ca: "Un tripulant ha d'anar a la biblioteca i buscar el llibre amb el codi 'AURORA' al llom. Dins hi ha una targeta amb el següent fragment de la clau." },
+        missionIcon: '📚',
+        points: 100
+      },
+      {
+        name: { es: 'EL TRAIDOR', ca: 'EL TRAÏDOR' },
+        narrativeTitle: { es: 'Identificad al saboteador', ca: 'Identifiqueu el sabotejador' },
+        narrativeText: { es: 'El sistema de inteligencia artificial ha encontrado 3 sospechosos. Cada uno tiene una coartada. Una es mentira. Los registros de la nave muestran que el acceso al reactor ocurrió entre las 02:00 y las 04:00 horas del ciclo.', ca: "El sistema d'intel·ligència artificial ha trobat 3 sospitosos. Cadascun té una coartada. Una és mentida. Els registres de la nau mostren que l'accés al reactor va ocórrer entre les 02:00 i les 04:00 hores del cicle." },
+        enigma: { es: 'Sospechoso A dice: "Dormía en la cámara 3". Sospechoso B dice: "Estaba en el comedor con A". Sospechoso C dice: "Vi a B en los corredores a las 03:00". Si B miente sobre estar con A, ¿quién es el traidor?', ca: "Sospitós A diu: 'Dormia a la cambra 3'. Sospitós B diu: 'Estava al menjador amb A'. Sospitós C diu: 'Vaig veure B als corredors a les 03:00'. Si B menteix sobre estar amb A, qui és el traïdor?" },
+        answer: 'B',
+        hint: { es: 'Si B miente sobre estar con A... entonces A estaba solo. ¿Y quién confirma dónde estaba C?', ca: "Si B menteix sobre estar amb A... llavors A era sol. I qui confirma on era C?" },
+        mission: { es: 'El capitán del equipo debe hablar con el profesor de Física (vuestro cómplice) y decirle la palabra clave "REACTOR". Él os dará la siguiente pista.', ca: "El capità de l'equip ha de parlar amb el professor de Física (el vostre còmplice) i dir-li la paraula clau 'REACTOR'. Ell us donarà la següent pista." },
+        missionIcon: '👨‍🏫',
+        points: 150
+      },
+      {
+        name: { es: 'CÓDIGO FINAL', ca: 'CODI FINAL' },
+        narrativeTitle: { es: 'Desactivar el reactor', ca: 'Desactivar el reactor' },
+        narrativeText: { es: '30 minutos. El reactor sobrecalentado parpadea en rojo. La secuencia de desactivación requiere un código de 4 dígitos que está fragmentado en 4 lugares de la nave. Habéis encontrado: ■2■■, ■■7■, ■■■9, 3■■■.', ca: "30 minuts. El reactor sobreescalfat parpelleja en vermell. La seqüència de desactivació requereix un codi de 4 dígits que està fragmentat en 4 llocs de la nau. Heu trobat: ■2■■, ■■7■, ■■■9, 3■■■." },
+        enigma: { es: 'Combinad los fragmentos. El primer dígito es el número de planetas del sistema solar. El segundo ya lo sabéis: 2. El tercero: 7. El cuarto: el número atómico del carbono multiplicado por 1.5.', ca: "Combineu els fragments. El primer dígit és el nombre de planetes del sistema solar. El segon ja el sabeu: 2. El tercer: 7. El quart: el nombre atòmic del carboni multiplicat per 1.5." },
+        answer: '8279',
+        hint: { es: 'Planetas: 8. Carbono Z=6, ×1.5=9. Código: 8-2-7-9', ca: "Planetes: 8. Carboni Z=6, ×1.5=9. Codi: 8-2-7-9" },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'museum',
+    emoji: '🎨',
+    color: '#9b59b6',
+    gradient: 'linear-gradient(135deg, #2c1654, #6a0572)',
+    bgGradient: 'radial-gradient(ellipse at 60% 40%, #1a0a2e, #0d0d0d)',
+    font: "'IM Fell English', serif",
+    difficulty: { es: '★★ Medio', ca: '★★ Mitjà' },
+    duration: { es: '40 min', ca: '40 min' },
+    title: { es: 'El Museo Maldito', ca: 'El Museu Maleït' },
+    desc: { es: 'Arte · Misterio · Terror suave', ca: 'Art · Misteri · Terror suau' },
+    synopsis: { es: 'El museo cierra y quedáis atrapados. A medianoche, los cuadros cobran vida. El guardián os propone un trato: resolved sus acertijos o seréis parte permanente de la colección.', ca: "El museu tanca i quedeu atrapats. A mitjanit, els quadres prenen vida. El guardià us proposa un tracte: resoleu els seus endevinalles o sereu part permanent de la col·lecció." },
+    phases: [
+      {
+        name: { es: 'MEDIANOCHE', ca: 'MITJANIT' },
+        narrativeTitle: { es: 'Las pinturas os miran', ca: 'Les pintures us miren' },
+        narrativeText: { es: 'El reloj marca las 00:00. Los cuadros en las paredes giran lentamente sus cabezas. Una voz emerge del cuadro más antiguo: "Responded mi primer acertijo o os convertiré en naturaleza muerta."', ca: "El rellotge marca les 00:00. Els quadres a les parets giren lentament els seus caps. Una veu emergeix del quadre més antic: 'Responeu el meu primer endevinall o us convertiré en natura morta.'" },
+        enigma: { es: 'Soy más viejo que el tiempo, pero nací hoy. No tengo voz, pero cuento historias. Los reyes me temen y los pobres me poseen. ¿Qué soy?', ca: "Sóc més vell que el temps, però vaig néixer avui. No tinc veu, però explico històries. Els reis em temen i els pobres em posseeixen." },
+        answer: 'sueño',
+        hint: { es: 'Todos los humanos lo hacen cada noche...', ca: "Tots els humans ho fan cada nit..." },
+        points: 100
+      },
+      {
+        name: { es: 'EL GUARDIÁN', ca: 'EL GUARDIÀ' },
+        narrativeTitle: { es: 'El contrato del artista', ca: "El contracte de l'artista" },
+        narrativeText: { es: 'El guardián os muestra un contrato firmado en 1743. Dice: "El que resuelva el enigma del maestro será libre. El resto... decorará estas paredes para siempre." El enigma está en el marco del cuadro más valioso de la sala.', ca: "El guardià us mostra un contracte signat el 1743. Diu: 'El qui resolgui l'enigma del mestre serà lliure. La resta... decorarà aquestes parets per sempre.' L'enigma és al marc del quadre més valuós de la sala." },
+        enigma: { es: 'La Mona Lisa tiene una sonrisa. Un cuadro de Picasso tiene 3 ojos. Un Dalí tiene 1 reloj derretido. Si combinas el número de objetos principales de cada obra... ¿cuál es el código del guardián?', ca: "La Mona Lisa té un somriure. Un quadre de Picasso té 3 ulls. Un Dalí té 1 rellotge fos. Si combines el nombre d'objectes principals de cada obra... quin és el codi del guardià?" },
+        answer: '131',
+        hint: { es: '1 sonrisa + 3 ojos + 1 reloj = ?', ca: "1 somriure + 3 ulls + 1 rellotge = ?" },
+        mission: { es: 'Un miembro del equipo debe ir a la entrada del instituto y buscar debajo del buzón un sobre con el símbolo 🎨. Contiene la siguiente pista.', ca: "Un membre de l'equip ha d'anar a l'entrada de l'institut i buscar sota el bústia un sobre amb el símbol 🎨. Conté la següent pista." },
+        missionIcon: '📬',
+        points: 150
+      },
+      {
+        name: { es: 'ESCAPE', ca: 'ESCAPADA' },
+        narrativeTitle: { es: 'La puerta secreta', ca: 'La porta secreta' },
+        narrativeText: { es: 'El guardián señala una pared. Tras un cuadro de Van Gogh hay una puerta. La combinación de la cerradura es un número escondido en la historia del arte. "La clave está en el año en que murió el artista más joven de los mencionados", dice.', ca: "El guardià assenyala una paret. Rere un quadre de Van Gogh hi ha una porta. La combinació del pany és un número amagat en la història de l'art. 'La clau és en l'any que va morir l'artista més jove dels esmentats', diu." },
+        enigma: { es: 'Van Gogh murió en 1890 (37 años). Dalí murió en 1989 (84 años). Picasso murió en 1973 (91 años). La clave es el año de muerte del artista que murió MÁS JOVEN.', ca: "Van Gogh va morir el 1890 (37 anys). Dalí va morir el 1989 (84 anys). Picasso va morir el 1973 (91 anys). La clau és l'any de mort de l'artista que va morir MÉS JOVE." },
+        answer: '1890',
+        hint: { es: '37 < 84 < 91... ¿Quién murió más joven?', ca: "37 < 84 < 91... Qui va morir més jove?" },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'train',
+    emoji: '🚄',
+    color: '#e74c3c',
+    gradient: 'linear-gradient(135deg, #1a0000, #7f0000)',
+    bgGradient: 'radial-gradient(ellipse at 50% 80%, #2d0000, #0a0005)',
+    font: "'Russo One', sans-serif",
+    difficulty: { es: '★★★ Difícil', ca: '★★★ Difícil' },
+    duration: { es: '50 min', ca: '50 min' },
+    title: { es: 'Tren Sin Frenos', ca: 'Tren Sense Frens' },
+    desc: { es: 'Thriller · Velocidad · Tensión', ca: 'Thriller · Velocitat · Tensió' },
+    synopsis: { es: 'El tren bala Madrid-Barcelona viaja a 350km/h. Los frenos han sido saboteados. En cada parada hay una bomba... o una pista. Tenéis hasta el Túnel de la Muerte.', ca: "El tren bala Madrid-Barcelona viatja a 350km/h. Els frens han estat sabotejats. A cada parada hi ha una bomba... o una pista. Teniu fins al Túnel de la Mort." },
+    phases: [
+      {
+        name: { es: 'PARADA 1: MADRID', ca: 'PARADA 1: MADRID' },
+        narrativeTitle: { es: 'Mensaje en el asiento', ca: 'Missatge al seient' },
+        narrativeText: { es: 'El tren arranca. Bajo vuestro asiento hay un sobre. Dentro: una fotografía y un número de teléfono. La fotografía muestra al maquinista inconsciente y un reloj marcando las 14:23. Lleváis 7 minutos de retraso.', ca: "El tren arrencar. Sota el vostre seient hi ha un sobre. Dins: una fotografia i un número de telèfon. La fotografia mostra el maquinista inconscient i un rellotge marcant les 14:23. Porteu 7 minuts de retard." },
+        enigma: { es: 'El número de teléfono del sobre es: 93-XXX-XXXX. Los dígitos que faltan son: el número de vagones del tren (8) y el año de inauguración del AVE Madrid-Sevilla en sus dos últimas cifras (92). ¿Cuál es el número completo?', ca: "El número de telèfon del sobre és: 93-XXX-XXXX. Els dígits que falten són: el nombre de vagons del tren (8) i l'any d'inauguració de l'AVE Madrid-Sevilla en les seves dues últimes xifres (92). Quin és el número complet?" },
+        answer: '93-892-9200',
+        hint: { es: 'AVE Madrid-Sevilla = 1992. Últimas cifras: 92', ca: "AVE Madrid-Sevilla = 1992. Últimes xifres: 92" },
+        points: 100
+      },
+      {
+        name: { es: 'PARADA 2: ZARAGOZA', ca: 'PARADA 2: SARAGOSSA' },
+        narrativeTitle: { es: 'El pasajero misterioso', ca: 'El passatger misteriós' },
+        narrativeText: { es: 'El tren no para. Alguien golpea desde el techo del vagón. Baja un hombre con un maletín y dice: "Tengo el código para los frenos, pero primero debéis demostrar que sois dignos." Saca un puzle matemático.', ca: "El tren no para. Algú truca des del sostre del vagó. Baixa un home amb una maleta i diu: 'Tinc el codi per als frens, però primer heu de demostrar que sou dignes.' Treu un trencaclosques matemàtic." },
+        enigma: { es: 'El tren va a 350 km/h. La distancia hasta el túnel es de 175 km. ¿Cuántos minutos quedan? Eso es el código para acceder a la caja de los frenos.', ca: "El tren va a 350 km/h. La distància fins al túnel és de 175 km. Quants minuts queden? Això és el codi per accedir a la caixa dels frens." },
+        answer: '30',
+        hint: { es: 'Tiempo = distancia ÷ velocidad. En horas. Luego convierte a minutos.', ca: "Temps = distància ÷ velocitat. En hores. Després converteix a minuts." },
+        mission: { es: 'El "revisor" (un profesor cómplice en el pasillo) tiene el maletín. Decidle "CÓDIGO ROJO" y os dará el siguiente fragmento de la contraseña.', ca: "El 'revisor' (un professor còmplice al passadís) té la maleta. Digueu-li 'CODI VERMELL' i us donarà el següent fragment de la contrasenya." },
+        missionIcon: '🧳',
+        points: 150
+      },
+      {
+        name: { es: 'TÚNEL FINAL', ca: 'TÚNEL FINAL' },
+        narrativeTitle: { es: '10 minutos para el impacto', ca: "10 minuts per a l'impacte" },
+        narrativeText: { es: 'El túnel se acerca. En el panel de frenos hay 4 interruptores. El orden de activación es crucial. Una secuencia incorrecta y los frenos se bloquean. La pared del túnel aparece en el horizonte...', ca: "El túnel s'acosta. Al panell de frens hi ha 4 interruptors. L'ordre d'activació és crucial. Una seqüència incorrecta i els frens es bloquegen. La paret del túnel apareix a l'horitzó..." },
+        enigma: { es: 'Los interruptores tienen símbolos: ∆, ○, ■, ✦. La secuencia correcta sigue el orden del número de lados de cada figura (de menos a más). ¿Cuál es el orden?', ca: "Els interruptors tenen símbols: ∆, ○, ■, ✦. La seqüència correcta segueix l'ordre del nombre de costats de cada figura (de menys a més). Quin és l'ordre?" },
+        answer: '○∆■✦',
+        hint: { es: 'Círculo=0, Triángulo=3, Cuadrado=4, Estrella=... (cuenta las puntas)', ca: "Cercle=0, Triangle=3, Quadrat=4, Estrella=... (compta les puntes)" },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'bunker',
+    emoji: '☢️',
+    color: '#27ae60',
+    gradient: 'linear-gradient(135deg, #0a1a00, #1a4a00)',
+    bgGradient: 'radial-gradient(ellipse at 40% 60%, #0d1f00, #050505)',
+    font: "'Special Elite', cursive",
+    difficulty: { es: '★★★★ Experto', ca: '★★★★ Expert' },
+    duration: { es: '55 min', ca: '55 min' },
+    title: { es: 'Búnker 2087', ca: 'Búnquer 2087' },
+    desc: { es: 'Post-apocalíptico · Ciencia · Supervivencia', ca: 'Post-apocalíptic · Ciència · Supervivència' },
+    synopsis: { es: 'Año 2087. Sois los últimos 30 humanos en el planeta. El búnker tiene oxígeno para 6 horas. Debéis descifrar qué pasó y encontrar la salida al exterior antes de que sea tarde.', ca: "Any 2087. Sou els últims 30 humans al planeta. El búnquer té oxigen per a 6 hores. Heu de xifrar què va passar i trobar la sortida a l'exterior abans que sigui tard." },
+    phases: [
+      {
+        name: { es: 'DESPERTAR', ca: 'DESPERTAR' },
+        narrativeTitle: { es: 'Registros del año cero', ca: "Registres de l'any zero" },
+        narrativeText: { es: 'Los monitores parpadean. El sistema de IA dice: "Bienvenidos a la Fase de Recuperación. El mundo exterior está en proceso de estabilización. Necesito verificar vuestra identidad. Responded el protocolo de seguridad."', ca: "Els monitors parpellegen. El sistema d'IA diu: 'Benvinguts a la Fase de Recuperació. El món exterior està en procés d'estabilització. Necessito verificar la vostra identitat. Responeu el protocol de seguretat.'" },
+        enigma: { es: 'El protocolo usa el año del desastre nuclear de Chernóbil (1986) menos el año del fin de la Guerra Fría (1991). El resultado en valor absoluto es vuestro código de acceso.', ca: "El protocol utilitza l'any del desastre nuclear de Txernòbil (1986) menys l'any de la fi de la Guerra Freda (1991). El resultat en valor absolut és el vostre codi d'accés." },
+        answer: '5',
+        hint: { es: '|1986 - 1991| = ?', ca: "|1986 - 1991| = ?" },
+        points: 100
+      },
+      {
+        name: { es: 'LOS ARCHIVOS', ca: 'ELS ARXIUS' },
+        narrativeTitle: { es: 'Quién causó el fin', ca: 'Qui va causar el final' },
+        narrativeText: { es: 'El archivo histórico está dañado. Solo quedan fragmentos. El causante del apocalipsis usó un código binario para ocultar su identidad. Los fragmentos son: 01000001, 01001001.', ca: "L'arxiu històric està danyat. Només queden fragments. El causant de l'apocalipsi va usar un codi binari per amagar la seva identitat. Els fragments són: 01000001, 01001001." },
+        enigma: { es: 'Convertid los números binarios a letras usando ASCII. 01000001 = letra A (65 en decimal). 01001001 = ¿qué letra? Esas letras forman las iniciales del culpable.', ca: "Convertiu els números binaris a lletres usant ASCII. 01000001 = lletra A (65 en decimal). 01001001 = quina lletra? Aquestes lletres formen les inicials del culpable." },
+        answer: 'AI',
+        hint: { es: '01001001 en decimal: 64+8+1 = 73. Letra número 73 en ASCII...', ca: "01001001 en decimal: 64+8+1 = 73. Lletra número 73 en ASCII..." },
+        mission: { es: 'Un miembro debe ir a la sala de informática y buscar en el ordenador de la entrada el archivo llamado "BUNKER2087". La contraseña para abrirlo la tiene el profesor de guardia.', ca: "Un membre ha d'anar a la sala d'informàtica i buscar a l'ordinador de l'entrada l'arxiu anomenat 'BUNKER2087'. La contrasenya per obrir-lo la té el professor de guàrdia." },
+        missionIcon: '💻',
+        points: 150
+      },
+      {
+        name: { es: 'SALIDA', ca: 'SORTIDA' },
+        narrativeTitle: { es: 'La puerta hermética', ca: 'La porta hermètica' },
+        narrativeText: { es: 'La IA dice: "Detectados 0 agentes patógenos en superficie. Condiciones: aptas para vida humana." La puerta de salida requiere un código de 5 dígitos. En la pared hay grabada la Tabla Periódica con 4 elementos marcados: H, Na, K, Fe.', ca: "La IA diu: 'Detectats 0 agents patògens en superfície. Condicions: aptes per a vida humana.' La porta de sortida requereix un codi de 5 dígits. A la paret hi ha gravada la Taula Periòdica amb 4 elements marcats: H, Na, K, Fe." },
+        enigma: { es: 'El código son los números atómicos de los elementos marcados, ordenados de menor a mayor, concatenados: H(1), Na(11), K(19), Fe(26). Tomad los primeros dígitos de cada uno.', ca: "El codi són els números atòmics dels elements marcats, ordenats de menor a major, concatenats: H(1), Na(11), K(19), Fe(26). Preneu els primers dígits de cadascun." },
+        answer: '11119',
+        hint: { es: 'H=1, Na=11, K=19, Fe=26. Primeros dígitos: 1, 1, 1, 2. Concatenados...', ca: "H=1, Na=11, K=19, Fe=26. Primers dígits: 1, 1, 1, 2. Concatenats..." },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'pirates',
+    emoji: '🏴‍☠️',
+    color: '#f39c12',
+    gradient: 'linear-gradient(135deg, #1a0e00, #4a2800)',
+    bgGradient: 'radial-gradient(ellipse at 50% 30%, #1f1000, #060400)',
+    font: "'Pirata One', cursive",
+    difficulty: { es: '★★ Medio', ca: '★★ Mitjà' },
+    duration: { es: '40 min', ca: '40 min' },
+    title: { es: 'Piratas del Mediterráneo', ca: 'Pirates del Mediterrani' },
+    desc: { es: 'Aventura · Mapa · Tesoro', ca: 'Aventura · Mapa · Tresor' },
+    synopsis: { es: 'Sois tripulación de El Vengador Escarlata. Habéis encontrado el mapa del tesoro perdido del capitán Barbanegra. Pero el mapa está cifrado y hay otros piratas siguiéndoos el rastro.', ca: "Sou tripulació de El Venjador Escarlata. Heu trobat el mapa del tresor perdut del capità Barbanegra. Però el mapa està xifrat i hi ha altres pirates seguint-vos el rastre." },
+    phases: [
+      {
+        name: { es: 'EL MAPA', ca: 'EL MAPA' },
+        narrativeTitle: { es: 'Barbanegra os habla', ca: 'Barbanegra us parla' },
+        narrativeText: { es: 'Una botella con un pergamino. "Solo el digno encontrará mi tesoro. Mi riqueza duerme bajo el número que es a la vez primo y la edad que tenía yo cuando zarpé por primera vez (17). Sumadlo al número de mares que surcamos juntos (7)."', ca: "Una ampolla amb un pergamí. 'Només el digne trobarà el meu tresor. La meva riquesa dorm sota el número que és alhora primer i l'edat que tenia jo quan vaig zarpar per primera vegada (17). Sumeu-lo al nombre de mars que vam surcar junts (7).'" },
+        enigma: { es: 'El número primo más cercano a 17 que es también múltiplo de... espera: 17 YA es primo. Sumad 17 + 7. Ese es el número del cofre.', ca: "El número primer més proper a 17 que és també múltiple de... espera: 17 JA és primer. Sumeu 17 + 7. Aquest és el número del cofre." },
+        answer: '24',
+        hint: { es: '17 + 7 = ?', ca: "17 + 7 = ?" },
+        points: 100
+      },
+      {
+        name: { es: 'LA ISLA', ca: "L'ILLA" },
+        narrativeTitle: { es: 'El guardián de la cueva', ca: 'El guardià de la cova' },
+        narrativeText: { es: 'Habéis llegado a la isla. En la cueva hay un viejo pirata que os bloquea el paso. "Resolved mi acertijo y os dejaré pasar. Si falláis, al agua con vosotros."', ca: "Heu arribat a l'illa. A la cova hi ha un vell pirata que us bloqueja el pas. 'Resoleu el meu endevinall i us deixaré passar. Si falleu, a l'aigua amb vosaltres.'" },
+        enigma: { es: 'Tengo ciudades pero no casas. Tengo montañas pero no árboles. Tengo agua pero no peces. Tengo carreteras pero no coches. ¿Qué soy?', ca: "Tinc ciutats però no cases. Tinc muntanyes però no arbres. Tinc aigua però no peixos. Tinc carreteres però no cotxes. Què sóc?" },
+        answer: 'mapa',
+        hint: { es: 'Es algo que usáis para encontrar el tesoro...', ca: "És alguna cosa que useu per trobar el tresor..." },
+        mission: { es: 'La "X del tesoro" está escondida. Un miembro debe ir al patio y buscar debajo del banco más cercano a la entrada. Allí encontraréis el próximo fragmento del mapa.', ca: "La 'X del tresor' és amagada. Un membre ha d'anar al pati i buscar sota del banc més proper a l'entrada. Allí trobareu el pròxim fragment del mapa." },
+        missionIcon: '🗺️',
+        points: 150
+      },
+      {
+        name: { es: 'EL TESORO', ca: 'EL TRESOR' },
+        narrativeTitle: { es: 'La cerradura del cofre', ca: "El pany del cofre" },
+        narrativeText: { es: 'El cofre está ante vosotros. La cerradura tiene un mecanismo con letras. La inscripción dice: "Mi nombre es el de aquel que descubrió América, pero en el idioma en que él mismo lo firmaba."', ca: "El cofre és davant vostre. El pany té un mecanisme amb lletres. La inscripció diu: 'El meu nom és el d'aquell que va descobrir Amèrica, però en l'idioma en què ell mateix ho signava.'" },
+        enigma: { es: 'Colón firmaba sus cartas como "Christobal Colon" en castellano, pero su nombre en italiano (su lengua materna) era... Las 5 primeras letras del nombre italiano son el código.', ca: "Colom signava les seves cartes com 'Christobal Colon' en castellà, però el seu nom en italià (la seva llengua materna) era... Les 5 primeres lletres del nom italià són el codi." },
+        answer: 'CRIST',
+        hint: { es: 'Cristoforo Colombo en italiano. Primeras 5 letras...', ca: "Cristoforo Colombo en italià. Primeres 5 lletres..." },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'castle',
+    emoji: '🏰',
+    color: '#8e44ad',
+    gradient: 'linear-gradient(135deg, #1a0020, #3d005a)',
+    bgGradient: 'radial-gradient(ellipse at 30% 70%, #150020, #050005)',
+    font: "'Uncial Antiqua', cursive",
+    difficulty: { es: '★★ Medio', ca: '★★ Mitjà' },
+    duration: { es: '40 min', ca: '40 min' },
+    title: { es: 'El Castillo Encantado', ca: 'El Castell Encantat' },
+    desc: { es: 'Terror suave · Medieval · Magia', ca: 'Terror suau · Medieval · Màgia' },
+    synopsis: { es: 'Sois viajeros medievales que buscan refugio. El castillo parece abandonado... pero no lo está. El fantasma del conde Vladimiro exige que respondáis sus acertijos antes del amanecer.', ca: "Sou viatgers medievals que busquen refugi. El castell sembla abandonat... però no ho és. El fantasma del comte Vladimiro exigeix que respongueu els seus endevinalles abans de l'alba." },
+    phases: [
+      {
+        name: { es: 'LLEGADA', ca: 'ARRIBADA' },
+        narrativeTitle: { es: 'Las puertas se cierran', ca: 'Les portes es tanquen' },
+        narrativeText: { es: 'Las puertas del castillo se cierran solas detrás de vosotros. Un escalofrío recorre la sala. Una voz cavernosa resuena: "Bienvenidos a mi hogar. Hace 300 años que no recibo visitas. Tendréis que ganároslas."', ca: "Les portes del castell es tanquen soles darrere vostre. Un esgarrifament recorre la sala. Una veu cavernosa ressona: 'Benvinguts a casa meva. Fa 300 anys que no rebo visites. Haureu de guanyar-vos-les.'" },
+        enigma: { es: 'El conde fue maldecido en el año 1723. ¿Cuántos años lleva encantado hasta el año actual (2025)?', ca: "El comte va ser maleït l'any 1723. Quants anys porta encantat fins a l'any actual (2025)?" },
+        answer: '302',
+        hint: { es: '2025 - 1723 = ?', ca: "2025 - 1723 = ?" },
+        points: 100
+      },
+      {
+        name: { es: 'LA MALDICIÓN', ca: 'LA MALEDICCIÓ' },
+        narrativeTitle: { es: 'El libro de hechizos', ca: "El llibre d'encanteris" },
+        narrativeText: { es: 'El conde os muestra su biblioteca. "El hechizo que me mantiene aquí está en este libro, pero las páginas están en blanco para los que no saben leer entre líneas. El título del libro es la respuesta que buscáis."', ca: "El comte us mostra la seva biblioteca. 'L'encanteri que em manté aquí és en aquest llibre, però les pàgines estan en blanc per als que no saben llegir entre línies. El títol del llibre és la resposta que busqueu.'" },
+        enigma: { es: 'Cuanto más me seques, más mojado te quedas. ¿Qué soy?', ca: "Com més m'asseques, més mullat et quedes. Què sóc?" },
+        answer: 'toalla',
+        hint: { es: 'Es un objeto del baño...', ca: "És un objecte del bany..." },
+        mission: { es: 'El grimorio del castillo está escondido en la clase de Historia. Buscad debajo de la mesa del profesor el sobre con el sello 🏰. Contiene el conjuro para liberarlo.', ca: "El grimoriu del castell és amagat a la classe d'Història. Busqueu sota la taula del professor el sobre amb el segell 🏰. Conté el conjur per alliberar-lo." },
+        missionIcon: '📜',
+        points: 150
+      },
+      {
+        name: { es: 'EL EXORCISMO', ca: "L'EXORCISME" },
+        narrativeTitle: { es: 'Liberar al conde', ca: 'Alliberar el comte' },
+        narrativeText: { es: 'Tenéis el grimorio. El conjuro requiere pronunciar el nombre verdadero del demonio que posee el castillo. Está codificado en rot13: "Znyhf" — donde cada letra se mueve 13 posiciones en el alfabeto en dirección inversa.', ca: "Teniu el grimoriu. El conjur requereix pronunciar el nom veritable del dimoni que posseeix el castell. Està codificat en rot13: 'Znyhf' — on cada lletra es mou 13 posicions en l'alfabet en direcció inversa." },
+        enigma: { es: 'Decodificad ROT13: Z→M, n→a, y→l, h→u, f→s. ¿Cuál es el nombre del demonio?', ca: "Descodifiqueu ROT13: Z→M, n→a, y→l, h→u, f→s. Quin és el nom del dimoni?" },
+        answer: 'Malus',
+        hint: { es: 'ROT13: cada letra avanza 13 posiciones. Z(26)→M(13)', ca: "ROT13: cada lletra avança 13 posicions. Z(26)→M(13)" },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'atlantis',
+    emoji: '🌊',
+    color: '#2980b9',
+    gradient: 'linear-gradient(135deg, #001a2e, #003a5c)',
+    bgGradient: 'radial-gradient(ellipse at 50% 100%, #00162e, #000510)',
+    font: "'Exo 2', sans-serif",
+    difficulty: { es: '★★★ Difícil', ca: '★★★ Difícil' },
+    duration: { es: '50 min', ca: '50 min' },
+    title: { es: 'Ciudad Sumergida', ca: 'Ciutat Submergida' },
+    desc: { es: 'Atlántida · Ciencia · Arqueología', ca: 'Atlàntida · Ciència · Arqueologia' },
+    synopsis: { es: 'Una expedición submarina ha encontrado Atlántida. Los sistemas de la base fallan. Debéis descifrar los mensajes de los atlantes para activar el ascensor de emergencia antes de que se agote el aire.', ca: "Una expedició submarina ha trobat l'Atlàntida. Els sistemes de la base fallen. Heu de xifrar els missatges dels atlants per activar l'ascensor d'emergència abans que s'esgoti l'aire." },
+    phases: [
+      {
+        name: { es: 'DESCUBRIMIENTO', ca: 'DESCOBRIMENT' },
+        narrativeTitle: { es: 'Los registros atlantes', ca: 'Els registres atlants' },
+        narrativeText: { es: 'Las paredes están cubiertas de jeroglíficos numéricos atlantes. El sistema de traducción dice: en su sistema, usaban base 8 (octal). El primer mensaje: "10 + 10 = ?" en octal. La respuesta activa el primer panel.', ca: "Les parets estan cobertes de jeroglífics numèrics atlants. El sistema de traducció diu: en el seu sistema, usaven base 8 (octal). El primer missatge: '10 + 10 = ?' en octal. La resposta activa el primer panell." },
+        enigma: { es: 'En octal (base 8): 10 significa "ocho" en decimal. Entonces, 10(octal) + 10(octal) = 8+8 = 16 en decimal = ¿cuánto en octal?', ca: "En octal (base 8): 10 significa 'vuit' en decimal. Llavors, 10(octal) + 10(octal) = 8+8 = 16 en decimal = quant en octal?" },
+        answer: '20',
+        hint: { es: '16 ÷ 8 = 2 resto 0. En octal: 20', ca: "16 ÷ 8 = 2 resta 0. En octal: 20" },
+        points: 100
+      },
+      {
+        name: { es: 'EL REACTOR', ca: 'EL REACTOR' },
+        narrativeTitle: { es: 'La energía de Atlántida', ca: "L'energia de l'Atlàntida" },
+        narrativeText: { es: 'El reactor atlante funciona con cristales de cuarzo. Hay 5 cristales de distintos colores y frecuencias. El manual dice que para activar el reactor, los cristales deben ordenarse de menor a mayor frecuencia.', ca: "El reactor atlant funciona amb cristalls de quars. Hi ha 5 cristalls de colors i freqüències diferents. El manual diu que per activar el reactor, els cristalls s'han d'ordenar de menor a major freqüència." },
+        enigma: { es: 'Las frecuencias de los cristales (en Hz): Rojo=430THz, Naranja=490THz, Amarillo=530THz, Verde=560THz, Azul=620THz. ¿En qué orden deben colocarse de menor a mayor?', ca: "Les freqüències dels cristalls (en Hz): Vermell=430THz, Taronja=490THz, Groc=530THz, Verd=560THz, Blau=620THz. En quin ordre s'han de col·locar de menor a major?" },
+        answer: 'Rojo-Naranja-Amarillo-Verde-Azul',
+        hint: { es: '430 < 490 < 530 < 560 < 620', ca: "430 < 490 < 530 < 560 < 620" },
+        mission: { es: 'El "cristal maestro" está en el laboratorio de ciencias. Preguntad al profesor/a de ciencias por el "PROYECTO ATLÁNTIDA" y él/ella os dará el artefacto.', ca: "El 'cristall mestre' és al laboratori de ciències. Pregunteu al professor/a de ciències pel 'PROJECTE ATLÀNTIDA' i ell/ella us donarà l'artefacte." },
+        missionIcon: '💎',
+        points: 150
+      },
+      {
+        name: { es: 'ASCENSOR', ca: 'ASCENSOR' },
+        narrativeTitle: { es: 'Subir a la superficie', ca: 'Pujar a la superfície' },
+        narrativeText: { es: 'El ascensor tiene un panel con la ecuación que los atlantes usaban para calcular la presión del agua. A 3000 metros de profundidad, con densidad del agua = 1025 kg/m³ y g = 9.8 m/s². El código es la presión en bar (redondeada).', ca: "L'ascensor té un panell amb l'equació que els atlants usaven per calcular la pressió de l'aigua. A 3000 metres de profunditat, amb densitat de l'aigua = 1025 kg/m³ i g = 9.8 m/s². El codi és la pressió en bar (arrodonida)." },
+        enigma: { es: 'Presión = densidad × g × altura = 1025 × 9.8 × 3000 Pa. Convertid a bar (1 bar = 100,000 Pa). Redonded al entero más cercano.', ca: "Pressió = densitat × g × alçada = 1025 × 9.8 × 3000 Pa. Convertiu a bar (1 bar = 100,000 Pa). Arrodoneu a l'enter més proper." },
+        answer: '301',
+        hint: { es: '1025 × 9.8 × 3000 = 30,135,000 Pa ÷ 100,000 = 301.35 ≈ 301', ca: "1025 × 9.8 × 3000 = 30,135,000 Pa ÷ 100,000 = 301.35 ≈ 301" },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'spy',
+    emoji: '🕵️',
+    color: '#e8c84a',
+    gradient: 'linear-gradient(135deg, #0f0f00, #2a2a00)',
+    bgGradient: 'radial-gradient(ellipse at 70% 30%, #1a1a00, #050500)',
+    font: "'Orbitron', sans-serif",
+    difficulty: { es: '★★★ Difícil', ca: '★★★ Difícil' },
+    duration: { es: '50 min', ca: '50 min' },
+    title: { es: 'Agencia Fantasma', ca: 'Agència Fantasma' },
+    desc: { es: 'Espionaje · Mission Impossible · Códigos', ca: 'Espionatge · Mission Impossible · Codis' },
+    synopsis: { es: 'Sois agentes de élite de la Agencia Fantasma. Un virus informático robará todos los secretos del mundo en 60 minutos. Vuestra misión: infiltraros en el servidor, descifrar los códigos y neutralizar la amenaza.', ca: "Sou agents d'elit de l'Agència Fantasma. Un virus informàtic robarà tots els secrets del món en 60 minuts. La vostra missió: infiltrar-vos al servidor, xifrar els codis i neutralitzar l'amenaça." },
+    phases: [
+      {
+        name: { es: 'INFILTRACIÓN', ca: 'INFILTRACIÓ' },
+        narrativeTitle: { es: 'Acceso a la base', ca: 'Accés a la base' },
+        narrativeText: { es: 'El edificio tiene 5 plantas de seguridad. Para acceder al servidor central, necesitáis el código Omega. Vuestro contacto en el interior ha dejado un mensaje cifrado en código César con desplazamiento 3: "ROLDQR".', ca: "L'edifici té 5 plantes de seguretat. Per accedir al servidor central, necessiteu el codi Omega. El vostre contacte a l'interior ha deixat un missatge xifrat en codi Cèsar amb desplaçament 3: 'ROLDQR'." },
+        enigma: { es: 'Descifrad el código César (desplazamiento -3): R→O, O→L, L→I, D→A, Q→N, R→O. ¿Qué dice el mensaje?', ca: "Desxifreu el codi Cèsar (desplaçament -3): R→O, O→L, L→I, D→A, Q→N, R→O. Què diu el missatge?" },
+        answer: 'OLIANO',
+        hint: { es: 'R-3=O, O-3=L, L-3=I, D-3=A, Q-3=N, R-3=O', ca: "R-3=O, O-3=L, L-3=I, D-3=A, Q-3=N, R-3=O" },
+        points: 100
+      },
+      {
+        name: { es: 'EL VIRUS', ca: 'EL VIRUS' },
+        narrativeTitle: { es: 'Anatomía del ataque', ca: "Anatomia de l'atac" },
+        narrativeText: { es: 'El virus usa un algoritmo de cifrado. Para neutralizarlo, necesitáis el hash de seguridad. El hash se calcula así: tomad el número primo mayor que 50 y menor que 60, multiplicadlo por el número de bits de un byte, y añadid el año de creación del primer virus informático (1971).', ca: "El virus utilitza un algoritme de xifratge. Per neutralitzar-lo, necessiteu el hash de seguretat. El hash es calcula així: preneu el número primer major que 50 i menor que 60, multipliqueu-lo pel nombre de bits d'un byte, i afegiu l'any de creació del primer virus informàtic (1971)." },
+        enigma: { es: 'Primo entre 50 y 60: hay dos (53, 59). Usad el mayor. ×8 bits por byte. +1971. ¿Cuál es el hash?', ca: "Primer entre 50 i 60: n'hi ha dos (53, 59). Useu el major. ×8 bits per byte. +1971. Quin és el hash?" },
+        answer: '2443',
+        hint: { es: '59 × 8 = 472. 472 + 1971 = ?', ca: "59 × 8 = 472. 472 + 1971 = ?" },
+        mission: { es: 'Vuestro contacto es el conserje del instituto. Decidle la frase "El águila ha aterrizado" y él os entregará el dispositivo USB con la siguiente parte del código de neutralización.', ca: "El vostre contacte és el conserge de l'institut. Digueu-li la frase 'L'àguila ha aterrat' i ell us entregarà el dispositiu USB amb la següent part del codi de neutralització." },
+        missionIcon: '🔌',
+        points: 150
+      },
+      {
+        name: { es: 'NEUTRALIZACIÓN', ca: 'NEUTRALITZACIÓ' },
+        narrativeTitle: { es: 'Cuenta atrás', ca: 'Compte enrere' },
+        narrativeText: { es: 'El servidor central. La pantalla muestra: TIEMPO RESTANTE: 00:10:00. Para neutralizar el virus necesitáis introducir la secuencia Fibonacci de 10 términos (empezando por 0,1) y sumar los términos 7, 8 y 9.', ca: "El servidor central. La pantalla mostra: TEMPS RESTANT: 00:10:00. Per neutralitzar el virus necessiteu introduir la seqüència Fibonacci de 10 termes (començant per 0,1) i sumar els termes 7, 8 i 9." },
+        enigma: { es: 'Fibonacci: 0,1,1,2,3,5,8,13,21,34. Los términos 7, 8 y 9 (comenzando a contar desde 0) son 13, 21 y 34. ¿Cuál es su suma?', ca: "Fibonacci: 0,1,1,2,3,5,8,13,21,34. Els termes 7, 8 i 9 (començant a comptar des de 0) són 13, 21 i 34. Quina és la seva suma?" },
+        answer: '68',
+        hint: { es: '13 + 21 + 34 = ?', ca: "13 + 21 + 34 = ?" },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'circus',
+    emoji: '🎪',
+    color: '#ff0066',
+    gradient: 'linear-gradient(135deg, #1a0010, #3d0028)',
+    bgGradient: 'radial-gradient(ellipse at 50% 50%, #200010, #050005)',
+    font: "'Creepster', cursive",
+    difficulty: { es: '★★★ Difícil', ca: '★★★ Difícil' },
+    duration: { es: '50 min', ca: '50 min' },
+    title: { es: 'Circo del Fin del Mundo', ca: 'Circ del Fi del Món' },
+    desc: { es: 'Misterio oscuro · Suspenso · Enigmas', ca: 'Misteri fosc · Suspens · Enigmes' },
+    synopsis: { es: 'El circo llegó una noche de tormenta. A la mañana siguiente, todos en el pueblo habían desaparecido excepto vosotros. El payaso de la entrada solo os dice: "Para salir, debéis completar los tres actos."', ca: "El circ va arribar una nit de tempesta. Al matí següent, tothom al poble havia desaparegut excepte vosaltres. El pallasso de l'entrada només us diu: 'Per sortir, heu de completar els tres actes.'" },
+    phases: [
+      {
+        name: { es: 'ACTO I: MAGIA', ca: 'ACTE I: MÀGIA' },
+        narrativeTitle: { es: 'El mago os desafía', ca: 'El mag us desafia' },
+        narrativeText: { es: 'El mago aparece en una nube de humo. "Adivino el número en que estáis pensando." Saca una carta que dice: "Mi truco: pienso en el número de letras de MAGIA (5), lo multiplico por el número de cartas en una baraja española (40), y añado el número de la bestia."', ca: "El mag apareix en un núvol de fum. 'Endevino el número en que esteu pensant.' Treu una carta que diu: 'El meu truc: penso en el nombre de lletres de MÀGIA (5), el multiplico pel nombre de cartes d'una baralla espanyola (40), i afegeixo el nombre de la bèstia.'" },
+        enigma: { es: '5 × 40 = 200. El número de la bestia (Apocalipsis) es 666. ¿Cuál es el resultado final?', ca: "5 × 40 = 200. El nombre de la bèstia (Apocalipsi) és 666. Quin és el resultat final?" },
+        answer: '866',
+        hint: { es: '200 + 666 = ?', ca: "200 + 666 = ?" },
+        points: 100
+      },
+      {
+        name: { es: 'ACTO II: ACROBACIA', ca: 'ACTE II: ACROBÀCIA' },
+        narrativeTitle: { es: 'La trapecista sin cara', ca: 'La trapecista sense cara' },
+        narrativeText: { es: 'Una figura sin rostro vuela en el trapecio. Cae a vuestros pies un pergamino: "Si mi altura de caída fuera h=80m con g=10m/s², y la velocidad al llegar al suelo es √(2gh)... esa velocidad es el código para cruzar."', ca: "Una figura sense rostre vola en el trapezi. Cau als vostres peus un pergamí: 'Si la meva alçada de caiguda fos h=80m amb g=10m/s², i la velocitat en arribar al terra és √(2gh)... aquesta velocitat és el codi per creuar.'" },
+        enigma: { es: 'v = √(2 × 10 × 80) = √1600 = ? m/s. Ese número de 2 cifras es el código.', ca: "v = √(2 × 10 × 80) = √1600 = ? m/s. Aquest número de 2 xifres és el codi." },
+        answer: '40',
+        hint: { es: '√1600 = 40', ca: "√1600 = 40" },
+        mission: { es: 'El "programa del circo" está oculto en la taquilla número 13 (si hay taquillas en el instituto) o bajo el escalón de la entrada. Contiene el código del Acto III.', ca: "El 'programa del circ' és amagat a la taquilla número 13 (si hi ha taquilles a l'institut) o sota el graó de l'entrada. Conté el codi de l'Acte III." },
+        missionIcon: '🎭',
+        points: 150
+      },
+      {
+        name: { es: 'ACTO III: ESCAPE', ca: 'ACTE III: ESCAPADA' },
+        narrativeTitle: { es: 'El payaso final', ca: 'El pallasso final' },
+        narrativeText: { es: 'El payaso bloquea la salida. "Un último acertijo y seréis libres. O quedaréis aquí para siempre como parte del espectáculo." Su cara pintada sonríe mientras el reloj hace tictac...', ca: "El pallasso bloqueja la sortida. 'Un últim endevinall i sereu lliures. O quedareu aquí per sempre com a part de l'espectacle.' La seva cara pintada somriu mentre el rellotge fa tic-tac..." },
+        enigma: { es: 'Cuantas más quitas, más grande soy. ¿Qué soy?', ca: "Com més en treus, més gran sóc. Què sóc?" },
+        answer: 'agujero',
+        hint: { es: 'Piensa en algo que crece cuando le quitas material...', ca: "Pensa en alguna cosa que creix quan li treus material..." },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'jungle',
+    emoji: '🌿',
+    color: '#2ecc71',
+    gradient: 'linear-gradient(135deg, #001a00, #003a00)',
+    bgGradient: 'radial-gradient(ellipse at 40% 40%, #001500, #000500)',
+    font: "'Exo 2', sans-serif",
+    difficulty: { es: '★★ Medio', ca: '★★ Mitjà' },
+    duration: { es: '40 min', ca: '40 min' },
+    title: { es: 'Selva Prohibida', ca: 'Selva Prohibida' },
+    desc: { es: 'Supervivencia · Tribus · Misterio', ca: 'Supervivència · Tribus · Misteri' },
+    synopsis: { es: 'Vuestra expedición ha quedado atrapada en una selva inexplorada. Una tribu ancestral os ofrece ayuda... si superáis sus tres pruebas de sabiduría. Si fallláis, os quedáis para siempre.', ca: "La vostra expedició ha quedat atrapada en una selva inexplorada. Una tribu ancestral us ofereix ajuda... si supereu les seves tres proves de saviesa. Si falleu, us quedeu per sempre." },
+    phases: [
+      {
+        name: { es: 'PRUEBA 1: AGUA', ca: 'PROVA 1: AIGUA' },
+        narrativeTitle: { es: 'El chamán habla', ca: 'El xaman parla' },
+        narrativeText: { es: 'El chamán señala un río. "Tenéis dos vasijas: una de 3 litros y otra de 5 litros. Debéis medir exactamente 4 litros de agua. El número 4 es sagrado para nuestra tribu."', ca: "El xaman assenyala un riu. 'Teniu dues gerres: una de 3 litres i una altra de 5 litres. Heu de mesurar exactament 4 litres d'aigua. El número 4 és sagrat per a la nostra tribu.'" },
+        enigma: { es: 'Procedimiento: llena la de 5L, vacía 3L en la de 3L (quedan 2L en la de 5L), vacía la de 3L, pasa los 2L a la de 3L, llena la de 5L, vierte 1L de la de 5L en la de 3L (que ya tiene 2L). ¿Cuántos litros quedan en la de 5L?', ca: "Procediment: omple la de 5L, buida 3L a la de 3L (queden 2L a la de 5L), buida la de 3L, passa els 2L a la de 3L, omple la de 5L, aboca 1L de la de 5L a la de 3L (que ja té 2L). Quants litres queden a la de 5L?" },
+        answer: '4',
+        hint: { es: 'Sigue los pasos del enunciado...', ca: "Segueix els passos de l'enunciat..." },
+        points: 100
+      },
+      {
+        name: { es: 'PRUEBA 2: FUEGO', ca: 'PROVA 2: FOC' },
+        narrativeTitle: { es: 'El consejo de ancianos', ca: "El consell d'ancians" },
+        narrativeText: { es: 'Los ancianos os rodean con antorchas. "Para encender el fuego sagrado debéis resolver el enigma de los 5 animales." Cada animal tiene un valor: Jaguar=7, Serpiente=3, Águila=12, Rana=2, Mono=5.', ca: "Els ancians us envolten amb torxes. 'Per encendre el foc sagrat heu de resoldre l'enigma dels 5 animals.' Cada animal té un valor: Jaguar=7, Serp=3, Àguila=12, Granota=2, Mico=5." },
+        enigma: { es: 'El fuego sagrado se activa con el número que resulta de: (Jaguar × Rana) + (Águila - Mono) × Serpiente', ca: "El foc sagrat s'activa amb el número que resulta de: (Jaguar × Granota) + (Àguila - Mico) × Serp" },
+        answer: '35',
+        hint: { es: '(7×2) + (12-5)×3 = 14 + 7×3 = 14 + 21 = 35', ca: "(7×2) + (12-5)×3 = 14 + 7×3 = 14 + 21 = 35" },
+        mission: { es: 'La "pluma sagrada del águila" está en la sala de dirección. Un miembro del equipo debe ir y pedir al/la director/a la "prueba de la selva". Él/ella os entregará un sobre.', ca: "La 'ploma sagrada de l'àguila' és a la sala de direcció. Un membre de l'equip ha d'anar i demanar al/la director/a la 'prova de la selva'. Ell/ella us entregarà un sobre." },
+        missionIcon: '🦅',
+        points: 150
+      },
+      {
+        name: { es: 'PRUEBA 3: TIERRA', ca: 'PROVA 3: TERRA' },
+        narrativeTitle: { es: 'El corazón de la selva', ca: 'El cor de la selva' },
+        narrativeText: { es: 'El chamán os lleva al árbol más antiguo. "Este árbol tiene 500 años de sabiduría. Responded la pregunta final y el camino de vuelta aparecerá."', ca: "El xaman us porta a l'arbre més antic. 'Aquest arbre té 500 anys de saviesa. Responeu la pregunta final i el camí de tornada apareixerà.'" },
+        enigma: { es: 'Un árbol crece 2 metros al año. Empezó con 1 metro. Después de 10 años, ¿cuánto mide? Pero cuidado: cada 3 años pierde el 10% de su altura por una plaga. Calculad la altura final.', ca: "Un arbre creix 2 metres a l'any. Va començar amb 1 metre. Després de 10 anys, quant mesura? Però compte: cada 3 anys perd el 10% de la seva alçada per una plaga. Calculeu l'alçada final." },
+        answer: '15',
+        hint: { es: 'Año 3: 1+6=7, -10%=6.3. Año 6: 6.3+6=12.3, -10%=11.07. Año 9: 11.07+6=17.07, -10%=15.36. Año 10: 15.36+2≈17. (Aceptamos 15-17)', ca: "Any 3: 1+6=7, -10%=6.3. Any 6: 6.3+6=12.3, -10%=11.07. Any 9: 11.07+6=17.07, -10%=15.36. Any 10: 15.36+2≈17. (Acceptem 15-17)" },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'instituto',
+    emoji: '🏫',
+    color: '#e67e22',
+    gradient: 'linear-gradient(135deg, #1a0f00, #3d2200)',
+    bgGradient: 'radial-gradient(ellipse at 50% 50%, #1f1000, #080400)',
+    font: "'Special Elite', cursive",
+    difficulty: { es: '★★ Medio', ca: '★★ Mitjà' },
+    duration: { es: '45 min', ca: '45 min' },
+    title: { es: 'El Instituto Maldito', ca: "L'Institut Maleït" },
+    desc: { es: 'Terror · Vuestra escuela · Secretos', ca: 'Terror · La vostra escola · Secrets' },
+    synopsis: { es: 'Algo extraño pasó en vuestro instituto durante la noche. Las puertas están cerradas, los profesores han desaparecido y los pasillos susurran nombres. Debéis descubrir qué secreto ocultan las paredes de vuestra propia escuela.', ca: "Quelcom estrany va passar al vostre institut durant la nit. Les portes estan tancades, els professors han desaparegut i els passadissos xiuxiuegen noms. Heu de descobrir quin secret amaguen les parets de la vostra pròpia escola." },
+    phases: [
+      {
+        name: { es: 'EL DESPERTAR', ca: 'EL DESPERTAR' },
+        narrativeTitle: { es: 'Los pasillos hablan', ca: 'Els passadissos parlen' },
+        narrativeText: { es: 'Lleváis aquí toda la noche. Las luces parpadean. En la pizarra de vuestra propia clase hay escrito: "El primer secreto está donde los números van sin descanso." El número del aula de matemáticas más vuestro número de clase. Combinadlos.', ca: "Porteu aquí tota la nit. Els llums parpellegen. A la pissarra de la vostra pròpia classe hi ha escrit: 'El primer secret és on els números van sense descans.' El número de l'aula de matemàtiques més el vostre número de classe. Combineu-los." },
+        enigma: { es: 'El número del aula de Matemáticas de vuestro instituto (consultad) más el número de vuestra aula actual. La suma es el código del primer candado.', ca: "El número de l'aula de Matemàtiques del vostre institut (consulteu) més el número de la vostra aula actual. La suma és el codi del primer cadenat." },
+        answer: 'VARIABLE',
+        hint: { es: 'Esta respuesta depende de vuestro instituto. ¡El profesor conoce la respuesta!', ca: "Aquesta resposta depèn del vostre institut. El professor coneix la resposta!" },
+        points: 100
+      },
+      {
+        name: { es: 'LA SALA PROHIBIDA', ca: 'LA SALA PROHIBIDA' },
+        narrativeTitle: { es: 'Despacho del director', ca: 'Despatx del director' },
+        narrativeText: { es: 'Hay una sala a la que nunca habéis entrado. El despacho del director guarda un secreto. En la puerta hay una nota: "El código es el año de fundación del instituto más el número de alumnos actuales dividido entre 10."', ca: "Hi ha una sala a la qual mai heu entrat. El despatx del director guarda un secret. A la porta hi ha una nota: 'El codi és l'any de fundació de l'institut més el nombre d'alumnes actuals dividit entre 10.'" },
+        enigma: { es: 'Usad el año real de fundación de vuestro instituto y el número aproximado de alumnos (preguntad al profe). La respuesta es específica de vuestro centro.', ca: "Useu l'any real de fundació del vostre institut i el nombre aproximat d'alumnes (pregunteu al profe). La resposta és específica del vostre centre." },
+        answer: 'VARIABLE',
+        hint: { es: 'El año de fundación lo podéis encontrar en la web del instituto o preguntando al director.', ca: "L'any de fundació el podeu trobar a la web de l'institut o preguntant al director." },
+        mission: { es: 'Un miembro del equipo debe ir a secretaría y preguntar por "el expediente del instituto". El/la administrativo/a tiene una nota preparada con la información necesaria.', ca: "Un membre de l'equip ha d'anar a secretaria i preguntar pel 'expedient de l'institut'. L'administratiu/va té una nota preparada amb la informació necessària." },
+        missionIcon: '📋',
+        points: 150
+      },
+      {
+        name: { es: 'EL SECRETO FINAL', ca: 'EL SECRET FINAL' },
+        narrativeTitle: { es: 'Lo que nadie sabe', ca: 'El que ningú sap' },
+        narrativeText: { es: 'En el sótano del instituto (o el lugar más profundo/oculto) hay una caja. Dentro está el secreto que toda la escuela oculta. Para abrirla necesitáis el código que solo los mejores consiguen.', ca: "Al soterrani de l'institut (o el lloc més profund/ocult) hi ha una caixa. Dins és el secret que tota l'escola amaga. Per obrir-la necessiteu el codi que només els millors aconsegueixen." },
+        enigma: { es: '¿Cuántos profesores hay en vuestro instituto? Multiplicad ese número por el número de asignaturas que tenéis este año. Ese es el código final.', ca: "Quants professors hi ha al vostre institut? Multipliqueu aquest número pel nombre d'assignatures que teniu aquest any. Aquest és el codi final." },
+        answer: 'VARIABLE',
+        hint: { es: 'Número de profesores × número de asignaturas. ¡Preguntad al profe si no lo sabéis!', ca: "Nombre de professors × nombre d'assignatures. Pregunteu al profe si no ho sabeu!" },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  },
+  {
+    id: 'teachers',
+    emoji: '👩‍🏫',
+    color: '#1abc9c',
+    gradient: 'linear-gradient(135deg, #001a15, #003a2e)',
+    bgGradient: 'radial-gradient(ellipse at 60% 40%, #001810, #020805)',
+    font: "'Rajdhani', sans-serif",
+    difficulty: { es: '★ Fácil-Medio', ca: '★ Fàcil-Mitjà' },
+    duration: { es: '35 min', ca: '35 min' },
+    title: { es: 'Atrapados en la Sala de Profesores', ca: 'Atrapats a la Sala de Professors' },
+    desc: { es: 'Para jugar con profesores · Humor · Camaradería', ca: 'Per jugar amb professors · Humor · Camaraderia' },
+    synopsis: { es: 'Los profesores quedan atrapados en su propia sala de profesores durante una reunión de claustro. Para salir deben resolver enigmas sobre educación, pedagogía y... sus propios compañeros. ¡La versión para jugar con vuestros profes!', ca: "Els professors queden atrapats a la seva pròpia sala de professors durant una reunió de claustre. Per sortir han de resoldre enigmes sobre educació, pedagogia i... els seus propis companys. La versió per jugar amb els vostres profes!" },
+    phases: [
+      {
+        name: { es: 'EL CLAUSTRO', ca: 'EL CLAUSTRE' },
+        narrativeTitle: { es: 'La reunión que nunca acaba', ca: 'La reunió que no acaba' },
+        narrativeText: { es: 'La reunión de claustro ha durado 4 horas. Cuando queréis salir, las puertas están cerradas. Una nota dice: "Para salir debéis demostrar que merecéis ser llamados docentes. Primera prueba: Pedagogía."', ca: "La reunió de claustre ha durat 4 hores. Quan voleu sortir, les portes estan tancades. Una nota diu: 'Per sortir heu de demostrar que mereixeu ser-ne professors. Primera prova: Pedagogia.'" },
+        enigma: { es: 'La teoría de las Inteligencias Múltiples fue propuesta por Howard Gardner en 1983. ¿Cuántas inteligencias identificó originalmente? Ese número es el código.', ca: "La teoria de les Intel·ligències Múltiples va ser proposada per Howard Gardner el 1983. Quantes intel·ligències va identificar originalment? Aquest número és el codi." },
+        answer: '7',
+        hint: { es: 'Musical, Kinestésica, Lógico-matemática, Lingüística, Espacial, Interpersonal, Intrapersonal. ¿Cuántas?', ca: "Musical, Cinestèsica, Lògicomatemàtica, Lingüística, Espacial, Interpersonal, Intrapersonal. Quantes?" },
+        points: 100
+      },
+      {
+        name: { es: 'LOS EXPEDIENTES', ca: 'ELS EXPEDIENTS' },
+        narrativeTitle: { es: 'Secretos del claustro', ca: 'Secrets del claustre' },
+        narrativeText: { es: 'En la sala hay expedientes misteriosos de cada profesor. Uno dice: "El profe que más tiempo lleva en el instituto lleva X años. El que menos lleva Y años. La diferencia es el código." (Adaptar con datos reales del claustro)', ca: "A la sala hi ha expedients misteriosos de cada professor. Un diu: 'El profe que més temps porta a l'institut porta X anys. El que menys porta Y anys. La diferència és el codi.' (Adaptar amb dades reals del claustre)" },
+        enigma: { es: 'Años del profesor más veterano MENOS años del profesor más nuevo en el centro. (El organizador define los valores reales antes del juego)', ca: "Anys del professor més veterà MENYS anys del professor més nou al centre. (L'organitzador defineix els valors reals abans del joc)" },
+        answer: 'VARIABLE',
+        hint: { es: '¡Preguntad a vuestros compañeros! Es información del propio claustro.', ca: "Pregunteu als vostres companys! És informació del propi claustre." },
+        mission: { es: 'Un/a profesor/a debe ir a buscar a un alumno de 1º de ESO que está en el pasillo con un sobre con el símbolo 👩‍🏫. El alumno ha sido preparado previamente para esta misión.', ca: "Un/a professor/a ha d'anar a buscar un alumne de 1r d'ESO que és al passadís amb un sobre amb el símbol 👩‍🏫. L'alumne ha estat preparat prèviament per a aquesta missió." },
+        missionIcon: '👦',
+        points: 150
+      },
+      {
+        name: { es: 'LA SALIDA', ca: 'LA SORTIDA' },
+        narrativeTitle: { es: 'El examen final', ca: "L'examen final" },
+        narrativeText: { es: '¡Irónico! Los profesores tienen que hacer un examen. La nota mínima para salir es un 5. El examen tiene 20 preguntas de 0.5 puntos cada una. Para aprobar, ¿cuántas preguntas deben responder correctamente como mínimo?', ca: "Irònic! Els professors han de fer un examen. La nota mínima per sortir és un 5. L'examen té 20 preguntes de 0.5 punts cadascuna. Per aprovar, quantes preguntes han de respondre correctament com a mínim?" },
+        enigma: { es: 'Nota mínima: 5/10. Cada pregunta vale 0.5 puntos. Para llegar al 5, necesitáis X preguntas bien. ¿Cuántas? Eso es el código numérico de la cerradura.', ca: "Nota mínima: 5/10. Cada pregunta val 0.5 punts. Per arribar al 5, necessiteu X preguntes bé. Quantes? Això és el codi numèric del pany." },
+        answer: '10',
+        hint: { es: '5 ÷ 0.5 = ?', ca: "5 ÷ 0.5 = ?" },
+        points: 200,
+        isFinal: true
+      }
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════
+let currentStory = null;
+let currentPhase = 0;
+let roomCode = '';
+let teams = [];
+let gameTimer = null;
+let timeLeft = 0;
+let isSpeaking = false;
+let answers = [];
+
+function generateRoomCode() {
+  return Math.random().toString(36).substring(2, 6).toUpperCase();
+}
+
+function saveState() {
+  const state = { roomCode, teams, currentStory: currentStory?.id, currentPhase, answers, timeLeft };
+  localStorage.setItem('escapeclass_projector', JSON.stringify(state));
+  localStorage.setItem('escapeclass_gamestate', JSON.stringify(state));
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('escapeclass_projector');
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+function showNotification(msg, duration = 3000) {
+  const el = document.getElementById('notification');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ═══════════════════════════════════════════════════
+// HOME SCREEN
+// ═══════════════════════════════════════════════════
+function renderHomeScreen() {
+  const grid = document.getElementById('storiesGrid');
+  grid.innerHTML = '';
+  STORIES.forEach(story => {
+    const card = document.createElement('div');
+    card.className = 'story-card';
+    card.style.setProperty('--card-color', story.color);
+    card.style.setProperty('--card-gradient', story.gradient + '40');
+    card.style.setProperty('--card-shadow', story.color + '40');
+    card.innerHTML = `
+      <span class="story-emoji">${story.emoji}</span>
+      <div class="story-title" style="font-family:${story.font}">${story.title[currentLang]}</div>
+      <div class="story-desc">${story.desc[currentLang]}</div>
+      <span class="difficulty-badge" style="border-color:${story.color}40; color:${story.color};">
+        ${story.difficulty[currentLang]}
+      </span>
+    `;
+    card.onclick = () => selectStory(story);
+    grid.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// LOBBY
+// ═══════════════════════════════════════════════════
+function selectStory(story) {
+  currentStory = story;
+  currentPhase = 0;
+  answers = [];
+  roomCode = generateRoomCode();
+  teams = [];
+
+  // Set theme
+  document.documentElement.style.setProperty('--accent', story.color);
+
+  // Fill lobby
+  document.getElementById('lobbyEmoji').textContent = story.emoji;
+  document.getElementById('lobbyTitle').textContent = story.title[currentLang];
+  document.getElementById('lobbyTitle').style.fontFamily = story.font;
+  document.getElementById('lobbySynopsis').textContent = story.synopsis[currentLang];
+  document.getElementById('lobbyDifficulty').textContent = story.difficulty[currentLang];
+  document.getElementById('lobbyDuration').textContent = story.duration[currentLang];
+  document.getElementById('roomCode').textContent = roomCode;
+  document.getElementById('lobbyBg').style.background = story.bgGradient;
+
+  const mobileUrl = `${window.location.href.replace('proyector.html','').replace(window.location.search,'')}movil.html?sala=${roomCode}`;
+  document.getElementById('mobileUrl').textContent = mobileUrl;
+
+  // Phases list
+  const phasesList = document.getElementById('phasesList');
+  phasesList.innerHTML = story.phases.map((p, i) => `
+    <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+      <span style="font-family:'Orbitron',sans-serif; font-size:0.7rem; color:${story.color};">
+        ${t('phase')} ${i+1}
+      </span>
+      <span style="font-size:0.85rem; opacity:0.7;">${p.name[currentLang]}</span>
+      ${p.isFinal ? '<span style="font-size:0.7rem; color:#ff6b00; margin-left:auto;">🏆 FINAL</span>' : ''}
+    </div>
+  `).join('');
+
+  saveState();
+  startListeningForTeams();
+  showScreen('lobby');
+}
+
+function startListeningForTeams() {
+  if (window._teamInterval) clearInterval(window._teamInterval);
+  window._teamInterval = setInterval(updateTeamsDisplay, 1000);
+}
+
+function updateTeamsDisplay() {
+  try {
+    const raw = localStorage.getItem('escapeclass_teams_' + roomCode);
+    if (!raw) return;
+    const incoming = JSON.parse(raw);
+    if (incoming.length !== teams.length) {
+      teams = incoming;
+      renderTeams();
+      document.getElementById('startGameBtn').disabled = teams.length === 0;
+    }
+  } catch {}
+}
+
+function renderTeams() {
+  const list = document.getElementById('teamsList');
+  document.getElementById('teamsCount').textContent = ` (${teams.length})`;
+  if (teams.length === 0) {
+    list.innerHTML = `<div style="color:rgba(255,255,255,0.2); font-size:0.85rem; font-style:italic;">${t('waiting_teams')}</div>`;
+    return;
+  }
+  list.innerHTML = teams.map(team => `
+    <div class="team-item">
+      <span class="team-emoji">${team.emoji || '⚡'}</span>
+      <div>
+        <div class="team-name">${team.name}</div>
+        <div class="team-members">${team.members || ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// GAME
+// ═══════════════════════════════════════════════════
+function startGame() {
+  if (window._teamInterval) clearInterval(window._teamInterval);
+  
+  // Parse duration
+  const durStr = currentStory.duration[currentLang];
+  const mins = parseInt(durStr) || 45;
+  timeLeft = mins * 60;
+  
+  setGameBackground();
+  renderGamePhase();
+  startTimer();
+  startAnswerPolling();
+  showScreen('game');
+  renderRanking();
+}
+
+function setGameBackground() {
+  document.getElementById('gameBg').style.background = currentStory.bgGradient;
+}
+
+function renderGamePhase() {
+  const phase = currentStory.phases[currentPhase];
+  const story = currentStory;
+
+  document.getElementById('gameEmoji').textContent = story.emoji;
+  document.getElementById('gameTitle').textContent = story.title[currentLang];
+  document.getElementById('gameTitle').style.fontFamily = story.font;
+  document.getElementById('phaseIndicator').textContent = `${t('phase')} ${currentPhase + 1} ${t('of')} ${story.phases.length}`;
+
+  document.getElementById('gamePhaseName').textContent = phase.name[currentLang];
+  document.getElementById('gameNarrativeTitle').textContent = phase.narrativeTitle[currentLang];
+  document.getElementById('gameNarrativeTitle').style.fontFamily = story.font;
+  document.getElementById('gameNarrativeText').textContent = phase.narrativeText[currentLang];
+  document.getElementById('gameEnigmaText').textContent = phase.enigma[currentLang];
+  document.getElementById('gameEnigmaHint').textContent = '';
+
+  // Show/hide mission btn
+  const missionBtn = document.getElementById('missionBtn');
+  missionBtn.style.display = phase.mission ? 'flex' : 'none';
+
+  // Broadcast phase to mobiles
+  broadcastPhase(phase);
+
+  saveState();
+}
+
+function broadcastPhase(phase) {
+  const data = {
+    phase: currentPhase,
+    enigma: phase.enigma[currentLang],
+    phaseName: phase.name[currentLang],
+    isFinal: !!phase.isFinal,
+    answer: phase.answer,
+    points: phase.points,
+    storyId: currentStory.id,
+    storyColor: currentStory.color,
+    storyFont: currentStory.font,
+    roomCode
+  };
+  localStorage.setItem('escapeclass_phase_' + roomCode, JSON.stringify(data));
+  // Clear previous answers for new phase
+  localStorage.removeItem('escapeclass_answers_' + roomCode);
+  answers = [];
+  document.getElementById('answersList').innerHTML = '';
+}
+
+function startTimer() {
+  if (gameTimer) clearInterval(gameTimer);
+  gameTimer = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 0) {
+      clearInterval(gameTimer);
+      showNotification(t('time_up'));
+      endGame();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timeLeft / 60);
+  const s = timeLeft % 60;
+  const display = document.getElementById('timerDisplay');
+  display.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  display.classList.toggle('urgent', timeLeft < 120);
+}
+
+function startAnswerPolling() {
+  if (window._answerInterval) clearInterval(window._answerInterval);
+  window._answerInterval = setInterval(pollAnswers, 1500);
+}
+
+function pollAnswers() {
+  try {
+    const raw = localStorage.getItem('escapeclass_answers_' + roomCode);
+    if (!raw) return;
+    const incoming = JSON.parse(raw);
+    if (incoming.length > answers.length) {
+      const newAnswers = incoming.slice(answers.length);
+      answers = incoming;
+      newAnswers.forEach(ans => displayAnswer(ans));
+      updateRanking(incoming);
+    }
+  } catch {}
+}
+
+function displayAnswer(ans) {
+  const list = document.getElementById('answersList');
+  const phase = currentStory.phases[currentPhase];
+  const correct = ans.answer?.toLowerCase().trim() === phase.answer?.toLowerCase().trim() || phase.answer === 'VARIABLE';
+  const div = document.createElement('div');
+  div.className = 'answer-item';
+  div.innerHTML = `
+    <span>${ans.emoji || '⚡'} ${ans.teamName}</span>
+    <span class="${correct ? 'answer-correct' : 'answer-wrong'}">${ans.answer} ${correct ? t('correct') : t('wrong')}</span>
+  `;
+  list.prepend(div);
+
+  const count = document.getElementById('answersCount');
+  count.textContent = `${answers.length} respuesta(s) recibida(s)`;
+}
+
+function updateRanking(incomingAnswers) {
+  // Aggregate scores from all stored answers
+  try {
+    const raw = localStorage.getItem('escapeclass_scores_' + roomCode);
+    renderRanking();
+  } catch {}
+}
+
+function renderRanking() {
+  try {
+    const raw = localStorage.getItem('escapeclass_scores_' + roomCode);
+    const scores = raw ? JSON.parse(raw) : {};
+    const list = document.getElementById('rankingList');
+
+    if (Object.keys(scores).length === 0) {
+      list.innerHTML = '<div style="color:rgba(255,255,255,0.3); font-size:0.8rem;">Sin puntuaciones aún</div>';
+      return;
+    }
+
+    const sorted = Object.entries(scores).sort((a,b) => b[1].score - a[1].score);
+    const maxScore = sorted[0]?.[1].score || 1;
+
+    list.innerHTML = sorted.slice(0,5).map(([id, data], i) => `
+      <div class="ranking-item">
+        <div class="ranking-pos ${i === 0 ? 'pos-1' : i === 1 ? 'pos-2' : i === 2 ? 'pos-3' : ''}">
+          ${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i+1}
+        </div>
+        <div class="ranking-team">
+          <div class="ranking-team-name">${data.emoji || '⚡'} ${data.name}</div>
+          <div class="score-bar"><div class="score-fill" style="width:${(data.score/maxScore*100)}%"></div></div>
+        </div>
+        <div class="ranking-score">${data.score} ${t('pts')}</div>
+      </div>
+    `).join('');
+  } catch {}
+}
+
+function nextPhase() {
+  if (currentPhase < currentStory.phases.length - 1) {
+    currentPhase++;
+    renderGamePhase();
+    showNotification(`${t('phase')} ${currentPhase + 1} — ${currentStory.phases[currentPhase].name[currentLang]}`);
+  } else {
+    endGame();
+  }
+}
+
+function revealHint() {
+  const phase = currentStory.phases[currentPhase];
+  document.getElementById('gameEnigmaHint').textContent = phase.hint?.[currentLang] || '';
+  showNotification(t('hint_revealed'));
+}
+
+function showMission() {
+  const phase = currentStory.phases[currentPhase];
+  if (!phase.mission) return;
+  document.getElementById('missionIcon').textContent = phase.missionIcon || '🎯';
+  document.getElementById('missionTitle').textContent = currentLang === 'es' ? '¡MISIÓN EXTERIOR!' : 'MISSIÓ EXTERIOR!';
+  document.getElementById('missionDesc').textContent = phase.mission[currentLang];
+  document.getElementById('missionSecret').textContent = currentLang === 'es'
+    ? '⚠️ Preparativo previo: el profesor debe haber dejado el sobre/pista en el lugar indicado antes del juego.'
+    : '⚠️ Preparatiu previ: el professor ha d\'haver deixat el sobre/pista al lloc indicat abans del joc.';
+  document.getElementById('missionPopup').classList.add('show');
+}
+
+function closeMission() {
+  document.getElementById('missionPopup').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════
+// VOICE
+// ═══════════════════════════════════════════════════
+function toggleVoice() {
+  if (isSpeaking) {
+    speechSynthesis.cancel();
+    isSpeaking = false;
+    document.getElementById('voiceBtn').classList.remove('speaking');
+    return;
+  }
+  const phase = currentStory.phases[currentPhase];
+  const text = `${phase.narrativeTitle[currentLang]}. ${phase.narrativeText[currentLang]}. ${phase.enigma[currentLang]}`;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = currentLang === 'ca' ? 'ca-ES' : 'es-ES';
+  utter.rate = 0.9;
+  utter.pitch = 0.8;
+  utter.onend = () => {
+    isSpeaking = false;
+    document.getElementById('voiceBtn').classList.remove('speaking');
+  };
+  speechSynthesis.speak(utter);
+  isSpeaking = true;
+  document.getElementById('voiceBtn').classList.add('speaking');
+}
+
+// ═══════════════════════════════════════════════════
+// END GAME
+// ═══════════════════════════════════════════════════
+function endGame() {
+  if (gameTimer) clearInterval(gameTimer);
+  if (window._answerInterval) clearInterval(window._answerInterval);
+
+  const raw = localStorage.getItem('escapeclass_scores_' + roomCode);
+  const scores = raw ? JSON.parse(raw) : {};
+  const sorted = Object.entries(scores).sort((a,b) => b[1].score - a[1].score);
+
+  if (sorted.length === 0) {
+    // No scores, still show screen
+    document.getElementById('winnerName').textContent = currentLang === 'es' ? '¡Todos escaparon!' : 'Tots van escapar!';
+    document.getElementById('winnerScore').textContent = '';
+    document.getElementById('podiumGrid').innerHTML = '';
+  } else {
+    const winner = sorted[0][1];
+    document.getElementById('winnerName').textContent = `${winner.emoji || '⚡'} ${winner.name}`;
+    document.getElementById('winnerScore').textContent = `${winner.score} ${t('pts')}`;
+    renderPodium(sorted);
+  }
+
+  spawnConfetti();
+
+  // Final mission badge
+  const lastPhase = currentStory.phases[currentStory.phases.length - 1];
+  if (lastPhase.mission) {
+    document.getElementById('finalMissionBadge').style.display = 'flex';
+    document.getElementById('finalMissionText').textContent = lastPhase.mission[currentLang];
+  }
+
+  showScreen('winner');
+  speakWinner();
+}
+
+function renderPodium(sorted) {
+  const grid = document.getElementById('podiumGrid');
+  const order = [1, 0, 2]; // Silver, Gold, Bronze visual order
+  const classes = ['p2', 'p1', 'p3'];
+  const medals = ['🥈', '🥇', '🥉'];
+
+  grid.innerHTML = order.map((idx, vi) => {
+    if (!sorted[idx]) return '';
+    const [, data] = sorted[idx];
+    return `
+      <div class="podium-item">
+        <div class="podium-emoji">${medals[vi]}</div>
+        <div class="podium-team-name">${data.emoji || '⚡'} ${data.name}</div>
+        <div class="podium-score-val">${data.score} pts</div>
+        <div class="podium-bar ${classes[vi]}"></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function speakWinner() {
+  const text = currentLang === 'es'
+    ? `¡Enhorabuena! Han completado el escape room. ¡Misión cumplida!`
+    : `Enhorabona! Han completat l'escape room. Missió complerta!`;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = currentLang === 'ca' ? 'ca-ES' : 'es-ES';
+  utter.rate = 0.85; utter.pitch = 1.1;
+  speechSynthesis.speak(utter);
+}
+
+function spawnConfetti() {
+  const container = document.getElementById('confettiContainer');
+  container.innerHTML = '';
+  const colors = ['#ff6b00', '#00f5ff', '#ff0080', '#FFD700', '#00ff88', '#ff3333'];
+  for (let i = 0; i < 80; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.cssText = `
+      left: ${Math.random() * 100}%;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      width: ${4 + Math.random() * 10}px;
+      height: ${4 + Math.random() * 10}px;
+      border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+      animation-duration: ${2 + Math.random() * 4}s;
+      animation-delay: ${Math.random() * 2}s;
+    `;
+    container.appendChild(piece);
+  }
+}
+
+function playAgain() {
+  if (currentStory) selectStory(currentStory);
+}
+
+function confirmReset() {
+  if (confirm(currentLang === 'es' ? '¿Terminar el juego?' : 'Acabar el joc?')) {
+    if (gameTimer) clearInterval(gameTimer);
+    if (window._answerInterval) clearInterval(window._answerInterval);
+    localStorage.removeItem('escapeclass_gamestate');
+    showScreen('home');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+renderHomeScreen();
+// Poll ranking every 2s while on game screen
+setInterval(() => {
+  if (document.getElementById('screen-game').classList.contains('active')) {
+    renderRanking();
+  }
+}, 2000);
+</script>
+</body>
+</html>
