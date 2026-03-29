@@ -1004,7 +1004,7 @@ function broadcastPhase(ph){
     storyId:currentStory.id,
     storyColor:currentStory.color,
     storyBg:currentStory.bg,
-    hint:ph.hint,
+    hint: ph.hint ?? null,
     isFinal:!!ph.isFinal,
     roomCode,
     ts:Date.now()
