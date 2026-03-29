@@ -1472,6 +1472,265 @@ const STORIES = [
       }
     ]
   }
+,
+
+  // ═══════════════════════════════════════════════════════════════
+  //  NOVA 1: OPERACIÓ XARXA (Cultura Digital - 6 fases IMMERSIVES)
+  //  Minijocs: roomExplorer, socialMedia, influencerQuiz, lockPuzzle,
+  //            memoryCards, cipherDial
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: "digital_ops", emoji: "📱", lives: 3, totalPhases: 6,
+    color: "#00f5ff", bg: "radial-gradient(ellipse at 40% 30%,#001a20,#000508)",
+    font: "'Orbitron',monospace", level: "medio",
+    diff: { ca: "Mitja", es: "Medio" },
+    dur: { ca: "50 min", es: "50 min" },
+    ageLabel: { ca: "12-16 anys", es: "12-16 años" },
+    title: { ca: "Operació Xarxa", es: "Operación Red" },
+    desc: { ca: "Hack · Xarxes Socials · Cultura Digital", es: "Hack · Redes Sociales · Cultura Digital" },
+    synopsis: {
+      ca: "Ets un agent especial infiltrat a la xarxa d'un grup de desinformació. Hauràs de trobar proves, desxifrar missatges i superar proves de cultura digital per aturar-los.",
+      es: "Eres un agente especial infiltrado en la red de un grupo de desinformación. Deberás encontrar pruebas, descifrar mensajes y superar pruebas de cultura digital para detenerlos."
+    },
+    phases: [
+      {
+        name: { ca: "FASE 1: SALA DE CONTROL", es: "FASE 1: SALA DE CONTROL" },
+        narrativeTitle: { ca: "La sala dels secrets", es: "La sala de los secretos" },
+        narrativeText: {
+          ca: "Has accedit a la sala de control dels hackers. Hi ha objectes per tot arreu. Has d'explorar cada racó per trobar pistes que revelin la seva identitat.",
+          es: "Has accedido a la sala de control de los hackers. Hay objetos por todas partes. Debes explorar cada rincón para encontrar pistas que revelen su identidad."
+        },
+        minigame: "roomExplorer",
+        roomObjects: [
+          { id: "laptop", x: 45, y: 50, e: "💻", l: "Portàtil", cl: "Pantalla oberta: 'Codi d'accés: X'" },
+          { id: "phone", x: 20, y: 65, e: "📱", l: "Mòbil", cl: "WhatsApp: 'Operació llançada a les 3h'" },
+          { id: "papers", x: 70, y: 40, e: "📄", l: "Papers", cl: "Esquema d'operació: FAKEINFO" },
+          { id: "usb", x: 55, y: 25, e: "🔌", l: "USB", cl: "Etiqueta: 'PROVA_FINAL'" },
+          { id: "coffee", x: 15, y: 30, e: "☕", l: "Cafè", cl: "Tassa de la universitat de... BARCELONA!" }
+        ],
+        roomBg: "linear-gradient(180deg,#001a20 0%,#000d12 60%,#001015 100%)",
+        enigma: {
+          ca: "Has explorat la sala. Quin codi d'accés apareix al portàtil? (La lletra que falta al missatge)",
+          es: "Has explorado la sala. ¿Qué código de acceso aparece en el portátil? (La letra que falta en el mensaje)"
+        },
+        answer: "X", hint: { ca: "Mira bé la pantalla del portàtil", es: "Mira bien la pantalla del portátil" }, points: 100
+      },
+      {
+        name: { ca: "FASE 2: FAKE NEWS", es: "FASE 2: FAKE NEWS" },
+        narrativeTitle: { ca: "La xarxa de mentides", es: "La red de mentiras" },
+        narrativeText: {
+          ca: "El grup publica fake news a les xarxes per manipular l'opinió pública. Has de detectar quina d'aquestes publicacions és falsa per poder bloquejar-la.",
+          es: "El grupo publica fake news en las redes para manipular la opinión pública. Debes detectar cuál de estas publicaciones es falsa para poder bloquearla."
+        },
+        minigame: "socialMedia",
+        post: {
+          av: "🤖", user: "@InfoTrends24", handle: "infotrends24 • 3min",
+          content: "🚨 URGENT: WhatsApp deixarà de ser GRATIS a partir del 2025 i costarà 0,89€/mes. El CEO Mark Zuckerberg ho ha confirmat! Compartiu abans que l'esborrin! #WhatsApp #Viral",
+          opts: ["És veritat! 😱", "És FAKE NEWS ✗", "Pot ser cert 🤔", "No ho sé 🤷"],
+          correct: 1,
+          expl: "Bulo clàssic! WhatsApp ha estat sempre gratuït des que Meta el va comprar. Mai s'ha anunciat cap subscripció. Comprova les fonts oficials!"
+        },
+        enigma: {
+          ca: "Analitza el post. És veritat o fake news? Tria l'opció correcta per bloquejar la desinformació.",
+          es: "Analiza el post. ¿Es verdad o fake news? Elige la opción correcta para bloquear la desinformación."
+        },
+        answer: "1", hint: { ca: "WhatsApp és gratis des de 2016. Desconfia dels missatges 'compartiu ara!'", es: "WhatsApp es gratis desde 2016. Desconfía de los mensajes 'compartid ahora!'" }, points: 120
+      },
+      {
+        name: { ca: "FASE 3: QUIZ INFLUENCER", es: "FASE 3: QUIZ INFLUENCER" },
+        narrativeTitle: { ca: "El test de cultura digital", es: "El test de cultura digital" },
+        narrativeText: {
+          ca: "Per desbloquejar el servidor, has de demostrar que coneixes la cultura digital. Respon correctament per continuar.",
+          es: "Para desbloquear el servidor, debes demostrar que conoces la cultura digital. Responde correctamente para continuar."
+        },
+        minigame: "influencerQuiz",
+        question: { ca: "Qui és el creador de YouTube?", es: "¿Quién es el creador de YouTube?" },
+        options: ["Mark Zuckerberg", "Larry Page", "Chad Hurley, Steve Chen i Jawed Karim", "Jack Dorsey"],
+        correctIdx: 2,
+        explanation: { ca: "YouTube va ser fundat el 2005 per tres ex-empleats de PayPal: Chad Hurley, Steve Chen i Jawed Karim.", es: "YouTube fue fundado en 2005 por tres ex-empleados de PayPal: Chad Hurley, Steve Chen y Jawed Karim." },
+        enigma: {
+          ca: "Selecciona la resposta correcta per desbloquejar el servidor.",
+          es: "Selecciona la respuesta correcta para desbloquear el servidor."
+        },
+        answer: "2", hint: { ca: "Van ser tres persones, no una", es: "Fueron tres personas, no una" }, points: 130
+      },
+      {
+        name: { ca: "FASE 4: PANY DIGITAL", es: "FASE 4: CERRADURA DIGITAL" },
+        narrativeTitle: { ca: "El codi del servidor", es: "El código del servidor" },
+        narrativeText: {
+          ca: "Has trobat el servidor principal. Està protegit per un pany de 4 dígits. Recorda: el codi és l'any en que va néixer Instagram.",
+          es: "Has encontrado el servidor principal. Está protegido por una cerradura de 4 dígitos. Recuerda: el código es el año en que nació Instagram."
+        },
+        minigame: "lockPuzzle",
+        enigma: {
+          ca: "Instagram es va llançar l'any 2010. Gira els dials fins arribar al codi correcte i obre el pany.",
+          es: "Instagram se lanzó en el año 2010. Gira los diales hasta llegar al código correcto y abre el candado."
+        },
+        answer: "2010", hint: { ca: "2-0-1-0. L'any en que Kevin Systrom va llançar Instagram", es: "2-0-1-0. El año en que Kevin Systrom lanzó Instagram" }, points: 150
+      },
+      {
+        name: { ca: "FASE 5: MEMÒRIA VIRAL", es: "FASE 5: MEMORIA VIRAL" },
+        narrativeTitle: { ca: "Les icones del net", es: "Los iconos de la red" },
+        narrativeText: {
+          ca: "Per confirmar la teva identitat a la xarxa, has de superar el test de memòria visual. Troba totes les parelles d'icones digitals.",
+          es: "Para confirmar tu identidad en la red, debes superar el test de memoria visual. Encuentra todos los pares de iconos digitales."
+        },
+        minigame: "memoryCards",
+        pairs: ["📱", "💻", "🎮", "📸", "🎵", "🌐"],
+        enigma: {
+          ca: "Recorda on és cada icona i troba les parelles per demostrar que ets humà.",
+          es: "Recuerda dónde está cada icono y encuentra los pares para demostrar que eres humano."
+        },
+        answer: "MEMORY", hint: { ca: "Comença per les cantonades, és més fàcil recordar-les", es: "Empieza por las esquinas, es más fácil recordarlas" }, points: 150
+      },
+      {
+        name: { ca: "FASE 6: MISSATGE XIFRAT", es: "FASE 6: MENSAJE CIFRADO" },
+        narrativeTitle: { ca: "L'ordre final", es: "La orden final" },
+        narrativeText: {
+          ca: "Has arribat al missatge final dels hackers. Està xifrat amb el codi César. Desplaça les lletres per desxifrar-lo i atura l'operació!",
+          es: "Has llegado al mensaje final de los hackers. Está cifrado con el código César. Desplaza las letras para descifrarlo y ¡detén la operación!"
+        },
+        minigame: "cipherDial",
+        encoded: "SDUD",
+        shift: 3,
+        enigma: {
+          ca: "El missatge xifrat és SDUD. Amb desplaçament de -3 (codi César), quin és el missatge real? Ajusta el dial fins desxifrar-lo.",
+          es: "El mensaje cifrado es SDUD. Con desplazamiento de -3 (código César), ¿cuál es el mensaje real? Ajusta el dial hasta descifrarlo."
+        },
+        answer: "PARA", hint: { ca: "S-3=P, D-3=A, U-3=R, D-3=A", es: "S-3=P, D-3=A, U-3=R, D-3=A" }, points: 200, isFinal: true
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  NOVA 2: MISIÓ ENIGMA (Aventura Espionatge - 6 fases IMMERSIVES)
+  //  Minijocs: mapNavigator, chessMove, wordSearch, simon,
+  //            puzzleSlider, influencerQuiz
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: "spy_mission", emoji: "🕵️", lives: 3, totalPhases: 6,
+    color: "#a855f7", bg: "radial-gradient(ellipse at 60% 40%,#0d0020,#050010)",
+    font: "'Orbitron',monospace", level: "dificil",
+    diff: { ca: "Difícil", es: "Difícil" },
+    dur: { ca: "55 min", es: "55 min" },
+    ageLabel: { ca: "14-18 anys", es: "14-18 años" },
+    title: { ca: "Missió: Enigma", es: "Misión: Enigma" },
+    desc: { ca: "Espionatge · Enigmes · Alta dificultat", es: "Espionaje · Enigmas · Alta dificultad" },
+    synopsis: {
+      ca: "Ets l'agent Enigma-7. El teu objectiu: infiltrar-te al centre de la Xarxa Ombra, recuperar els arxius secrets i escapar abans que l'alarma s'activi.",
+      es: "Eres el agente Enigma-7. Tu objetivo: infiltrarte en el centro de la Red Sombra, recuperar los archivos secretos y escapar antes de que la alarma se active."
+    },
+    phases: [
+      {
+        name: { ca: "FASE 1: SEGUIMENT", es: "FASE 1: SEGUIMIENTO" },
+        narrativeTitle: { ca: "La ruta de l'agent", es: "La ruta del agente" },
+        narrativeText: {
+          ca: "El teu informador t'ha deixat un mapa amb marques. Has de localitzar el punt de trobada secret navegant entre les trampes de la Xarxa Ombra.",
+          es: "Tu informador te ha dejado un mapa con marcas. Debes localizar el punto de encuentro secreto navegando entre las trampas de la Red Sombra."
+        },
+        minigame: "mapNavigator",
+        mapLocations: [
+          { id: "A", x: 15, y: 75, e: "🏢", n: "Oficina", ok: false },
+          { id: "B", x: 45, y: 25, e: "🌉", n: "Pont", ok: false },
+          { id: "C", x: 78, y: 55, e: "🔮", n: "Punt Secret", ok: true },
+          { id: "D", x: 30, y: 55, e: "☕", n: "Cafè", ok: false },
+          { id: "E", x: 65, y: 20, e: "🚇", n: "Metro", ok: false }
+        ],
+        mapPaths: [["A","D"],["D","B"],["B","E"],["E","C"]],
+        enigma: {
+          ca: "Navega pel mapa i localitza el punt de trobada secret. Atenció: els llocs falsos activen l'alarma!",
+          es: "Navega por el mapa y localiza el punto de encuentro secreto. ¡Atención: los lugares falsos activan la alarma!"
+        },
+        answer: "C", hint: { ca: "El punt secret té un símbol màgic 🔮", es: "El punto secreto tiene un símbolo mágico 🔮" }, points: 100
+      },
+      {
+        name: { ca: "FASE 2: AJEDREZ TÀCTIC", es: "FASE 2: AJEDREZ TÁCTICO" },
+        narrativeTitle: { ca: "El Joc del Mestre", es: "El Juego del Maestro" },
+        narrativeText: {
+          ca: "El cap de la Xarxa Ombra és un gran jugador d'escacs. T'ha deixat un trencaclosques tàctic: has de trobar el moviment guanyador per demostrar que ets digne d'accedir als arxius.",
+          es: "El jefe de la Red Sombra es un gran jugador de ajedrez. Te ha dejado un puzzle táctico: debes encontrar el movimiento ganador para demostrar que eres digno de acceder a los archivos."
+        },
+        minigame: "chessMove",
+        board: {
+          pieces: { "e1": "♔", "d8": "♚", "f6": "♞", "h7": "♜", "a1": "♖" },
+          hl: ["g8", "h8", "e8", "d7"],
+          q: { ca: "El cavall (♞) és a f6. Quina casella li fa escac al rei negre (♚ d8)?", es: "El caballo (♞) está en f6. ¿Qué casilla le da jaque al rey negro (♚ d8)?" },
+          ans: "e8"
+        },
+        enigma: {
+          ca: "Toca les caselles ressaltades per trobar el moviment de cavall que fa escac al rei.",
+          es: "Toca las casillas resaltadas para encontrar el movimiento de caballo que da jaque al rey."
+        },
+        answer: "E8", hint: { ca: "El cavall salta en forma de L. Des de f6, pot anar a e8", es: "El caballo salta en forma de L. Desde f6, puede ir a e8" }, points: 150
+      },
+      {
+        name: { ca: "FASE 3: SOPA DE CODIS", es: "FASE 3: SOPA DE CÓDIGOS" },
+        narrativeTitle: { ca: "Els arxius secrets", es: "Los archivos secretos" },
+        narrativeText: {
+          ca: "Has trobat una pantalla amb una sopa de lletres. Les paraules clau amagades revelaràn l'accés als arxius secrets.",
+          es: "Has encontrado una pantalla con una sopa de letras. Las palabras clave ocultas revelarán el acceso a los archivos secretos."
+        },
+        minigame: "wordSearch",
+        words: ["SPY", "CODE", "HACK"],
+        gridSize: 7,
+        enigma: {
+          ca: "Troba les 3 paraules amagades: SPY, CODE i HACK. Selecciona les lletres i verifica.",
+          es: "Encuentra las 3 palabras ocultas: SPY, CODE y HACK. Selecciona las letras y verifica."
+        },
+        answer: "SPYCODEHACK", hint: { ca: "Busca de dalt a baix, d'esquerra a dreta i en diagonal", es: "Busca de arriba abajo, de izquierda a derecha y en diagonal" }, points: 150
+      },
+      {
+        name: { ca: "FASE 4: SEQÜÈNCIA D'ACTIVACIÓ", es: "FASE 4: SECUENCIA DE ACTIVACIÓN" },
+        narrativeTitle: { ca: "El protocol de seguretat", es: "El protocolo de seguridad" },
+        narrativeText: {
+          ca: "Per accedir a la cambra dels servidors, has de repetir la seqüència d'activació exacta del sistema de seguretat. Equivoca't i l'alarma sonarà.",
+          es: "Para acceder a la cámara de servidores, debes repetir la secuencia de activación exacta del sistema de seguridad. Equivócate y la alarma sonará."
+        },
+        minigame: "simon",
+        simonLevel: 5,
+        enigma: {
+          ca: "Repeteix la seqüència de colors del sistema. Arriba al nivell 5 per desbloquejar l'accés.",
+          es: "Repite la secuencia de colores del sistema. Llega al nivel 5 para desbloquear el acceso."
+        },
+        answer: "SIMON", hint: { ca: "Concentra't en el primer color de cada seqüència nova", es: "Concéntrate en el primer color de cada nueva secuencia" }, points: 150
+      },
+      {
+        name: { ca: "FASE 5: PUZZLE D'ESCAPADA", es: "FASE 5: PUZZLE DE ESCAPE" },
+        narrativeTitle: { ca: "La porta secreta", es: "La puerta secreta" },
+        narrativeText: {
+          ca: "Has localitzat els arxius! Però la porta de sortida té un mecanisme de peces. Ordena el trencaclosques per obrir la porta i escapar.",
+          es: "¡Has localizado los archivos! Pero la puerta de salida tiene un mecanismo de piezas. Ordena el puzzle para abrir la puerta y escapar."
+        },
+        minigame: "puzzleSlider",
+        puzzleSize: 3,
+        puzzleEmojis: ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","🔓"],
+        enigma: {
+          ca: "Mou les peces fins que estiguin en ordre del 1 al 8 per desvelar el candau obert 🔓.",
+          es: "Mueve las piezas hasta que estén en orden del 1 al 8 para revelar el candado abierto 🔓."
+        },
+        answer: "PUZZLE", hint: { ca: "Mou primer les peces de la cantonada superior esquerra cap al centre", es: "Mueve primero las piezas de la esquina superior izquierda hacia el centro" }, points: 150
+      },
+      {
+        name: { ca: "FASE 6: DEBRIEFING FINAL", es: "FASE 6: DEBRIEFING FINAL" },
+        narrativeTitle: { ca: "L'informe secret", es: "El informe secreto" },
+        narrativeText: {
+          ca: "Missió gairebé completada! Per certificar el teu accés i enviar l'informe a la central, has de demostrar que coneixes qui controla la informació al món digital.",
+          es: "¡Misión casi completada! Para certificar tu acceso y enviar el informe a la central, debes demostrar que conoces quién controla la información en el mundo digital."
+        },
+        minigame: "influencerQuiz",
+        question: { ca: "Quina empresa és propietària d'Instagram, WhatsApp i Facebook?", es: "¿Qué empresa es propietaria de Instagram, WhatsApp y Facebook?" },
+        options: ["Google", "Apple", "Meta (abans Facebook, Inc.)", "Microsoft"],
+        correctIdx: 2,
+        explanation: { ca: "Meta Platforms, Inc. (anteriorment Facebook, Inc.) és propietària de Facebook, Instagram i WhatsApp.", es: "Meta Platforms, Inc. (anteriormente Facebook, Inc.) es propietaria de Facebook, Instagram y WhatsApp." },
+        enigma: {
+          ca: "Última prova: selecciona la resposta correcta per enviar l'informe i completar la missió.",
+          es: "Última prueba: selecciona la respuesta correcta para enviar el informe y completar la misión."
+        },
+        answer: "2", hint: { ca: "Mark Zuckerberg és el CEO d'aquesta empresa", es: "Mark Zuckerberg es el CEO de esta empresa" }, points: 250, isFinal: true
+      }
+    ]
+  }
+
 ];
 
 // Exportació compatible amb navegadors i Node.js
