@@ -1501,6 +1501,7 @@ const STORIES = [
           es: "Has accedido a la sala de control de los hackers. Hay objetos por todas partes. Debes explorar cada rincón para encontrar pistas que revelen su identidad."
         },
         minigame: "roomExplorer",
+        roomSvg: "cyber",
         roomObjects: [
           { id: "laptop", x: 45, y: 50, e: "💻", l: "Portàtil", cl: "Pantalla oberta: 'Codi d'accés: X'" },
           { id: "phone", x: 20, y: 65, e: "📱", l: "Mòbil", cl: "WhatsApp: 'Operació llançada a les 3h'" },
