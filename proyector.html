@@ -695,8 +695,17 @@ function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classL
 function showNotif(msg,dur=3000){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),dur)}
 
 // ── STATE ──
-let currentStory=null,currentPhase=0,roomCode='',teamsRef=null,scoresRef=null,phaseRef=null,timerRef=null,ansRef=null,gameTimer=null,timeLeft=0,teamCount=0;
-
+let currentStory = null;
+let currentPhase = 0;
+let roomCode = '';
+let teamsRef = null;
+let scoresRef = null;
+let phaseRef = null;
+let timerRef = null;
+let ansRef = null;
+let gameTimer = null;
+let timeLeft = 0;
+let teamCount = 0;
 function genCode(){return Math.random().toString(36).substring(2,6).toUpperCase()}
 
 // ══════════════════════════════════════════════════
