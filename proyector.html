@@ -133,6 +133,7 @@ canvas#stars{position:absolute;inset:0;pointer-events:none;z-index:0}
 .ti-emoji{font-size:1.4rem}
 .ti-name{font-weight:700;font-size:.95rem}
 .ti-members{font-size:.75rem;color:rgba(255,255,255,.35)}
+.ti-lives{margin-left:auto;font-size:1rem}
 
 .start-btn{width:100%;padding:18px;border-radius:14px;border:none;
   font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:900;letter-spacing:3px;
@@ -192,6 +193,13 @@ canvas#stars{position:absolute;inset:0;pointer-events:none;z-index:0}
 .narr-text{font-size:clamp(.9rem,1.4vw,1.08rem);line-height:1.7;
   color:rgba(240,230,211,.85);margin-bottom:26px}
 
+/* Choice buttons */
+.choice-container{display:flex;gap:10px;flex-direction:column;margin-top:15px}
+.choice-btn{padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);cursor:pointer;font-family:inherit;font-size:1rem;transition:all .3s}
+.choice-btn:hover{border-color:var(--accent);background:rgba(255,107,0,.1)}
+.choice-btn.selected{border-color:var(--accent);background:rgba(255,107,0,.2)}
+
 .enigma-box{background:rgba(255,255,255,.05);border-radius:14px;padding:24px;
   border:1px solid rgba(255,255,255,.13);position:relative}
 .enigma-lbl{font-family:'Orbitron',sans-serif;font-size:.65rem;letter-spacing:3px;
@@ -199,6 +207,11 @@ canvas#stars{position:absolute;inset:0;pointer-events:none;z-index:0}
 .enigma-text{font-size:clamp(1rem,1.8vw,1.3rem);font-weight:700;line-height:1.4}
 .enigma-hint{margin-top:10px;font-size:.82rem;color:rgba(255,255,255,.38);font-style:italic;
   min-height:20px;transition:all .5s}
+
+.inventory-bar{background:rgba(0,0,0,.5);border-radius:10px;padding:12px;margin-bottom:15px;
+  border:1px solid var(--border)}
+.inv-lbl{font-size:.65rem;letter-spacing:2px;color:var(--accent2);text-transform:uppercase;margin-bottom:5px}
+.inv-items{display:flex;gap:10px;font-size:1.5rem;flex-wrap:wrap}
 
 .ctrl-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 .ctrl-btn{padding:9px 22px;border-radius:10px;border:1px solid var(--border);
@@ -220,7 +233,8 @@ canvas#stars{position:absolute;inset:0;pointer-events:none;z-index:0}
 .ri-pos{font-family:'Orbitron',sans-serif;font-size:.9rem;font-weight:900;width:28px;text-align:center}
 .ri-pos.p1{color:var(--gold)}.ri-pos.p2{color:#c0c0c0}.ri-pos.p3{color:#cd7f32}
 .ri-team{flex:1}
-.ri-name{font-weight:700;font-size:.9rem}
+.ri-name{font-weight:700;font-size:.9rem;display:flex;align-items:center;gap:5px}
+.ri-lives{font-size:.9rem}
 .ri-score{font-family:'Orbitron',sans-serif;font-weight:900;color:var(--accent2);font-size:.95rem}
 .sbar{height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:4px;overflow:hidden}
 .sfill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));
@@ -279,12 +293,17 @@ canvas#stars{position:absolute;inset:0;pointer-events:none;z-index:0}
 .mission-note{background:rgba(255,107,0,.1);border:1px solid rgba(255,107,0,.28);
   border-radius:10px;padding:14px;font-size:.85rem;color:rgba(255,255,255,.55);margin-bottom:22px}
 
+/* Danger overlay */
+#dangerOverlay{position:fixed;inset:0;background:rgba(255,0,0,0);pointer-events:none;z-index:9999;transition:background 0.5s}
+
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
 .fade-in{animation:fadeIn .7s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
+
+<div id="dangerOverlay"></div>
 
 <!-- Sound toggle -->
 <button class="sound-btn" id="soundBtn" title="So" onclick="toggleSound()">🔊</button>
@@ -392,9 +411,16 @@ canvas#stars{position:absolute;inset:0;pointer-events:none;z-index:0}
         <div class="phase-lbl" id="gPhaseLbl"></div>
         <div class="narr-title" id="gNarrTitle"></div>
         <div class="narr-text" id="gNarrText"></div>
+        
+        <div class="inventory-bar" id="inventoryBar" style="display:none">
+          <div class="inv-lbl">🎒 INVENTARI DELS EQUIPS</div>
+          <div class="inv-items" id="invItems"></div>
+        </div>
+        
         <div class="enigma-box">
           <div class="enigma-lbl" data-i18n="enigma_lbl">🔐 ENIGMA</div>
           <div class="enigma-text" id="gEnigma"></div>
+          <div class="choice-container" id="choiceContainer" style="display:none"></div>
           <div class="enigma-hint" id="gHint"></div>
         </div>
         <div class="ctrl-row">
@@ -492,6 +518,7 @@ function setLang(l){
   });
   if(currentStory) renderGamePhase();
 }
+setLang('ca');
 
 // ── STARS CANVAS ──
 (function(){
@@ -536,7 +563,6 @@ function toggleSound(){
   if(bgGainNode) bgGainNode.gain.setTargetAtTime(soundEnabled?0.18:0,getAudioCtx().currentTime,.5);
 }
 
-// Synthesised ambient drone
 function startAmbient(storyId){
   if(!soundEnabled) return;
   stopAmbient();
@@ -544,7 +570,6 @@ function startAmbient(storyId){
   bgGainNode=ctx.createGain(); bgGainNode.gain.value=0;
   bgGainNode.connect(ctx.destination);
 
-  // Pick base freq by story type
   const freqs={space:[55,82.5,110],museum:[65,97.5,130],train:[80,120,160],
     bunker:[40,60,80],pirates:[73,109,146],castle:[58,87,116],
     atlantis:[50,75,100],spy:[90,135,180],circus:[70,105,140],
@@ -557,7 +582,6 @@ function startAmbient(storyId){
     osc.type=i===0?'sine':'triangle';
     osc.frequency.value=freq;
     g.gain.value=i===0?0.4:0.15;
-    // subtle lfo
     const lfo=ctx.createOscillator();
     const lfoG=ctx.createGain();
     lfo.frequency.value=0.08+i*0.04;
@@ -571,18 +595,16 @@ function startAmbient(storyId){
 }
 
 function stopAmbient(){
-  if(bgSource){ bgSource.forEach(o=>{try{o.osc.stop();o.lfo.stop()}catch(e){}})  ; bgSource=null;}
+  if(bgSource){ bgSource.forEach(o=>{try{o.osc.stop();o.lfo.stop()}catch(e){}}); bgSource=null;}
   if(bgGainNode){bgGainNode.disconnect();bgGainNode=null;}
 }
 
-// Sound effects
 function playFx(type){
   if(!soundEnabled) return;
   const ctx=getAudioCtx();
   const g=ctx.createGain(); g.connect(ctx.destination);
 
   if(type==='correct'){
-    // Ascending arpeggio
     [523,659,784,1047].forEach((f,i)=>{
       const o=ctx.createOscillator(); o.type='sine';
       o.frequency.value=f;
@@ -602,7 +624,6 @@ function playFx(type){
     g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
     o.connect(g); o.start(); o.stop(ctx.currentTime+0.5);
   } else if(type==='phase'){
-    // Cinematic hit
     [80,160,240].forEach((f,i)=>{
       const o=ctx.createOscillator(); o.type='sawtooth';
       const og=ctx.createGain(); og.gain.value=0.2-i*0.05;
@@ -617,7 +638,6 @@ function playFx(type){
     g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);
     o.connect(g); o.start(); o.stop(ctx.currentTime+0.4);
   } else if(type==='win'){
-    // Victory fanfare
     const mel=[523,659,784,1047,784,1047,1319];
     mel.forEach((f,i)=>{
       const o=ctx.createOscillator(); o.type='triangle';
@@ -645,6 +665,14 @@ function playFx(type){
       og.gain.linearRampToValueAtTime(0.25,s+0.06);
       og.gain.exponentialRampToValueAtTime(0.001,s+0.35);
       o.start(s); o.stop(s+0.4);
+    });
+  } else if(type==='heartbeat'){
+    [60,60].forEach((f,i)=>{
+      const o=ctx.createOscillator(); o.type='sine';
+      const og=ctx.createGain(); og.gain.value=0.3;
+      o.frequency.value=f; o.connect(og); og.connect(ctx.destination);
+      const s=ctx.currentTime+i*0.5;
+      o.start(s); o.stop(s+0.2);
     });
   }
 }
@@ -674,7 +702,8 @@ function showNotif(msg,dur=3000){const el=document.getElementById('notif');el.te
 
 // ── STATE ──
 let currentStory=null,currentPhase=0,roomCode='',teamsRef=null,scoresRef=null,phaseRef=null,timerRef=null,ansRef=null,gameTimer=null,timeLeft=0,teamCount=0;
-setLang('ca');
+let phaseTimer=null,phaseTimeLeft=0,currentChoice=null;
+
 function genCode(){return Math.random().toString(36).substring(2,6).toUpperCase()}
 
 // ══════════════════════════════════════════════════
@@ -691,18 +720,24 @@ const STORIES=[
      narrativeTitle:{ca:'Sistema de vida: CRÍTIC',es:'Sistema de vida: CRÍTICO'},
      narrativeText:{ca:"Els llums d'emergència ho tenyeixen tot de vermell. L'oxigen escasseja. A la pantalla parpelleja: SABOTATGE DETECTAT — ACCÉS NIVELL 1 REQUERIT.",es:"Las luces de emergencia tiñen todo de rojo. El oxígeno escasea. En la pantalla parpadea: SABOTAJE DETECTADO — ACCESO NIVEL 1 REQUERIDO."},
      enigma:{ca:"El codi d'accés és la suma dels dígits de l'any de llançament del MIR (1986) multiplicada pel nombre de tripulants (4).",es:"El código de acceso es la suma de los dígitos del año de lanzamiento del MIR (1986) multiplicada por el número de tripulantes (4)."},
-     answer:'96',hint:{ca:'1+9+8+6=24. I 24×4?',es:'1+9+8+6=24. ¿Y 24×4?'},points:100},
+     answer:'96',hint:{ca:'1+9+8+6=24. I 24×4?',es:'1+9+8+6=24. ¿Y 24×4?'},points:100,timeLimit:300,reward:'🗝️'},
     {name:{ca:'EL TRAÏDOR',es:'EL TRAIDOR'},
      narrativeTitle:{ca:'Identifiqueu el sabotejador',es:'Identificad al saboteador'},
      narrativeText:{ca:"La IA ha trobat 3 sospitosos. Cadascun té una coartada. Una és mentida. L'accés al reactor va ocórrer entre les 02:00 i les 04:00.",es:"La IA ha encontrado 3 sospechosos. Cada uno tiene una coartada. Una es mentira. El acceso al reactor ocurrió entre las 02:00 y las 04:00."},
      enigma:{ca:"A diu: 'Dormia a la cambra 3'. B diu: 'Estava al menjador amb A'. C diu: 'Vaig veure B als corredors a les 03:00'. Si B menteix sobre estar amb A, qui és el traïdor?",es:"A dice: 'Dormía en la cámara 3'. B dice: 'Estaba en el comedor con A'. C dice: 'Vi a B en los corredores a las 03:00'. Si B miente sobre estar con A, ¿quién es el traidor?"},
      answer:'B',hint:{ca:"Si B menteix, llavors A era sol. I qui confirma on era C?",es:"Si B miente, entonces A estaba solo. ¿Y quién confirma dónde estaba C?"},
-     mission:{ca:"Un tripulant ha d'anar a la biblioteca i buscar el llibre amb el codi 'AURORA' al llom.",es:"Un tripulante debe ir a la biblioteca y buscar el libro con el código 'AURORA' en el lomo."},missionIcon:'📚',points:150},
+     interaction:'choice',
+     choices:[
+       {text:{ca:'El sospitós A',es:'El sospechoso A'},emoji:'👤',next:'phase_continua'},
+       {text:{ca:'El sospitós B',es:'El sospechoso B'},emoji:'🎯',next:'phase_continua'},
+       {text:{ca:'El sospitós C',es:'El sospechoso C'},emoji:'👤',next:'phase_continua'}
+     ],
+     mission:{ca:"Un tripulant ha d'anar a la biblioteca i buscar el llibre amb el codi 'AURORA' al llom.",es:"Un tripulante debe ir a la biblioteca y buscar el libro con el código 'AURORA' en el lomo."},missionIcon:'📚',points:150,timeLimit:420},
     {name:{ca:'CODI FINAL',es:'CÓDIGO FINAL'},
      narrativeTitle:{ca:'Desactivar el reactor',es:'Desactivar el reactor'},
      narrativeText:{ca:"30 minuts. La seqüència de desactivació requereix un codi de 4 dígits fragmentat per la nau: ■2■■, ■■7■, ■■■9, 3■■■.",es:"30 minutos. La secuencia de desactivación requiere un código de 4 dígitos fragmentado por la nave: ■2■■, ■■7■, ■■■9, 3■■■."},
      enigma:{ca:"Primer dígit: nombre de planetes del sistema solar. Segon: 2. Tercer: 7. Quart: nombre atòmic del carboni × 1,5.",es:"Primer dígito: número de planetas del sistema solar. Segundo: 2. Tercero: 7. Cuarto: número atómico del carbono × 1,5."},
-     answer:'8279',hint:{ca:'Planetes:8. Carboni Z=6, ×1,5=9 → 8-2-7-9',es:'Planetas:8. Carbono Z=6, ×1,5=9 → 8-2-7-9'},points:200,isFinal:true}
+     answer:'8279',hint:{ca:'Planetes:8. Carboni Z=6, ×1,5=9 → 8-2-7-9',es:'Planetas:8. Carbono Z=6, ×1,5=9 → 8-2-7-9'},points:200,timeLimit:300,isFinal:true}
    ]},
   {id:'museum',emoji:'🎨',color:'#9b59b6',bg:'radial-gradient(ellipse at 60% 40%,#1a0a2e,#0d0d0d)',
    font:"'Cinzel Decorative',cursive",diff:{ca:'★★ Mitjà',es:'★★ Medio'},dur:{ca:'40 min',es:'40 min'},
@@ -713,16 +748,21 @@ const STORIES=[
     {name:{ca:'MITJANIT',es:'MEDIANOCHE'},narrativeTitle:{ca:'Les pintures us miren',es:'Las pinturas os miran'},
      narrativeText:{ca:"El rellotge marca les 00:00. Una veu emergeix del quadre més antic: 'Responeu el meu primer endevinall o us convertiré en natura morta.'",es:"El reloj marca las 00:00. Una voz emerge del cuadro más antiguo: 'Responded mi primer acertijo o os convertiré en naturaleza muerta.'"},
      enigma:{ca:"Sóc més vell que el temps, però vaig néixer avui. No tinc veu, però explico històries. Els reis em temen i els pobres em posseeixen. Què sóc?",es:"Soy más viejo que el tiempo, pero nací hoy. No tengo voz, pero cuento historias. Los reyes me temen y los pobres me poseen. ¿Qué soy?"},
-     answer:'somni',hint:{ca:"Tots els humans ho fan cada nit...",es:"Todos los humanos lo hacen cada noche..."},points:100},
+     answer:'somni',hint:{ca:"Tots els humans ho fan cada nit...",es:"Todos los humanos lo hacen cada noche..."},points:100,timeLimit:240,reward:'🖼️'},
     {name:{ca:'EL GUARDIÀ',es:'EL GUARDIÁN'},narrativeTitle:{ca:"El contracte de l'artista",es:'El contrato del artista'},
      narrativeText:{ca:"El guardià mostra un contracte de 1743: 'El qui resolgui l'enigma del mestre serà lliure. La resta decorarà aquestes parets per sempre.'",es:"El guardián muestra un contrato de 1743: 'El que resuelva el enigma del maestro será libre. El resto decorará estas paredes para siempre.'"},
      enigma:{ca:"La Mona Lisa té 1 somriure. Un Picasso té 3 ulls. Un Dalí té 1 rellotge fos. Combina el nombre d'objectes principals de cada obra.",es:"La Mona Lisa tiene 1 sonrisa. Un Picasso tiene 3 ojos. Un Dalí tiene 1 reloj derretido. Combina el número de objetos principales de cada obra."},
      answer:'131',hint:{ca:'1+3+1=131? No, concatena: 1-3-1',es:'1+3+1=131? No, concatena: 1-3-1'},
-     mission:{ca:"Un membre ha d'anar a l'entrada de l'institut i buscar sota el bústia un sobre amb el símbol 🎨.",es:"Un miembro debe ir a la entrada del instituto y buscar bajo el buzón un sobre con el símbolo 🎨."},missionIcon:'📬',points:150},
+     interaction:'choice',
+     choices:[
+       {text:{ca:'Entregar el contracte',es:'Entregar el contrato'},emoji:'📜',next:'phase_entrega'},
+       {text:{ca:'Escapar per la finestra',es:'Escapar por la ventana'},emoji:'🪟',next:'phase_finestra'}
+     ],
+     mission:{ca:"Un membre ha d'anar a l'entrada de l'institut i buscar sota el bústia un sobre amb el símbol 🎨.",es:"Un miembro debe ir a la entrada del instituto y buscar bajo el buzón un sobre con el símbolo 🎨."},missionIcon:'📬',points:150,timeLimit:300},
     {name:{ca:'ESCAPADA',es:'ESCAPE'},narrativeTitle:{ca:'La porta secreta',es:'La puerta secreta'},
      narrativeText:{ca:"Rere un quadre de Van Gogh hi ha una porta. 'La clau és en l'any que va morir l'artista més jove dels esmentats', diu el guardià.",es:"Tras un cuadro de Van Gogh hay una puerta. 'La clave es el año en que murió el artista más joven de los mencionados', dice el guardián."},
      enigma:{ca:"Van Gogh va morir el 1890 (37 anys). Dalí el 1989 (84 anys). Picasso el 1973 (91 anys). La clau és l'any de mort del més jove.",es:"Van Gogh murió en 1890 (37 años). Dalí en 1989 (84 años). Picasso en 1973 (91 años). La clave es el año de muerte del más joven."},
-     answer:'1890',hint:{ca:'37<84<91 → el més jove va morir...',es:'37<84<91 → el más joven murió...'},points:200,isFinal:true}
+     answer:'1890',hint:{ca:'37<84<91 → el més jove va morir...',es:'37<84<91 → el más joven murió...'},points:200,timeLimit:240,isFinal:true}
    ]},
   {id:'train',emoji:'🚄',color:'#e74c3c',bg:'radial-gradient(ellipse at 50% 80%,#2d0000,#0a0005)',
    font:"'Orbitron',sans-serif",diff:{ca:'★★★ Difícil',es:'★★★ Difícil'},dur:{ca:'50 min',es:'50 min'},
@@ -733,16 +773,16 @@ const STORIES=[
     {name:{ca:'PARADA 1',es:'PARADA 1'},narrativeTitle:{ca:'Missatge al seient',es:'Mensaje en el asiento'},
      narrativeText:{ca:"Sota el vostre seient hi ha un sobre. Dins: una fotografia del maquinista inconscient i un rellotge marcant les 14:23.",es:"Bajo vuestro asiento hay un sobre. Dentro: una fotografía del maquinista inconsciente y un reloj marcando las 14:23."},
      enigma:{ca:"El tren va a 350 km/h. La distància fins al túnel és de 175 km. Quants minuts queden? Això és el codi.",es:"El tren va a 350 km/h. La distancia hasta el túnel es de 175 km. ¿Cuántos minutos quedan? Eso es el código."},
-     answer:'30',hint:{ca:'Temps=distància÷velocitat (en hores)×60',es:'Tiempo=distancia÷velocidad (en horas)×60'},points:100},
+     answer:'30',hint:{ca:'Temps=distància÷velocitat (en hores)×60',es:'Tiempo=distancia÷velocidad (en horas)×60'},points:100,timeLimit:180,reward:'⏱️'},
     {name:{ca:'PARADA 2',es:'PARADA 2'},narrativeTitle:{ca:'El passatger misteriós',es:'El pasajero misterioso'},
      narrativeText:{ca:"Un home baixa del sostre amb una maleta: 'Tinc el codi per als frens, però primer heu de demostrar que sou dignes.'",es:"Un hombre baja del techo con un maletín: 'Tengo el código para los frenos, pero primero debéis demostrar que sois dignos.'"},
      enigma:{ca:"Desxifreu el codi César (desplaçament -3): ROLDQR → cada lletra recua 3 posicions a l'alfabet.",es:"Descifrad el código César (desplazamiento -3): ROLDQR → cada letra retrocede 3 posiciones en el alfabeto."},
      answer:'OLIANO',hint:{ca:'R-3=O, O-3=L, L-3=I, D-3=A, Q-3=N, R-3=O',es:'R-3=O, O-3=L, L-3=I, D-3=A, Q-3=N, R-3=O'},
-     mission:{ca:"El 'revisor' (professor còmplice al passadís) té la maleta. Digueu-li 'CODI VERMELL'.",es:"El 'revisor' (profesor cómplice en el pasillo) tiene el maletín. Decidle 'CÓDIGO ROJO'."},missionIcon:'🧳',points:150},
+     mission:{ca:"El 'revisor' (professor còmplice al passadís) té la maleta. Digueu-li 'CODI VERMELL'.",es:"El 'revisor' (profesor cómplice en el pasillo) tiene el maletín. Decidle 'CÓDIGO ROJO'."},missionIcon:'🧳',points:150,timeLimit:300},
     {name:{ca:'TÚNEL FINAL',es:'TÚNEL FINAL'},narrativeTitle:{ca:"10 minuts per a l'impacte",es:'10 minutos para el impacto'},
      narrativeText:{ca:"El panell de frens té 4 interruptors: ∆, ○, ■, ✦. L'ordre d'activació és crucial.",es:"El panel de frenos tiene 4 interruptores: ∆, ○, ■, ✦. El orden de activación es crucial."},
      enigma:{ca:"La seqüència correcta segueix l'ordre del nombre de costats de cada figura (de menys a més).",es:"La secuencia correcta sigue el orden del número de lados de cada figura (de menos a más)."},
-     answer:'○∆■✦',hint:{ca:'Cercle=0, Triangle=3, Quadrat=4, Estrella=∞(puntes)',es:'Círculo=0, Triángulo=3, Cuadrado=4, Estrella=∞(puntas)'},points:200,isFinal:true}
+     answer:'○∆■✦',hint:{ca:'Cercle=0, Triangle=3, Quadrat=4, Estrella=∞(puntes)',es:'Círculo=0, Triángulo=3, Cuadrado=4, Estrella=∞(puntas)'},points:200,timeLimit:180,isFinal:true}
    ]},
   {id:'bunker',emoji:'☢️',color:'#27ae60',bg:'radial-gradient(ellipse at 40% 60%,#0d1f00,#050505)',
    font:"'Special Elite',cursive",diff:{ca:'★★★★ Expert',es:'★★★★ Experto'},dur:{ca:'55 min',es:'55 min'},
@@ -753,16 +793,21 @@ const STORIES=[
     {name:{ca:'DESPERTAR',es:'DESPERTAR'},narrativeTitle:{ca:"Registres de l'any zero",es:'Registros del año cero'},
      narrativeText:{ca:"Els monitors parpellegen. La IA diu: 'Benvinguts a la Fase de Recuperació. Necessito verificar la vostra identitat.'",es:"Los monitores parpadean. La IA dice: 'Bienvenidos a la Fase de Recuperación. Necesito verificar vuestra identidad.'"},
      enigma:{ca:"El protocol utilitza l'any de Txernòbil (1986) menys l'any de la fi de la Guerra Freda (1991). Resultat en valor absolut.",es:"El protocolo usa el año de Chernóbil (1986) menos el año del fin de la Guerra Fría (1991). Resultado en valor absoluto."},
-     answer:'5',hint:{ca:'|1986-1991|=?',es:'|1986-1991|=?'},points:100},
+     answer:'5',hint:{ca:'|1986-1991|=?',es:'|1986-1991|=?'},points:100,timeLimit:240,reward:'🔋'},
     {name:{ca:'ELS ARXIUS',es:'LOS ARCHIVOS'},narrativeTitle:{ca:'Qui va causar el final',es:'Quién causó el fin'},
      narrativeText:{ca:"L'arxiu danyat. Fragments en binari: 01000001, 01001001. El causant va usar codi binari per amagar la seva identitat.",es:"El archivo dañado. Fragmentos en binario: 01000001, 01001001. El causante usó código binario para ocultar su identidad."},
      enigma:{ca:"Convertiu els números binaris a lletres ASCII. 01000001=A (65 decimal). 01001001=? Aquestes lletres formen les inicials del culpable.",es:"Convertid los números binarios a letras ASCII. 01000001=A (65 decimal). 01001001=? Esas letras forman las iniciales del culpable."},
      answer:'AI',hint:{ca:'01001001 decimal: 64+8+1=73. Lletra ASCII 73=I',es:'01001001 decimal: 64+8+1=73. Letra ASCII 73=I'},
-     mission:{ca:"Un membre ha d'anar a la sala d'informàtica i buscar el fitxer 'BUNKER2087'. La contrasenya la té el professor de guàrdia.",es:"Un miembro debe ir a la sala de informática y buscar el archivo 'BUNKER2087'. La contraseña la tiene el profesor de guardia."},missionIcon:'💻',points:150},
+     interaction:'choice',
+     choices:[
+       {text:{ca:'Sistema de control',es:'Sistema de control'},emoji:'🤖',next:'phase_ia'},
+       {text:{ca:'Terroristes externs',es:'Terroristas externos'},emoji:'💀',next:'phase_terror'}
+     ],
+     mission:{ca:"Un membre ha d'anar a la sala d'informàtica i buscar el fitxer 'BUNKER2087'. La contrasenya la té el professor de guàrdia.",es:"Un miembro debe ir a la sala de informática y buscar el archivo 'BUNKER2087'. La contraseña la tiene el profesor de guardia."},missionIcon:'💻',points:150,timeLimit:360},
     {name:{ca:'SORTIDA',es:'SALIDA'},narrativeTitle:{ca:'La porta hermètica',es:'La puerta hermética'},
      narrativeText:{ca:"La porta de sortida requereix un codi de 5 dígits. A la paret hi ha la Taula Periòdica amb 4 elements marcats: H, Na, K, Fe.",es:"La puerta de salida requiere un código de 5 dígitos. En la pared hay la Tabla Periódica con 4 elementos marcados: H, Na, K, Fe."},
      enigma:{ca:"El codi són els números atòmics ordenats de menor a major, concatenant el primer dígit de cadascun: H(1), Na(11), K(19), Fe(26).",es:"El código son los números atómicos ordenados de menor a mayor, concatenando el primer dígito de cada uno: H(1), Na(11), K(19), Fe(26)."},
-     answer:'11119',hint:{ca:'H=1, Na=11, K=19, Fe=26 → primers dígits: 1,1,1,2',es:'H=1, Na=11, K=19, Fe=26 → primeros dígitos: 1,1,1,2'},points:200,isFinal:true}
+     answer:'11119',hint:{ca:'H=1, Na=11, K=19, Fe=26 → primers dígits: 1,1,1,2',es:'H=1, Na=11, K=19, Fe=26 → primeros dígitos: 1,1,1,2'},points:200,timeLimit:240,isFinal:true}
    ]},
   {id:'pirates',emoji:'🏴‍☠️',color:'#f39c12',bg:'radial-gradient(ellipse at 50% 30%,#1f1000,#060400)',
    font:"'Pirata One',cursive",diff:{ca:'★★ Mitjà',es:'★★ Medio'},dur:{ca:'40 min',es:'40 min'},
@@ -773,16 +818,16 @@ const STORIES=[
     {name:{ca:'EL MAPA',es:'EL MAPA'},narrativeTitle:{ca:'Barbanegra us parla',es:'Barbanegra os habla'},
      narrativeText:{ca:"Una ampolla amb un pergamí: 'Només el digne trobarà el meu tresor. Suma l'edat que tenia quan vaig zarpar (17) al nombre de mars que vam surcar (7).'",es:"Una botella con un pergamino: 'Solo el digno encontrará mi tesoro. Suma la edad que tenía cuando zarpé (17) al número de mares que surcamos (7).'"},
      enigma:{ca:"17 és primer. Suma 17+7. Aquest és el número del cofre.",es:"17 ya es primo. Suma 17+7. Ese es el número del cofre."},
-     answer:'24',hint:{ca:'17+7=?',es:'17+7=?'},points:100},
+     answer:'24',hint:{ca:'17+7=?',es:'17+7=?'},points:100,timeLimit:180,reward:'🗺️'},
     {name:{ca:"L'ILLA",es:'LA ISLA'},narrativeTitle:{ca:'El guardià de la cova',es:'El guardián de la cueva'},
      narrativeText:{ca:"A la cova hi ha un vell pirata: 'Resoleu el meu endevinall i us deixaré passar. Si falleu, a l'aigua!'",es:"En la cueva hay un viejo pirata: '¡Resolved mi acertijo y os dejaré pasar. Si falláis, al agua!'"},
      enigma:{ca:"Tinc ciutats però no cases. Tinc muntanyes però no arbres. Tinc aigua però no peixos. Tinc carreteres però no cotxes. Què sóc?",es:"Tengo ciudades pero no casas. Tengo montañas pero no árboles. Tengo agua pero no peces. Tengo carreteras pero no coches. ¿Qué soy?"},
      answer:'mapa',hint:{ca:'És allò que useu per trobar el tresor...',es:'Es algo que usáis para encontrar el tesoro...'},
-     mission:{ca:"La 'X del tresor' és amagada. Un membre ha d'anar al pati i buscar sota del banc més proper a l'entrada.",es:"La 'X del tesoro' está escondida. Un miembro debe ir al patio y buscar bajo el banco más cercano a la entrada."},missionIcon:'🗺️',points:150},
+     mission:{ca:"La 'X del tresor' és amagada. Un membre ha d'anar al pati i buscar sota del banc més proper a l'entrada.",es:"La 'X del tesoro' está escondida. Un miembro debe ir al patio y buscar bajo el banco más cercano a la entrada."},missionIcon:'🗺️',points:150,timeLimit:300},
     {name:{ca:'EL TRESOR',es:'EL TESORO'},narrativeTitle:{ca:'El pany del cofre',es:'La cerradura del cofre'},
      narrativeText:{ca:"El cofre davant vostre. La inscripció diu: 'El meu nom és el d'aquell que va descobrir Amèrica, però en la llengua en què ell ho signava.'",es:"El cofre ante vosotros. La inscripción dice: 'Mi nombre es el de aquel que descubrió América, pero en el idioma en que él lo firmaba.'"},
      enigma:{ca:"Colom signava 'Christobal Colon' en castellà però el seu nom en italià era Cristoforo Colombo. Les 5 primeres lletres del nom italià.",es:"Colón firmaba 'Christobal Colon' pero su nombre en italiano era Cristoforo Colombo. Las 5 primeras letras del nombre italiano."},
-     answer:'CRIST',hint:{ca:'Cristoforo → primeres 5 lletres',es:'Cristoforo → primeras 5 letras'},points:200,isFinal:true}
+     answer:'CRIST',hint:{ca:'Cristoforo → primeres 5 lletres',es:'Cristoforo → primeras 5 letras'},points:200,timeLimit:240,isFinal:true}
    ]},
   {id:'castle',emoji:'🏰',color:'#8e44ad',bg:'radial-gradient(ellipse at 30% 70%,#150020,#050005)',
    font:"'Cinzel Decorative',cursive",diff:{ca:'★★ Mitjà',es:'★★ Medio'},dur:{ca:'40 min',es:'40 min'},
@@ -793,16 +838,21 @@ const STORIES=[
     {name:{ca:'ARRIBADA',es:'LLEGADA'},narrativeTitle:{ca:'Les portes es tanquen',es:'Las puertas se cierran'},
      narrativeText:{ca:"Les portes es tanquen soles. Una veu cavernosa: 'Benvinguts a casa meva. Fa 300 anys que no rebo visites. Haureu de guanyar-vos-les.'",es:"Las puertas se cierran solas. Una voz cavernosa: 'Bienvenidos a mi hogar. Hace 300 años que no recibo visitas. Tendréis que ganároslas.'"},
      enigma:{ca:"El comte va ser maleït l'any 1723. Quants anys porta encantat fins a l'any actual (2025)?",es:"El conde fue maldecido en 1723. ¿Cuántos años lleva encantado hasta el año actual (2025)?"},
-     answer:'302',hint:{ca:'2025-1723=?',es:'2025-1723=?'},points:100},
+     answer:'302',hint:{ca:'2025-1723=?',es:'2025-1723=?'},points:100,timeLimit:180,reward:'🗝️'},
     {name:{ca:'LA MALEDICCIÓ',es:'LA MALDICIÓN'},narrativeTitle:{ca:"El llibre d'encanteris",es:'El libro de hechizos'},
      narrativeText:{ca:"El comte mostra la seva biblioteca: 'L'encanteri que em manté aquí és en aquest llibre. El títol és la resposta.'",es:"El conde muestra su biblioteca: 'El hechizo que me mantiene aquí está en este libro. El título es la respuesta.'"},
      enigma:{ca:"Com més m'asseques, més mullat et quedes. Què sóc?",es:"Cuanto más me seques, más mojado te quedas. ¿Qué soy?"},
      answer:'tovallola',hint:{ca:"És un objecte del bany...",es:"Es un objeto del baño..."},
-     mission:{ca:"El grimoriu és amagat a la classe d'Història. Busqueu sota la taula del professor el sobre amb el segell 🏰.",es:"El grimorio está escondido en la clase de Historia. Buscad bajo la mesa del profesor el sobre con el sello 🏰."},missionIcon:'📜',points:150},
+     interaction:'choice',
+     choices:[
+       {text:{ca:'Insultar el comte',es:'Insultar al conde'},emoji:'😤',next:'phase_insult'},
+       {text:{ca:'Llegir el grimori',es:'Leer el grimorio'},emoji:'📖',next:'phase_grimori'}
+     ],
+     mission:{ca:"El grimoriu és amagat a la classe d'Història. Busqueu sota la taula del professor el sobre amb el segell 🏰.",es:"El grimorio está escondido en la clase de Historia. Buscad bajo la mesa del profesor el sobre con el sello 🏰."},missionIcon:'📜',points:150,timeLimit:300},
     {name:{ca:"L'EXORCISME",es:'EL EXORCISMO'},narrativeTitle:{ca:'Alliberar el comte',es:'Liberar al conde'},
      narrativeText:{ca:"Teniu el grimoriu. El conjur requereix pronunciar el nom del dimoni en ROT13: 'Znyhf'.",es:"Tenéis el grimorio. El conjuro requiere pronunciar el nombre del demonio en ROT13: 'Znyhf'."},
      enigma:{ca:"Descodifiqueu ROT13: Z→M, n→a, y→l, h→u, f→s. Quin és el nom del dimoni?",es:"Descodificad ROT13: Z→M, n→a, y→l, h→u, f→s. ¿Cuál es el nombre del demonio?"},
-     answer:'Malus',hint:{ca:'ROT13: cada lletra avança/recua 13 posicions',es:'ROT13: cada letra avanza/retrocede 13 posiciones'},points:200,isFinal:true}
+     answer:'Malus',hint:{ca:'ROT13: cada lletra avança/recua 13 posicions',es:'ROT13: cada letra avanza/retrocede 13 posiciones'},points:200,timeLimit:240,isFinal:true}
    ]},
   {id:'atlantis',emoji:'🌊',color:'#2980b9',bg:'radial-gradient(ellipse at 50% 100%,#00162e,#000510)',
    font:"'Orbitron',sans-serif",diff:{ca:'★★★ Difícil',es:'★★★ Difícil'},dur:{ca:'50 min',es:'50 min'},
@@ -813,16 +863,21 @@ const STORIES=[
     {name:{ca:'DESCOBRIMENT',es:'DESCUBRIMIENTO'},narrativeTitle:{ca:'Els registres atlants',es:'Los registros atlantes'},
      narrativeText:{ca:"Les parets plenes de jeroglífics: el sistema atlant usava base 8 (octal). Primer missatge: 10+10=? en octal.",es:"Las paredes llenas de jeroglíficos: el sistema atlante usaba base 8 (octal). Primer mensaje: 10+10=? en octal."},
      enigma:{ca:"En octal: 10 significa vuit. Llavors 10+10=16 en decimal. Quant és 16 en octal?",es:"En octal: 10 significa ocho. Entonces 10+10=16 en decimal. ¿Cuánto es 16 en octal?"},
-     answer:'20',hint:{ca:'16÷8=2 resta 0 → en octal: 20',es:'16÷8=2 resto 0 → en octal: 20'},points:100},
+     answer:'20',hint:{ca:'16÷8=2 resta 0 → en octal: 20',es:'16÷8=2 resto 0 → en octal: 20'},points:100,timeLimit:240,reward:'💎'},
     {name:{ca:'EL REACTOR',es:'EL REACTOR'},narrativeTitle:{ca:"L'energia de l'Atlàntida",es:'La energía de Atlántida'},
      narrativeText:{ca:"5 cristalls de quars amb freqüències. El manual: ordena'ls de menor a major freqüència per activar el reactor.",es:"5 cristales de cuarzo con frecuencias. El manual: ordénalos de menor a mayor frecuencia para activar el reactor."},
      enigma:{ca:"Vermell=430THz, Taronja=490THz, Groc=530THz, Verd=560THz, Blau=620THz. Ordre de menor a major.",es:"Rojo=430THz, Naranja=490THz, Amarillo=530THz, Verde=560THz, Azul=620THz. Orden de menor a mayor."},
      answer:'Vermell-Taronja-Groc-Verd-Blau',hint:{ca:'430<490<530<560<620',es:'430<490<530<560<620'},
-     mission:{ca:"El 'cristall mestre' és al laboratori de ciències. Pregunteu al professor de ciències pel 'PROJECTE ATLÀNTIDA'.",es:"El 'cristal maestro' está en el laboratorio de ciencias. Preguntad al profesor de ciencias por el 'PROYECTO ATLÁNTIDA'."},missionIcon:'💎',points:150},
+     interaction:'choice',
+     choices:[
+       {text:{ca:'Activar el reactor',es:'Activar el reactor'},emoji:'⚡',next:'phase_activa'},
+       {text:{ca:'Fugir amb els cristalls',es:'Huir con los cristales'},emoji:'💎',next:'phase_fuga'}
+     ],
+     mission:{ca:"El 'cristall mestre' és al laboratori de ciències. Pregunteu al professor de ciències pel 'PROJECTE ATLÀNTIDA'.",es:"El 'cristal maestro' está en el laboratorio de ciencias. Preguntad al profesor de ciencias por el 'PROYECTO ATLÁNTIDA'."},missionIcon:'💎',points:150,timeLimit:360},
     {name:{ca:'ASCENSOR',es:'ASCENSOR'},narrativeTitle:{ca:'Pujar a la superfície',es:'Subir a la superficie'},
      narrativeText:{ca:"L'ascensor: a 3000m de profunditat, densitat=1025 kg/m³, g=9,8 m/s². El codi és la pressió en bar (arrodonida).",es:"El ascensor: a 3000m de profundidad, densidad=1025 kg/m³, g=9,8 m/s². El código es la presión en bar (redondeada)."},
      enigma:{ca:"Pressió=densitat×g×alçada=1025×9,8×3000 Pa. Convertiu a bar (1 bar=100.000 Pa). Arrodoneu.",es:"Presión=densidad×g×altura=1025×9,8×3000 Pa. Convertid a bar (1 bar=100.000 Pa). Redonded."},
-     answer:'301',hint:{ca:'1025×9,8×3000=30.135.000 Pa ÷ 100.000=301,35≈301',es:'1025×9,8×3000=30.135.000 Pa ÷ 100.000=301,35≈301'},points:200,isFinal:true}
+     answer:'301',hint:{ca:'1025×9,8×3000=30.135.000 Pa ÷ 100.000=301,35≈301',es:'1025×9,8×3000=30.135.000 Pa ÷ 100.000=301,35≈301'},points:200,timeLimit:300,isFinal:true}
    ]},
   {id:'spy',emoji:'🕵️',color:'#e8c84a',bg:'radial-gradient(ellipse at 70% 30%,#1a1a00,#050500)',
    font:"'Orbitron',sans-serif",diff:{ca:'★★★ Difícil',es:'★★★ Difícil'},dur:{ca:'50 min',es:'50 min'},
@@ -833,16 +888,21 @@ const STORIES=[
     {name:{ca:'INFILTRACIÓ',es:'INFILTRACIÓN'},narrativeTitle:{ca:'Accés a la base',es:'Acceso a la base'},
      narrativeText:{ca:"El contacte ha deixat un missatge en codi César (desplaçament 3): 'ROLDQR'. Desxifreu-lo per obtenir l'accés.",es:"El contacto ha dejado un mensaje en código César (desplazamiento 3): 'ROLDQR'. Descifradlo para obtener el acceso."},
      enigma:{ca:"Codi César desplaçament -3: R→O, O→L, L→I, D→A, Q→N, R→O. Quin és el missatge?",es:"Código César desplazamiento -3: R→O, O→L, L→I, D→A, Q→N, R→O. ¿Cuál es el mensaje?"},
-     answer:'OLIANO',hint:{ca:'Cada lletra recua 3 posicions a l\'alfabet',es:'Cada letra retrocede 3 posiciones en el alfabeto'},points:100},
+     answer:'OLIANO',hint:{ca:'Cada lletra recua 3 posicions a l\'alfabet',es:'Cada letra retrocede 3 posiciones en el alfabeto'},points:100,timeLimit:240,reward:'🔑'},
     {name:{ca:'EL VIRUS',es:'EL VIRUS'},narrativeTitle:{ca:"Anatomia de l'atac",es:'Anatomía del ataque'},
      narrativeText:{ca:"El hash de seguretat: pren el primer primer >50 i <60, multiplica'l per 8 bits/byte, afegeix l'any del primer virus (1971).",es:"El hash de seguridad: toma el primer primo >50 y <60, multiplícalo por 8 bits/byte, añade el año del primer virus (1971)."},
      enigma:{ca:"Nombres primers entre 50 i 60: 53 i 59. Usa el major. ×8. +1971. Quin és el hash?",es:"Números primos entre 50 y 60: 53 y 59. Usa el mayor. ×8. +1971. ¿Cuál es el hash?"},
      answer:'2443',hint:{ca:'59×8=472. 472+1971=?',es:'59×8=472. 472+1971=?'},
-     mission:{ca:"El contacte és el conserge. Digueu-li 'L'àguila ha aterrat' i us donarà el dispositiu USB.",es:"El contacto es el conserje. Decidle 'El águila ha aterrizado' y os dará el dispositivo USB."},missionIcon:'🔌',points:150},
+     interaction:'choice',
+     choices:[
+       {text:{ca:'Eliminar el virus',es:'Eliminar el virus'},emoji:'🗑️',next:'phase_delete'},
+       {text:{ca:'Controlar el virus',es:'Controlar el virus'},emoji:'🎮',next:'phase_control'}
+     ],
+     mission:{ca:"El contacte és el conserge. Digueu-li 'L'àguila ha aterrat' i us donarà el dispositiu USB.",es:"El contacto es el conserje. Decidle 'El águila ha aterrizado' y os dará el dispositivo USB."},missionIcon:'🔌',points:150,timeLimit:360},
     {name:{ca:'NEUTRALITZACIÓ',es:'NEUTRALIZACIÓN'},narrativeTitle:{ca:'Compte enrere',es:'Cuenta atrás'},
      narrativeText:{ca:"El servidor. TEMPS RESTANT: 00:10:00. Necessiteu la seqüència Fibonacci de 10 termes i sumar els termes 7, 8 i 9.",es:"El servidor. TIEMPO RESTANTE: 00:10:00. Necesitáis la secuencia Fibonacci de 10 términos y sumar los términos 7, 8 y 9."},
      enigma:{ca:"Fibonacci: 0,1,1,2,3,5,8,13,21,34. Termes 7,8,9 (des de 0): 13,21,34. Quina és la seva suma?",es:"Fibonacci: 0,1,1,2,3,5,8,13,21,34. Términos 7,8,9 (desde 0): 13,21,34. ¿Cuál es su suma?"},
-     answer:'68',hint:{ca:'13+21+34=?',es:'13+21+34=?'},points:200,isFinal:true}
+     answer:'68',hint:{ca:'13+21+34=?',es:'13+21+34=?'},points:200,timeLimit:300,isFinal:true}
    ]},
   {id:'circus',emoji:'🎪',color:'#ff0066',bg:'radial-gradient(ellipse at 50% 50%,#200010,#050005)',
    font:"'Creepster',cursive",diff:{ca:'★★★ Difícil',es:'★★★ Difícil'},dur:{ca:'50 min',es:'50 min'},
@@ -853,16 +913,21 @@ const STORIES=[
     {name:{ca:'ACTE I: MÀGIA',es:'ACTO I: MAGIA'},narrativeTitle:{ca:'El mag us desafia',es:'El mago os desafía'},
      narrativeText:{ca:"El mag apareix: 'El meu truc: nombre de lletres de MÀGIA (5) × cartes d'una baralla espanyola (40) + nombre de la bèstia.'",es:"El mago aparece: 'Mi truco: letras de MAGIA (5) × cartas en una baraja española (40) + número de la bestia.'"},
      enigma:{ca:"5×40=200. El nombre de la bèstia (Apocalipsi) és 666. Resultat final?",es:"5×40=200. El número de la bestia (Apocalipsis) es 666. ¿Resultado final?"},
-     answer:'866',hint:{ca:'200+666=?',es:'200+666=?'},points:100},
+     answer:'866',hint:{ca:'200+666=?',es:'200+666=?'},points:100,timeLimit:240,reward:'🎭'},
     {name:{ca:'ACTE II: ACROBÀCIA',es:'ACTO II: ACROBACIA'},narrativeTitle:{ca:'La trapecista sense cara',es:'La trapecista sin cara'},
      narrativeText:{ca:"Una figura vola. Cau un pergamí: 'Si h=80m, g=10m/s², la velocitat en arribar al terra és √(2gh). Aquesta és el codi.'",es:"Una figura vuela. Cae un pergamino: 'Si h=80m, g=10m/s², la velocidad al llegar al suelo es √(2gh). Esa es el código.'"},
      enigma:{ca:"v=√(2×10×80)=√1600=? m/s. El codi de 2 xifres.",es:"v=√(2×10×80)=√1600=? m/s. El código de 2 cifras."},
      answer:'40',hint:{ca:'√1600=40',es:'√1600=40'},
-     mission:{ca:"El 'programa del circ' és amagat a la taquilla nº13 o sota el graó de l'entrada.",es:"El 'programa del circo' está oculto en la taquilla nº13 o bajo el escalón de la entrada."},missionIcon:'🎭',points:150},
+     interaction:'choice',
+     choices:[
+       {text:{ca:'Salvar la trapecista',es:'Salvar a la trapecista'},emoji:'🦸',next:'phase_save'},
+       {text:{ca:'Continuar endavant',es:'Continuar adelante'},emoji:'➡️',next:'phase_continue'}
+     ],
+     mission:{ca:"El 'programa del circ' és amagat a la taquilla nº13 o sota el graó de l'entrada.",es:"El 'programa del circo' está oculto en la taquilla nº13 o bajo el escalón de la entrada."},missionIcon:'🎭',points:150,timeLimit:300},
     {name:{ca:'ACTE III: ESCAPADA',es:'ACTO III: ESCAPE'},narrativeTitle:{ca:'El pallasso final',es:'El payaso final'},
      narrativeText:{ca:"El pallasso bloqueja la sortida. 'Un últim endevinall i sereu lliures. O quedareu aquí per sempre.'",es:"El payaso bloquea la salida. 'Un último acertijo y seréis libres. O quedaréis aquí para siempre.'"},
      enigma:{ca:"Com més en treus, més gran sóc. Què sóc?",es:"Cuantas más quitas, más grande soy. ¿Qué soy?"},
-     answer:'forat',hint:{ca:'Pensa en alguna cosa que creix quan li treus material',es:'Piensa en algo que crece cuando le quitas material'},points:200,isFinal:true}
+     answer:'forat',hint:{ca:'Pensa en alguna cosa que creix quan li treus material',es:'Piensa en algo que crece cuando le quitas material'},points:200,timeLimit:300,isFinal:true}
    ]},
   {id:'jungle',emoji:'🌿',color:'#2ecc71',bg:'radial-gradient(ellipse at 40% 40%,#001500,#000500)',
    font:"'Rajdhani',sans-serif",diff:{ca:'★★ Mitjà',es:'★★ Medio'},dur:{ca:'40 min',es:'40 min'},
@@ -873,16 +938,21 @@ const STORIES=[
     {name:{ca:'PROVA 1: AIGUA',es:'PRUEBA 1: AGUA'},narrativeTitle:{ca:'El xaman parla',es:'El chamán habla'},
      narrativeText:{ca:"El xaman: 'Teniu dues gerres: 3L i 5L. Mesureu exactament 4L. El 4 és sagrat.'",es:"El chamán: 'Tenéis dos vasijas: 3L y 5L. Medid exactamente 4L. El 4 es sagrado.'"},
      enigma:{ca:"Omple 5L → aboca 3L a la de 3L (queden 2L) → buida la de 3L → passa 2L → omple 5L → aboca 1L a la de 3L. Quants litres queden a la de 5L?",es:"Llena 5L → vierte 3L a la de 3L (quedan 2L) → vacía la de 3L → pasa 2L → llena 5L → vierte 1L a la de 3L. ¿Cuántos litros quedan en la de 5L?"},
-     answer:'4',hint:{ca:'Segueix els passos un per un',es:'Sigue los pasos uno a uno'},points:100},
+     answer:'4',hint:{ca:'Segueix els passos un per un',es:'Sigue los pasos uno a uno'},points:100,timeLimit:300,reward:'💧'},
     {name:{ca:'PROVA 2: FOC',es:'PRUEBA 2: FUEGO'},narrativeTitle:{ca:"El consell d'ancians",es:'El consejo de ancianos'},
      narrativeText:{ca:"Valors animals: Jaguar=7, Serp=3, Àguila=12, Granota=2, Mico=5. Calcula per encendre el foc sagrat.",es:"Valores animales: Jaguar=7, Serpiente=3, Águila=12, Rana=2, Mono=5. Calcula para encender el fuego sagrado."},
      enigma:{ca:"(Jaguar×Granota)+(Àguila−Mico)×Serp",es:"(Jaguar×Rana)+(Águila−Mono)×Serpiente"},
      answer:'35',hint:{ca:'(7×2)+(12-5)×3=14+21=35',es:'(7×2)+(12-5)×3=14+21=35'},
-     mission:{ca:"La 'ploma sagrada de l'àguila' és a la sala de direcció. Demaneu al/la director/a la 'prova de la selva'.",es:"La 'pluma sagrada del águila' está en la sala de dirección. Pedid al/la director/a la 'prueba de la selva'."},missionIcon:'🦅',points:150},
+     interaction:'choice',
+     choices:[
+       {text:{ca:'Honor als ancians',es:'Honor a los ancianos'},emoji:'🙏',next:'phase_honor'},
+       {text:{ca:'Desafiar els ancians',es:'Desafiar a los ancianos'},emoji:'⚔️',next:'phase_desafio'}
+     ],
+     mission:{ca:"La 'ploma sagrada de l'àguila' és a la sala de direcció. Demaneu al/la director/a la 'prova de la selva'.",es:"La 'pluma sagrada del águila' está en la sala de dirección. Pedid al/la director/a la 'prueba de la selva'."},missionIcon:'🦅',points:150,timeLimit:360},
     {name:{ca:'PROVA 3: TERRA',es:'PRUEBA 3: TIERRA'},narrativeTitle:{ca:'El cor de la selva',es:'El corazón de la selva'},
      narrativeText:{ca:"L'arbre més antic: 'Responeu la pregunta final i el camí de tornada apareixerà.'",es:"El árbol más antiguo: 'Responded la pregunta final y el camino de vuelta aparecerá.'"},
      enigma:{ca:"Un arbre creix 2m/any, comença a 1m. Cada 3 anys perd el 10% per plaga. Quant mesura als 10 anys? (Aprox.)",es:"Un árbol crece 2m/año, empieza a 1m. Cada 3 años pierde el 10% por plaga. ¿Cuánto mide a los 10 años? (Aprox.)"},
-     answer:'17',hint:{ca:'Any3:7→6,3 | Any6:12,3→11,07 | Any9:17,07→15,36 | Any10:≈17',es:'Año3:7→6,3 | Año6:12,3→11,07 | Año9:17,07→15,36 | Año10:≈17'},points:200,isFinal:true}
+     answer:'17',hint:{ca:'Any3:7→6,3 | Any6:12,3→11,07 | Any9:17,07→15,36 | Any10:≈17',es:'Año3:7→6,3 | Año6:12,3→11,07 | Año9:17,07→15,36 | Año10:≈17'},points:200,timeLimit:300,isFinal:true}
    ]},
   {id:'instituto',emoji:'🏫',color:'#e67e22',bg:'radial-gradient(ellipse at 50% 50%,#1f1000,#080400)',
    font:"'Special Elite',cursive",diff:{ca:'★★ Mitjà',es:'★★ Medio'},dur:{ca:'45 min',es:'45 min'},
@@ -893,16 +963,21 @@ const STORIES=[
     {name:{ca:'EL DESPERTAR',es:'EL DESPERTAR'},narrativeTitle:{ca:'Els passadissos parlen',es:'Los pasillos hablan'},
      narrativeText:{ca:"A la pissarra: 'El primer secret és on els números van sense descans.' Aula de mates + el vostre número d'aula.",es:"En la pizarra: 'El primer secreto está donde los números van sin descanso.' Aula de mates + vuestro número de aula."},
      enigma:{ca:"Suma el número de l'aula de Matemàtiques del vostre institut + el número de la vostra aula actual. (El professor coneix la resposta!)",es:"Suma el número del aula de Matemáticas de vuestro instituto + el número de vuestra aula actual. (¡El profesor conoce la respuesta!)"},
-     answer:'VARIABLE',hint:{ca:"Aquesta resposta depèn del vostre institut. El professor ho sap!",es:"¡Esta respuesta depende de vuestro instituto. El profesor lo sabe!"},points:100},
+     answer:'VARIABLE',hint:{ca:"Aquesta resposta depèn del vostre institut. El professor ho sap!",es:"¡Esta respuesta depende de vuestro instituto. El profesor lo sabe!"},points:100,timeLimit:240,reward:'📚'},
     {name:{ca:'LA SALA PROHIBIDA',es:'LA SALA PROHIBIDA'},narrativeTitle:{ca:'Despatx del director',es:'Despacho del director'},
      narrativeText:{ca:"El despatx del director guarda un secret. Nota: 'El codi és l'any de fundació de l'institut + nombre d'alumnes ÷ 10.'",es:"El despacho del director guarda un secreto. Nota: 'El código es el año de fundación del instituto + número de alumnos ÷ 10.'"},
      enigma:{ca:"Any real de fundació del vostre institut + nombre aproximat d'alumnes ÷ 10. (Pregunteu al profe!)",es:"Año real de fundación de vuestro instituto + número aproximado de alumnos ÷ 10. (¡Preguntad al profe!)"},
      answer:'VARIABLE',hint:{ca:"L'any de fundació és a la web de l'institut.",es:"El año de fundación está en la web del instituto."},
-     mission:{ca:"Un membre ha d'anar a secretaria i preguntar per 'l'expedient de l'institut'.",es:"Un miembro debe ir a secretaría y preguntar por 'el expediente del instituto'."},missionIcon:'📋',points:150},
+     interaction:'choice',
+     choices:[
+       {text:{ca:'Entrar al despatx',es:'Entrar al despacho'},emoji:'🚪',next:'phase_entra'},
+       {text:{ca:'Fugir pel pati',es:'Huir por el patio'},emoji:'🏃',next:'phase_fuge'}
+     ],
+     mission:{ca:"Un membre ha d'anar a secretaria i preguntar per 'l'expedient de l'institut'.",es:"Un miembro debe ir a secretaría y preguntar por 'el expediente del instituto'."},missionIcon:'📋',points:150,timeLimit:360},
     {name:{ca:'EL SECRET FINAL',es:'EL SECRETO FINAL'},narrativeTitle:{ca:'El que ningú sap',es:'Lo que nadie sabe'},
      narrativeText:{ca:"Al lloc més profund de l'escola hi ha una caixa. Per obrir-la necessiteu el codi final.",es:"En el lugar más profundo de la escuela hay una caja. Para abrirla necesitáis el código final."},
      enigma:{ca:"Nombre de professors de l'institut × nombre d'assignatures d'aquest curs. (El professor coneix els valors reals!)",es:"Número de profesores del instituto × número de asignaturas de este curso. (¡El profesor conoce los valores reales!)"},
-     answer:'VARIABLE',hint:{ca:"Professors × assignatures. Pregunteu!",es:"Profesores × asignaturas. ¡Preguntad!"},points:200,isFinal:true}
+     answer:'VARIABLE',hint:{ca:"Professors × assignatures. Pregunteu!",es:"Profesores × asignaturas. ¡Preguntad!"},points:200,timeLimit:300,isFinal:true}
    ]},
   {id:'teachers',emoji:'👩‍🏫',color:'#1abc9c',bg:'radial-gradient(ellipse at 60% 40%,#001810,#020805)',
    font:"'Rajdhani',sans-serif",diff:{ca:'★ Fàcil-Mitjà',es:'★ Fácil-Medio'},dur:{ca:'35 min',es:'35 min'},
@@ -913,16 +988,21 @@ const STORIES=[
     {name:{ca:'EL CLAUSTRE',es:'EL CLAUSTRO'},narrativeTitle:{ca:'La reunió que no acaba',es:'La reunión que nunca acaba'},
      narrativeText:{ca:"La reunió ha durat 4 hores. Les portes estan tancades. Nota: 'Per sortir heu de demostrar que mereixeu ser professors.'",es:"La reunión ha durado 4 horas. Las puertas están cerradas. Nota: 'Para salir debéis demostrar que merecéis ser llamados docentes.'"},
      enigma:{ca:"La teoria de les Intel·ligències Múltiples (Gardner, 1983). Quantes intel·ligències va identificar originalment?",es:"La teoría de las Inteligencias Múltiples (Gardner, 1983). ¿Cuántas inteligencias identificó originalmente?"},
-     answer:'7',hint:{ca:'Musical, Cinestèsica, Lògico-matemàtica, Lingüística, Espacial, Interpersonal, Intrapersonal',es:'Musical, Kinestésica, Lógico-matemática, Lingüística, Espacial, Interpersonal, Intrapersonal'},points:100},
+     answer:'7',hint:{ca:'Musical, Cinestèsica, Lògico-matemàtica, Lingüística, Espacial, Interpersonal, Intrapersonal',es:'Musical, Kinestésica, Lógico-matemática, Lingüística, Espacial, Interpersonal, Intrapersonal'},points:100,timeLimit:180,reward:'🍎'},
     {name:{ca:'ELS EXPEDIENTS',es:'LOS EXPEDIENTES'},narrativeTitle:{ca:'Secrets del claustre',es:'Secretos del claustro'},
      narrativeText:{ca:"Expedients misteriosos. Anys del professor més veterà MENYS anys del professor més nou.",es:"Expedientes misteriosos. Años del profesor más veterano MENOS años del profesor más nuevo."},
      enigma:{ca:"Diferència entre l'antiguitat del professor més veterà i el més nou. (L'organitzador defineix els valors reals.)",es:"Diferencia entre la antigüedad del profesor más veterano y el más nuevo. (El organizador define los valores reales.)"},
      answer:'VARIABLE',hint:{ca:"Pregunteu als vostres companys!",es:"¡Preguntad a vuestros compañeros!"},
-     mission:{ca:"Un/a professor/a ha d'anar a buscar un alumne al passadís que té un sobre amb el símbol 👩‍🏫.",es:"Un/a profesor/a debe ir a buscar a un alumno en el pasillo que tiene un sobre con el símbolo 👩‍🏫."},missionIcon:'👦',points:150},
+     interaction:'choice',
+     choices:[
+       {text:{ca:'Revelar el secret',es:'Revelar el secreto'},emoji:'📢',next:'phase_revela'},
+       {text:{ca:'Guardar el secret',es:'Guardar el secreto'},emoji:'🤫',next:'phase_guarda'}
+     ],
+     mission:{ca:"Un/a professor/a ha d'anar a buscar un alumne al passadís que té un sobre amb el símbol 👩‍🏫.",es:"Un/a profesor/a debe ir a buscar a un alumno en el pasillo que tiene un sobre con el símbolo 👩‍🏫."},missionIcon:'👦',points:150,timeLimit:300},
     {name:{ca:"L'EXAMEN FINAL",es:'EL EXAMEN FINAL'},narrativeTitle:{ca:"L'examen dels professors",es:'El examen de los profesores'},
      narrativeText:{ca:"Ironia total! Els professors han de fer un examen. Nota mínima 5. L'examen té 20 preguntes de 0,5 punts.",es:"¡Ironía total! Los profesores tienen que hacer un examen. Nota mínima 5. El examen tiene 20 preguntas de 0,5 puntos."},
      enigma:{ca:"Per treure un 5, quantes preguntes cal respondre bé? (Cada pregunta val 0,5 punts.)",es:"Para sacar un 5, ¿cuántas preguntas deben responderse bien? (Cada pregunta vale 0,5 puntos.)"},
-     answer:'10',hint:{ca:'5÷0,5=?',es:'5÷0,5=?'},points:200,isFinal:true}
+     answer:'10',hint:{ca:'5÷0,5=?',es:'5÷0,5=?'},points:200,timeLimit:240,isFinal:true}
    ]}
 ];
 
@@ -947,7 +1027,6 @@ function renderHome(){
 
 // ── SELECT STORY & LOBBY ──
 function selectStory(story){
-  // Unlock audio on first interaction
   try{getAudioCtx();}catch(e){}
 
   currentStory=story;
@@ -955,7 +1034,6 @@ function selectStory(story){
   roomCode=genCode();
   document.documentElement.style.setProperty('--accent',story.color);
 
-  // Fill lobby UI
   document.getElementById('lEmoji').textContent=story.emoji;
   document.getElementById('lTitle').textContent=story.title[lang];
   document.getElementById('lSynopsis').textContent=story.synopsis[lang];
@@ -988,11 +1066,14 @@ function listenTeams(){
     document.getElementById('teamsCount').textContent=` (${teamCount})`;
     const list=document.getElementById('teamsList');
     if(arr.length===0){list.innerHTML=`<div style="color:rgba(255,255,255,.2);font-size:.8rem;font-style:italic">${t('waiting_teams')}</div>`;return;}
-    list.innerHTML=arr.map(tm=>`
-      <div class="ti">
+    list.innerHTML=arr.map(tm=>{
+      const lives='❤️'.repeat(tm.lives||3);
+      return `<div class="ti">
         <span class="ti-emoji">${tm.emoji||'⚡'}</span>
         <div><div class="ti-name">${tm.name}</div><div class="ti-members">${tm.members||''}</div></div>
-      </div>`).join('');
+        <span class="ti-lives">${lives}</span>
+      </div>`;
+    }).join('');
     document.getElementById('startBtn').disabled=arr.length===0;
     playFx('join');
   });
@@ -1007,14 +1088,37 @@ function startGame(){
   document.getElementById('gEmoji').textContent=currentStory.emoji;
   document.getElementById('gTitle').textContent=currentStory.title[lang];
   document.getElementById('gTitle').style.fontFamily=currentStory.font;
+  
+  // Inicialitzar inventari col·lectiu
+  renderInventoryBar();
+  
   renderGamePhase();
   startTimer();
   listenAnswers();
   listenScores();
   showScreen('s-game');
   playFx('phase');
-  // Narrate after 1s
   setTimeout(()=>toggleVoice(),1200);
+}
+
+// ── INVENTORY BAR ──
+function renderInventoryBar(){
+  const bar=document.getElementById('inventoryBar');
+  const itemsDiv=document.getElementById('invItems');
+  if(!currentStory) return;
+  
+  // Recollir tots els rewards de les fases passades
+  const items=currentStory.phases
+    .slice(0,currentPhase)
+    .map(p=>p.reward)
+    .filter(r=>r);
+    
+  if(items.length>0){
+    bar.style.display='block';
+    itemsDiv.innerHTML=items.map(i=>`<span>${i}</span>`).join('');
+  } else {
+    bar.style.display='none';
+  }
 }
 
 function renderGamePhase(){
@@ -1023,13 +1127,78 @@ function renderGamePhase(){
   document.getElementById('gPhaseLbl').textContent=ph.name[lang];
   document.getElementById('gNarrTitle').textContent=ph.narrativeTitle[lang];
   document.getElementById('gNarrText').textContent=ph.narrativeText[lang];
-  document.getElementById('gEnigma').textContent=ph.enigma[lang];
   document.getElementById('gHint').textContent='';
   document.getElementById('missionBtn').style.display=ph.mission?'':'none';
+  
+  // Actualitzar inventari
+  renderInventoryBar();
+  
+  // Mostrar choices si n'hi ha
+  const choiceContainer=document.getElementById('choiceContainer');
+  if(ph.interaction==='choice' && ph.choices){
+    choiceContainer.style.display='flex';
+    choiceContainer.innerHTML=ph.choices.map((c,i)=>`
+      <button class="choice-btn" onclick="selectChoice(${i})" id="choice-${i}">
+        ${c.emoji||'•'} ${c.text[lang]}
+      </button>
+    `).join('');
+    document.getElementById('gEnigma').textContent=ph.enigma[lang];
+  } else {
+    choiceContainer.style.display='none';
+    document.getElementById('gEnigma').textContent=ph.enigma[lang];
+  }
+  
   document.getElementById('ansList').innerHTML='';
   document.getElementById('ansCount').textContent='';
   broadcastPhase(ph);
   playFx('phase');
+  
+  // Iniciar temporitzador de fase
+  startPhaseTimer(ph.timeLimit||300);
+}
+
+function selectChoice(idx){
+  const ph=currentStory.phases[currentPhase];
+  const choice=ph.choices[idx];
+  currentChoice=choice.next;
+  
+  // Marcar seleccionat visualment
+  document.querySelectorAll('.choice-btn').forEach((btn,i)=>{
+    btn.classList.toggle('selected',i===idx);
+  });
+  
+  // Notificar al projector (el professor decideix quan avançar)
+  db.ref(`rooms/${roomCode}/choice`).set({
+    selected:choice.next,
+    idx:idx,
+    text:choice.text[lang],
+    ts:Date.now()
+  });
+  
+  showNotif(`${ph.choices[idx].text[lang]} - Esperant decisió...`);
+}
+
+function startPhaseTimer(seconds){
+  if(phaseTimer) clearInterval(phaseTimer);
+  phaseTimeLeft=seconds;
+  
+  // Efecte visual de perill quan queda poc temps
+  phaseTimer=setInterval(()=>{
+    phaseTimeLeft--;
+    
+    // Flash vermell quan queden 60s
+    if(phaseTimeLeft===60){
+      const overlay=document.getElementById('dangerOverlay');
+      overlay.style.background='rgba(255,0,0,0.3)';
+      playFx('heartbeat');
+      setTimeout(()=>overlay.style.background='rgba(255,0,0,0)',500);
+    }
+    
+    if(phaseTimeLeft<=0){
+      clearInterval(phaseTimer);
+      autoNextPhase();
+    }
+  },1000);
 }
 
 function broadcastPhase(ph){
@@ -1046,6 +1215,9 @@ function broadcastPhase(ph){
     storyBg:currentStory.bg,
     hint:ph.hint,
     isFinal:!!ph.isFinal,
+    interaction:ph.interaction||'text',
+    choices:ph.choices,
+    timeLimit:ph.timeLimit,
     roomCode,
     ts:Date.now()
   };
@@ -1079,7 +1251,20 @@ function listenAnswers(){
     const correct=ans.answer?.toLowerCase().trim()===ph.answer?.toLowerCase().trim()||ph.answer==='VARIABLE';
     displayAnswer(ans,correct);
     if(correct) playFx('correct'); else playFx('wrong');
-    // Update score in Firebase
+    
+    // Actualitzar equip amb vides
+    if(!correct && ans.teamId){
+      db.ref(`rooms/${roomCode}/teams/${ans.teamId}`).transaction(cur=>{
+        if(!cur) return cur;
+        cur.lives=(cur.lives||3)-1;
+        if(cur.lives<=0){
+          cur.eliminated=true;
+          showNotif(`${cur.name} ELIMINAT!`);
+        }
+        return cur;
+      });
+    }
+    
     if(correct){
       db.ref(`rooms/${roomCode}/scores/${ans.teamId}`).transaction(cur=>{
         const sc=(cur||{score:0,name:ans.teamName,emoji:ans.emoji});
@@ -1116,24 +1301,38 @@ function renderRanking(scores){
   const maxSc=sorted[0]?.[1].score||1;
   const list=document.getElementById('rankList');
   if(sorted.length===0){list.innerHTML=`<div style="color:rgba(255,255,255,.25);font-size:.78rem">${lang==='ca'?'Sense puntuacions':'Sin puntuaciones'}</div>`;return;}
-  list.innerHTML=sorted.slice(0,5).map(([id,d],i)=>`
-    <div class="ri">
+  list.innerHTML=sorted.slice(0,5).map(([id,d],i)=>{
+    const lives='❤️'.repeat(d.lives||3);
+    const eliminated=d.eliminated?'💀':'';
+    return `<div class="ri">
       <div class="ri-pos ${i===0?'p1':i===1?'p2':i===2?'p3':''}">${['🥇','🥈','🥉'][i]||i+1}</div>
       <div class="ri-team">
-        <div class="ri-name">${d.emoji||'⚡'} ${d.name}</div>
+        <div class="ri-name">${d.emoji||'⚡'} ${d.name} <span style="font-size:.9rem">${lives}${eliminated}</span></div>
         <div class="sbar"><div class="sfill" style="width:${(d.score/maxSc*100).toFixed(1)}%"></div></div>
       </div>
       <div class="ri-score">${d.score} ${t('pts')}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── CONTROLS ──
 function nextPhase(){
+  if(phaseTimer) clearInterval(phaseTimer);
   if(currentPhase<currentStory.phases.length-1){
     currentPhase++;
     renderGamePhase();
     showNotif(`${t('phase')} ${currentPhase+1} — ${currentStory.phases[currentPhase].name[lang]}`);
     setTimeout(()=>toggleVoice(),800);
+  } else {
+    endGame();
+  }
+}
+
+function autoNextPhase(){
+  if(currentPhase<currentStory.phases.length-1){
+    currentPhase++;
+    renderGamePhase();
+    showNotif(`⏱️ Temps esgotat - ${t('phase')} ${currentPhase+1}`);
   } else {
     endGame();
   }
@@ -1161,6 +1360,7 @@ function closeMission(){document.getElementById('missionPopup').classList.remove
 function confirmReset(){
   if(confirm(lang==='ca'?'Acabar el joc?':'¿Terminar el juego?')){
     if(gameTimer) clearInterval(gameTimer);
+    if(phaseTimer) clearInterval(phaseTimer);
     stopAmbient();
     db.ref(`rooms/${roomCode}`).remove();
     goHome();
@@ -1169,6 +1369,7 @@ function confirmReset(){
 
 function goHome(){
   if(gameTimer) clearInterval(gameTimer);
+  if(phaseTimer) clearInterval(phaseTimer);
   stopAmbient();
   if(teamsRef) teamsRef.off();
   if(scoresRef) scoresRef.off();
@@ -1180,6 +1381,7 @@ function goHome(){
 // ── END GAME ──
 function endGame(){
   if(gameTimer) clearInterval(gameTimer);
+  if(phaseTimer) clearInterval(phaseTimer);
   stopAmbient();
   db.ref(`rooms/${roomCode}/scores`).once('value',snap=>{
     const scores=snap.val()||{};
