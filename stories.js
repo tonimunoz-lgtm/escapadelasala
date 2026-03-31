@@ -542,70 +542,148 @@ const STORIES = [
   },
 
   // ═══════════════════════════════════════════════════════════════
-  //  9. BUNQUER 2087 (Post-apocalíptic - 6 fases)
+  //  9. BUNQUER 2087 (Post-apocalíptic - 6 fases) ★ VERSIÓ ESPECTACULAR
   // ═══════════════════════════════════════════════════════════════
   {
     id: "bunker", emoji: "☢️", lives: 3, totalPhases: 6,
-    color: "#27ae60", bg: "radial-gradient(ellipse at 40% 60%,#0d1f00,#050505)",
-    font: "'Special Elite',cursive", level: "expert",
+    color: "#00ff41", bg: "radial-gradient(ellipse at 30% 50%,#001a00,#000d00 50%,#020202)",
+    font: "'Share Tech Mono',monospace", level: "expert",
     diff: { ca: "Expert", es: "Experto" },
     dur: { ca: "60 min", es: "60 min" },
     ageLabel: { ca: "16+ anys", es: "16+ años" },
     title: { ca: "Búnquer 2087: Supervivència", es: "Búnker 2087: Supervivencia" },
-    desc: { ca: "Post-apocalíptic · Ciència · Últims humans", es: "Post-apocalíptico · Ciencia · Últimos humanos" },
-    synopsis: { 
-      ca: "Any 2087. Sou els últims humans. Oxigen per 6 hores. 6 proves per descobrir la veritat.", 
-      es: "Año 2087. Sois los últimos humanos. Oxígeno para 6 horas. 6 pruebas para descubrir la verdad." 
+    desc: { ca: "Post-apocalíptic · IA · Últims humans a la Terra", es: "Post-apocalíptico · IA · Últimos humanos en la Tierra" },
+    synopsis: {
+      ca: "Any 2087. Una IA ha destruït la civilització. Sou els últims supervivents atrapats al Búnquer B-7. Oxigen per a 6 hores. Heu de desxifrar els arxius secrets, localitzar el generador i activar la sortida d'emergència abans que sigui massa tard.",
+      es: "Año 2087. Una IA ha destruido la civilización. Sois los últimos supervivientes atrapados en el Búnker B-7. Oxígeno para 6 horas. Debéis descifrar los archivos secretos, localizar el generador y activar la salida de emergencia antes de que sea demasiado tarde."
     },
     phases: [
+      // ── FASE 1: Explorar la sala de control ──
       {
-        name: { ca: "DESPERTAR", es: "DESPERTAR" },
-        narrativeTitle: { ca: "Registres de l'any zero", es: "Registros del año cero" },
-        narrativeText: { ca: "El circuit mostra quins sistemes sobreviuen!", es: "¡El circuito muestra qué sistemas sobreviven!" },
-        visual: { type: "circuitPuzzle", config: { nodes: 6, color: "#27ae60", solution: [0,1,3] } },
-        enigma: { ca: "1986 (Txernòbil) - 1991 (Fi Guerra Freda) = Valor absolut", es: "1986 (Chernóbil) - 1991 (Fin Guerra Fría) = Valor absoluto" },
+        name: { ca: "☢️ DESPERTAR", es: "☢️ DESPERTAR" },
+        narrativeTitle: { ca: "Sala de Control B-7", es: "Sala de Control B-7" },
+        narrativeText: {
+          ca: "Les alarmes ressonen per tot el búnquer. Els panells parpellegen en vermell. Esteu a la sala de control principal — ordinadors apagats, cables trencats, l'aire fa olor de cremat. Alguna cosa ha passat aquí. Exploreu cada racó: potser alguna pista us dirà quan va passar tot això.",
+          es: "Las alarmas resuenan por todo el búnker. Los paneles parpadean en rojo. Estáis en la sala de control principal — ordenadores apagados, cables rotos, el aire huele a quemado. Algo ha pasado aquí. Explorad cada rincón: quizás alguna pista os diga cuándo ocurrió todo esto."
+        },
+        visual: { type: "bunkerRoom", config: { color: "#00ff41", phase: 0 } },
+        minigame: "roomExplorer",
+        roomSvg: "cyber",
+        roomObjects: [
+          { id:"a", x:12, y:25, e:"🖥️", l:"Ordinador central",   cl:"Pantalla trencada. S'hi llegeix: 'ERROR SISTEMA — Any: 2087'" },
+          { id:"b", x:38, y:55, e:"📋", l:"Registre de paper",    cl:"Escrit a mà: 'Txernòbil 1986. Guerra Freda acaba 1991. Diferència = CODI'" },
+          { id:"c", x:65, y:30, e:"☢️", l:"Indicador de radiació", cl:"El comptador marca: NIVELL CRÍTIC. Data última lectura: 14/11/2087" },
+          { id:"d", x:82, y:60, e:"🔒", l:"Caixa forta",          cl:"Necessita un codi de 1 xifra. La pista és al registre de paper." },
+          { id:"e", x:50, y:80, e:"💡", l:"Llum d'emergència",    cl:"Bateria al 12%. Temps estimat restant: igual que la diferència de les dates" }
+        ],
+        enigma: {
+          ca: "Exploreu la sala i trobeu totes les pistes. La resposta és la diferència entre l'any de Txernòbil (1986) i l'any que va acabar la Guerra Freda (1991). Valor absolut.",
+          es: "Explorad la sala y encontrad todas las pistas. La respuesta es la diferencia entre el año de Chernóbil (1986) y el año que terminó la Guerra Fría (1991). Valor absoluto."
+        },
+        hint: { ca: "|1986 − 1991| = ?", es: "|1986 − 1991| = ?" },
         answer: "5", points: 100
       },
+
+      // ── FASE 2: Desxifrar el missatge de la IA ──
       {
-        name: { ca: "ARXIUS BINARIS", es: "ARCHIVOS BINARIOS" },
-        narrativeTitle: { ca: "El culpable", es: "El culpable" },
-        narrativeText: { ca: "Converteix binari a ASCII!", es: "¡Convierte binario a ASCII!" },
-        visual: { type: "pixelSecret", config: { code: "AI", color: "#27ae60", noise: true } },
-        enigma: { ca: "01000001=A(65). 01001001=I(73). Inicials del culpable.", es: "01000001=A(65). 01001001=I(73). Iniciales del culpable." },
+        name: { ca: "🖥️ MISSATGE XIFRAT", es: "🖥️ MENSAJE CIFRADO" },
+        narrativeTitle: { ca: "Arxiu Classificat — IA Culpable", es: "Archivo Clasificado — IA Culpable" },
+        narrativeText: {
+          ca: "Un dels terminals té bateria residual. La pantalla mostra un missatge xifrat deixat per l'última persona que va estar aquí. El missatge sembla indicar les inicials del sistema d'IA responsable del col·lapse. Useu la roda de desxifrat per trobar la veritat.",
+          es: "Uno de los terminales tiene batería residual. La pantalla muestra un mensaje cifrado dejado por la última persona que estuvo aquí. El mensaje parece indicar las iniciales del sistema de IA responsable del colapso. Usad la rueda de descifrado para encontrar la verdad."
+        },
+        visual: { type: "bunkerTerminal", config: { color: "#00ff41", encoded: "AI", shift: 7 } },
+        minigame: "cipherDial",
+        encoded: "HF",
+        shift: 7,
+        enigma: {
+          ca: "El missatge xifrat és: HF — Usa la roda César i busca el desplaçament correcte per desxifrar les inicials de la IA culpable (2 lletres).",
+          es: "El mensaje cifrado es: HF — Usa la rueda César y busca el desplazamiento correcto para descifrar las iniciales de la IA culpable (2 letras)."
+        },
+        hint: { ca: "Desplaçament 7: H→A, F→Y... Prova diferents valors fins trobar dues lletres que tinguin sentit.", es: "Desplazamiento 7: H→A, F→Y... Prueba diferentes valores hasta encontrar dos letras que tengan sentido." },
         answer: "AI", points: 150
       },
+
+      // ── FASE 3: Seqüència de protocols d'emergència ──
       {
-        name: { ca: "XIFRAT", es: "CIFRADO" },
-        narrativeTitle: { ca: "Missatge encriptat", es: "Mensaje encriptado" },
-        narrativeText: { ca: "Desxifra amb ROT13!", es: "¡Descifra con ROT13!" },
-        minigame: "cipher",
-        shift: 13,
-        enigma: { ca: "N V (ROT13)", es: "N V (ROT13)" },
-        answer: "AI", points: 150
-      },
-      {
-        name: { ca: "TAULA PERIÒDICA", es: "TABLA PERIÓDICA" },
-        narrativeTitle: { ca: "Porta hermètica", es: "Puerta hermética" },
-        narrativeText: { ca: "Activa elements en ordre atòmic!", es: "¡Activa elementos en orden atómico!" },
-        visual: { type: "controlPanel", config: { switches: ["H","He","Li","Be","B"], solution: [0,1,2,3,4], color: "#27ae60", label: "PORTA" } },
-        enigma: { ca: "Ordena: Hidrogen, Heli, Liti, Beril·li, Bor", es: "Ordena: Hidrógeno, Helio, Litio, Berilio, Boro" },
-        answer: "HELIBE", points: 200,
-        mission: { ca: "Ves a l'aula d'informàtica i busca l'arxiu BUNKER2087.", es: "Ve al aula de informática y busca el archivo BUNKER2087." }, missionIcon: "💻"
-      },
-      {
-        name: { ca: "MEMÒRIA", es: "MEMORIA" },
-        narrativeTitle: { ca: "Seqüència de supervivència", es: "Secuencia de supervivencia" },
-        narrativeText: { ca: "Repeteix la seqüència de protocols!", es: "¡Repite la secuencia de protocolos!" },
+        name: { ca: "⚡ PROTOCOLS D'EMERGÈNCIA", es: "⚡ PROTOCOLOS DE EMERGENCIA" },
+        narrativeTitle: { ca: "Activació Manual del Sistema", es: "Activación Manual del Sistema" },
+        narrativeText: {
+          ca: "Heu trobat el manual d'emergència del búnquer. Per reiniciar el sistema de ventilació i guanyar més temps d'oxigen, cal activar els protocols en un ordre molt específic. El sistema mostra una seqüència de llums de colors. Cal memoritzar-la i repetir-la exactament — un error i el sistema es bloqueja.",
+          es: "Habéis encontrado el manual de emergencia del búnker. Para reiniciar el sistema de ventilación y ganar más tiempo de oxígeno, hay que activar los protocolos en un orden muy específico. El sistema muestra una secuencia de luces de colores. Hay que memorizarla y repetirla exactamente — un error y el sistema se bloquea."
+        },
+        visual: { type: "bunkerPanel", config: { color: "#00ff41", phase: 2 } },
         minigame: "simon",
-        enigma: { ca: "5 passos de supervivència.", es: "5 pasos de supervivencia." },
+        simonLevel: 5,
+        enigma: {
+          ca: "El panell de control mostra una seqüència de 5 llums de colors. Memoritzeu-la i repetiu-la en el mateix ordre per reiniciar la ventilació.",
+          es: "El panel de control muestra una secuencia de 5 luces de colores. Memorizadla y repetidla en el mismo orden para reiniciar la ventilación."
+        },
+        hint: { ca: "Observeu bé la seqüència completa abans d'intentar repetir-la.", es: "Observad bien la secuencia completa antes de intentar repetirla." },
         answer: "SIMON", points: 150
       },
+
+      // ── FASE 4: Localitzar el generador al mapa ──
       {
-        name: { ca: "SORTIDA", es: "SALIDA" },
-        narrativeTitle: { ca: "L'última porta", es: "La última puerta" },
-        narrativeText: { ca: "Càlcul final d'oxigen!", es: "¡Cálculo final de oxígeno!" },
-        enigma: { ca: "6 hores = ? minuts. Menys 45 minuts gastats = ?", es: "6 horas = ? minutos. Menos 45 minutos gastados = ?" },
-        answer: "315", points: 200, isFinal: true
+        name: { ca: "🗺️ MAPA DEL BÚNQUER", es: "🗺️ MAPA DEL BÚNKER" },
+        narrativeTitle: { ca: "Localitzar el Generador de Reserva", es: "Localizar el Generador de Reserva" },
+        narrativeText: {
+          ca: "El generador principal ha fallat. Segons els plànols del búnquer hi ha un generador de reserva amagat en algun punt del complex. Heu trobat un mapa del búnquer però les etiquetes estan parcialment esborrades. Cal navegar pels corredors i identificar la ubicació correcta del generador.",
+          es: "El generador principal ha fallado. Según los planos del búnker hay un generador de reserva escondido en algún punto del complejo. Habéis encontrado un mapa del búnker pero las etiquetas están parcialmente borradas. Hay que navegar por los corredores e identificar la ubicación correcta del generador."
+        },
+        visual: { type: "bunkerMap", config: { color: "#00ff41" } },
+        minigame: "mapNavigator",
+        mapLocations: [
+          { id:"A", x:18, y:72, e:"🚿", n:"Dutxes",         ok:false },
+          { id:"B", x:50, y:20, e:"🍽️", n:"Menjador",       ok:false },
+          { id:"C", x:80, y:55, e:"⚡", n:"Generador B-7",  ok:true  },
+          { id:"D", x:30, y:48, e:"🏥", n:"Infermeria",     ok:false },
+          { id:"E", x:65, y:80, e:"🔧", n:"Magatzem",       ok:false }
+        ],
+        mapPaths: [["A","D"],["D","B"],["D","E"],["E","C"],["B","C"]],
+        enigma: {
+          ca: "Navegueu pel mapa del búnquer i trobeu on és el generador de reserva. Aneu a les ubicacions correctes fins localitzar-lo. Pista: és a la zona est del complex.",
+          es: "Navegad por el mapa del búnker y encontrad dónde está el generador de reserva. Id a las ubicaciones correctas hasta localizarlo. Pista: está en la zona este del complejo."
+        },
+        hint: { ca: "El generador és a la zona est. Seguiu el camí: Magatzem → zona est.", es: "El generador está en la zona este. Seguid el camino: Almacén → zona este." },
+        answer: "C", points: 200
+      },
+
+      // ── FASE 5: Codi de la porta hermètica ──
+      {
+        name: { ca: "🔐 PORTA HERMÈTICA", es: "🔐 PUERTA HERMÉTICA" },
+        narrativeTitle: { ca: "Codi d'Accés — Sector de Sortida", es: "Código de Acceso — Sector de Salida" },
+        narrativeText: {
+          ca: "Heu arribat a la porta hermètica que separa el búnquer de la sortida d'emergència. Té un pany de 4 dígits. Als arxius del generador heu trobat una nota: 'El codi és la suma dels primers 4 nombres primers'. Gireu els dials fins trobar el codi correcte.",
+          es: "Habéis llegado a la puerta hermética que separa el búnker de la salida de emergencia. Tiene una cerradura de 4 dígitos. En los archivos del generador habéis encontrado una nota: 'El código es la suma de los primeros 4 números primos'. Girad los diales hasta encontrar el código correcto."
+        },
+        visual: { type: "bunkerDoor", config: { color: "#00ff41", locked: true } },
+        minigame: "lockPuzzle",
+        enigma: {
+          ca: "La porta té un pany de 4 dígits. La nota diu: 'El codi és la suma dels primers 4 nombres primers (2, 3, 5, 7)'. Calculeu la suma i introduïu-la com a codi.",
+          es: "La puerta tiene una cerradura de 4 dígitos. La nota dice: 'El código es la suma de los primeros 4 números primos (2, 3, 5, 7)'. Calculad la suma e introducidla como código."
+        },
+        hint: { ca: "2 + 3 + 5 + 7 = ? Poseu el resultat als 4 dígits (p.ex. 0-0-1-7).", es: "2 + 3 + 5 + 7 = ? Poned el resultado en los 4 dígitos (ej. 0-0-1-7)." },
+        answer: "0017", points: 200
+      },
+
+      // ── FASE 6: Activar la sortida final ──
+      {
+        name: { ca: "🚨 SORTIDA FINAL", es: "🚨 SALIDA FINAL" },
+        narrativeTitle: { ca: "Activació del Protocol d'Evacuació", es: "Activación del Protocolo de Evacuación" },
+        narrativeText: {
+          ca: "Sou a la sala de sortida. El sistema d'evacuació necessita que confirmeu 5 paraules clau de seguretat amagades en un missatge secret. Estan disseminades en el text xifrat que apareix a la pantalla. Trobeu-les totes per activar la sortida i escapar del búnquer abans que l'oxigen s'acabi.",
+          es: "Estáis en la sala de salida. El sistema de evacuación necesita que confirmeis 5 palabras clave de seguridad escondidas en un mensaje secreto. Están diseminadas en el texto cifrado que aparece en la pantalla. Encontradlas todas para activar la salida y escapar del búnker antes de que el oxígeno se acabe."
+        },
+        visual: { type: "bunkerExit", config: { color: "#00ff41" } },
+        minigame: "wordSearch",
+        words: ["OXIGEN", "SORTIDA", "BUNQUER", "ALARMA", "VIRUS"],
+        enigma: {
+          ca: "Trobeu les 5 paraules de seguretat amagades a la graella: OXIGEN, SORTIDA, BUNQUER, ALARMA, VIRUS. Quan les hàgiu trobat totes, la sortida s'activarà.",
+          es: "Encontrad las 5 palabras de seguridad escondidas en la cuadrícula: OXIGEN, SORTIDA, BUNQUER, ALARMA, VIRUS. Cuando las hayáis encontrado todas, la salida se activará."
+        },
+        hint: { ca: "Les paraules poden estar en horitzontal, vertical o diagonal.", es: "Las palabras pueden estar en horizontal, vertical o diagonal." },
+        answer: "OXIGENSORTIDABUNQUERALARMAVIRUS", points: 250, isFinal: true
       }
     ]
   },
