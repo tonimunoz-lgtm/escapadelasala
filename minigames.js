@@ -317,6 +317,207 @@ window.MINIGAMES = {
   },
 
   // ─────────────────────────────────────────────
+  //  BUNKER ROOM — Sala de control post-apocalíptica
+  // ─────────────────────────────────────────────
+  bunkerRoom: function(config = {}) {
+    const { color = '#00ff41', phase = 0 } = config;
+    return `<svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:500px;background:#000d00;border-radius:8px;border:1px solid ${color}30">
+      <defs>
+        <filter id="bkglow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <!-- Grid -->
+      ${Array.from({length:9},(_,i)=>`<line x1="${i*50}" y1="0" x2="${i*50}" y2="220" stroke="${color}08" stroke-width=".5"/>
+        <line x1="0" y1="${i*28}" x2="400" y2="${i*28}" stroke="${color}08" stroke-width=".5"/>`).join('')}
+      <!-- Paret fons -->
+      <rect x="20" y="20" width="360" height="180" rx="4" fill="#010d01" stroke="${color}20" stroke-width="1"/>
+      <!-- Ordinadors -->
+      <rect x="35" y="35" width="80" height="55" rx="3" fill="#020f02" stroke="${color}40" stroke-width="1.5"/>
+      <rect x="38" y="38" width="74" height="45" rx="2" fill="#000"/>
+      ${Array.from({length:5},(_,i)=>`<rect x="42" y="${41+i*8}" width="${20+Math.sin(i)*15}" height="4" rx="1" fill="${color}" opacity="${.2+i*.08}"/>`).join('')}
+      <text x="75" y="102" font-family="monospace" font-size="5" fill="${color}80" text-anchor="middle">SISTEMA ERR</text>
+      <!-- Segon ordinador -->
+      <rect x="135" y="35" width="80" height="55" rx="3" fill="#020f02" stroke="${color}30" stroke-width="1"/>
+      <rect x="138" y="38" width="74" height="45" rx="2" fill="#000"/>
+      <text x="175" y="58" font-family="monospace" font-size="6" fill="${color}60" text-anchor="middle">01000001</text>
+      <text x="175" y="68" font-family="monospace" font-size="6" fill="${color}60" text-anchor="middle">01001001</text>
+      <text x="175" y="78" font-family="monospace" font-size="5" fill="${color}40" text-anchor="middle">XIFRAT IA-2087</text>
+      <!-- Alarma -->
+      <circle cx="310" cy="55" r="22" fill="#1a0000" stroke="#ff2d2d" stroke-width="2" filter="url(#bkglow)">
+        <animate attributeName="fill" values="#1a0000;#3a0000;#1a0000" dur="1s" repeatCount="indefinite"/>
+      </circle>
+      <text x="310" y="59" font-size="18" text-anchor="middle">☢️</text>
+      <!-- Porta -->
+      <rect x="340" y="90" width="38" height="70" rx="2" fill="#010d01" stroke="${color}50" stroke-width="2"/>
+      <rect x="344" y="94" width="30" height="62" rx="1" fill="#000506"/>
+      <circle cx="368" cy="125" r="4" fill="${color}40" stroke="${color}" stroke-width="1"/>
+      <text x="359" y="148" font-family="monospace" font-size="5" fill="#ff2d2d" text-anchor="middle">🔒</text>
+      <!-- Terra -->
+      <rect x="20" y="170" width="360" height="30" rx="2" fill="#010a01"/>
+      <line x1="20" y1="170" x2="380" y2="170" stroke="${color}30" stroke-width="1.5"/>
+      <!-- Objectes sala -->
+      <rect x="55" y="130" width="50" height="35" rx="2" fill="#020f02" stroke="${color}20" stroke-width="1"/>
+      <text x="80" y="152" font-family="monospace" font-size="7" fill="${color}50" text-anchor="middle">📋 NOTES</text>
+      <!-- Indicador fase -->
+      <text x="200" y="210" font-family="monospace" font-size="5" fill="${color}60" text-anchor="middle">BÚNQUER B-7 — SALA CONTROL — FASE ${phase+1}</text>
+      <!-- Llum parpellejant -->
+      <circle cx="200" cy="25" r="5" fill="${color}" opacity=".7" filter="url(#bkglow)">
+        <animate attributeName="opacity" values=".7;.2;.7" dur="2s" repeatCount="indefinite"/>
+      </circle>
+    </svg>`;
+  },
+
+  // ─────────────────────────────────────────────
+  //  BUNKER TERMINAL — Pantalla de desxifrat
+  // ─────────────────────────────────────────────
+  bunkerTerminal: function(config = {}) {
+    const { color = '#00ff41', encoded = 'HF' } = config;
+    const lines = ['> SISTEMA INICIANT...','> CONNEXIÓ ESTABLERTA','> ls /classified/','  IA-PROTOCOL.bin','  CULPABLE.enc  ← XIFRAT','> cat CULPABLE.enc'];
+    return `<div style="background:#000;border:1px solid ${color}50;border-radius:6px;padding:12px;font-family:monospace;max-width:460px;width:100%">
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <div style="width:10px;height:10px;border-radius:50%;background:#ff4444"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:#ffd700"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:${color}"></div>
+        <span style="margin-left:8px;font-size:.6rem;color:${color}60">root@bunker-b7:~$</span>
+      </div>
+      ${lines.map((l,i)=>`<div style="font-size:.72rem;color:${i<3?color+'80':i===4?'#ff2d2d':color+'50'};margin-bottom:3px;animation:none">${l}</div>`).join('')}
+      <div style="font-size:1.1rem;letter-spacing:8px;color:#ff2d2d;text-align:center;padding:10px;border:1px solid #ff2d2d40;border-radius:4px;margin:8px 0;font-weight:bold">${encoded}</div>
+      <div style="font-size:.6rem;color:${color}60;text-align:center">⬆ MISSATGE XIFRAT — Cal roda César per desxifrar</div>
+    </div>`;
+  },
+
+  // ─────────────────────────────────────────────
+  //  BUNKER PANEL — Panell de control amb llums
+  // ─────────────────────────────────────────────
+  bunkerPanel: function(config = {}) {
+    const { color = '#00ff41' } = config;
+    const btnColors = ['#00cc33','#ff2222','#2266ff','#ffaa00'];
+    const btnLabels = ['OXIGEN','REACTOR','AGUA','PORTES'];
+    return `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:500px;background:linear-gradient(180deg,#1a1a1a,#0d0d0d);border-radius:8px;border:2px solid ${color}40">
+      <defs><filter id="pg"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      <!-- Header -->
+      <rect x="10" y="10" width="380" height="30" rx="3" fill="rgba(0,0,0,.5)"/>
+      <text x="200" y="30" font-family="monospace" font-size="10" fill="${color}" text-anchor="middle" letter-spacing="4">PANELL PROTOCOLS D'EMERGÈNCIA</text>
+      <!-- 4 botons Simon -->
+      ${btnColors.map((bc,i)=>`
+        <rect x="${50+i*80}" y="55" width="60" height="80" rx="8" fill="${bc}30" stroke="${bc}" stroke-width="2">
+          <animate attributeName="opacity" values="0.7;1;0.7" dur="${1.2+i*.3}s" repeatCount="indefinite"/>
+        </rect>
+        <circle cx="${80+i*80}" cy="85" r="18" fill="${bc}50" filter="url(#pg)"/>
+        <text x="${80+i*80}" y="90" font-size="14" text-anchor="middle">${['🟢','🔴','🔵','🟡'][i]}</text>
+        <text x="${80+i*80}" y="128" font-family="monospace" font-size="6" fill="${bc}" text-anchor="middle">${btnLabels[i]}</text>
+      `).join('')}
+      <!-- Status bar -->
+      <rect x="20" y="155" width="360" height="20" rx="3" fill="rgba(0,0,0,.6)" stroke="${color}30"/>
+      <text x="200" y="168" font-family="monospace" font-size="7" fill="${color}80" text-anchor="middle">SEQÜÈNCIA: OBSERVA I REPETEIX EN ORDRE EXACTE</text>
+      <!-- Alarm indicators -->
+      ${Array.from({length:8},(_,i)=>`<circle cx="${30+i*50}" cy="188" r="4" fill="${i%2===0?'#ff2d2d':'#ff990050'}">
+        <animate attributeName="fill" values="${i%2===0?'#ff2d2d;#330000;#ff2d2d':'#ff9900;#333300;#ff9900'}" dur="${.5+i*.1}s" repeatCount="indefinite"/>
+      </circle>`).join('')}
+    </svg>`;
+  },
+
+  // ─────────────────────────────────────────────
+  //  BUNKER MAP — Mapa del búnquer
+  // ─────────────────────────────────────────────
+  bunkerMap: function(config = {}) {
+    const { color = '#00ff41' } = config;
+    return `<svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:500px;background:#000d00;border-radius:8px;border:1px solid ${color}30">
+      <!-- Grid del mapa -->
+      ${Array.from({length:9},(_,i)=>`<line x1="${i*50}" y1="0" x2="${i*50}" y2="220" stroke="${color}12" stroke-width=".5"/>
+        <line x1="0" y1="${i*28}" x2="400" y2="${i*28}" stroke="${color}12" stroke-width=".5"/>`).join('')}
+      <!-- Corredors -->
+      <rect x="40" y="40" width="320" height="140" rx="4" fill="none" stroke="${color}30" stroke-width="1" stroke-dasharray="4,2"/>
+      <line x1="200" y1="40" x2="200" y2="180" stroke="${color}25" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <line x1="40" y1="110" x2="360" y2="110" stroke="${color}25" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <!-- Zones -->
+      <rect x="50" y="50" width="70" height="50" rx="3" fill="${color}08" stroke="${color}30" stroke-width="1"/>
+      <text x="85" y="73" font-family="monospace" font-size="7" fill="${color}60" text-anchor="middle">🚿 DUTXES</text>
+      <rect x="165" y="50" width="70" height="50" rx="3" fill="${color}08" stroke="${color}30" stroke-width="1"/>
+      <text x="200" y="73" font-family="monospace" font-size="7" fill="${color}60" text-anchor="middle">🍽️ MENJADOR</text>
+      <rect x="280" y="50" width="70" height="50" rx="3" fill="${color}20" stroke="${color}" stroke-width="2">
+        <animate attributeName="opacity" values="1;.6;1" dur="1.5s" repeatCount="indefinite"/>
+      </rect>
+      <text x="315" y="68" font-family="monospace" font-size="7" fill="${color}" text-anchor="middle" font-weight="bold">⚡ GENERADOR</text>
+      <text x="315" y="80" font-family="monospace" font-size="6" fill="${color}80" text-anchor="middle">← OBJECTIU</text>
+      <rect x="100" y="125" width="70" height="45" rx="3" fill="${color}08" stroke="${color}30" stroke-width="1"/>
+      <text x="135" y="150" font-family="monospace" font-size="7" fill="${color}60" text-anchor="middle">🏥 INFERMERIA</text>
+      <rect x="230" y="125" width="70" height="45" rx="3" fill="${color}08" stroke="${color}30" stroke-width="1"/>
+      <text x="265" y="150" font-family="monospace" font-size="7" fill="${color}60" text-anchor="middle">🔧 MAGATZEM</text>
+      <!-- Entrada -->
+      <rect x="180" y="175" width="40" height="15" rx="2" fill="${color}20" stroke="${color}60"/>
+      <text x="200" y="186" font-family="monospace" font-size="6" fill="${color}80" text-anchor="middle">ENTRADA</text>
+      <!-- Títol -->
+      <text x="200" y="212" font-family="monospace" font-size="6" fill="${color}50" text-anchor="middle">PLÀNOL BÚNQUER B-7 — ZONA GENERADOR: EST</text>
+    </svg>`;
+  },
+
+  // ─────────────────────────────────────────────
+  //  BUNKER DOOR — Porta hermètica amb pany
+  // ─────────────────────────────────────────────
+  bunkerDoor: function(config = {}) {
+    const { color = '#00ff41' } = config;
+    return `<svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:500px;background:#000d00;border-radius:8px;border:1px solid ${color}30">
+      <!-- Paret -->
+      <rect x="20" y="20" width="360" height="180" rx="4" fill="#010a01" stroke="${color}15" stroke-width="1"/>
+      <!-- Porta gran -->
+      <rect x="120" y="30" width="160" height="170" rx="4" fill="#020f02" stroke="${color}" stroke-width="3"/>
+      <rect x="128" y="38" width="144" height="154" rx="3" fill="#010808"/>
+      <!-- Reblons de la porta -->
+      ${[[130,40],[260,40],[130,190],[260,190],[130,115],[260,115]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="5" fill="${color}40" stroke="${color}60" stroke-width="1"/>`).join('')}
+      <!-- Pany central -->
+      <rect x="178" y="90" width="44" height="55" rx="6" fill="#0a1a0a" stroke="${color}" stroke-width="2.5"/>
+      <circle cx="200" cy="108" r="12" fill="none" stroke="${color}" stroke-width="2"/>
+      <circle cx="200" cy="108" r="5" fill="${color}60"/>
+      <!-- Dial de codi -->
+      ${Array.from({length:4},(_,i)=>`
+        <rect x="${152+i*22}" y="128" width="18" height="24" rx="3" fill="#000" stroke="${color}80" stroke-width="1.5"/>
+        <text x="${161+i*22}" y="144" font-family="monospace" font-size="11" fill="${color}" text-anchor="middle">?</text>
+      `).join('')}
+      <!-- Indicadors llum -->
+      <circle cx="155" cy="170" r="5" fill="#ff2d2d">
+        <animate attributeName="fill" values="#ff2d2d;#330000;#ff2d2d" dur=".8s" repeatCount="indefinite"/>
+      </circle>
+      <text x="170" y="174" font-family="monospace" font-size="7" fill="#ff2d2d">BLOQUEJADA</text>
+      <!-- Títol -->
+      <text x="200" y="215" font-family="monospace" font-size="7" fill="${color}50" text-anchor="middle">PORTA HERMÈTICA — SECTOR SORTIDA — COD: ????</text>
+    </svg>`;
+  },
+
+  // ─────────────────────────────────────────────
+  //  BUNKER EXIT — Sortida final amb sopa de lletres
+  // ─────────────────────────────────────────────
+  bunkerExit: function(config = {}) {
+    const { color = '#00ff41' } = config;
+    const words = ['OXIGEN','SORTIDA','BUNQUER','ALARMA','VIRUS'];
+    return `<svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:500px;background:#000d00;border-radius:8px;border:2px solid ${color}50">
+      <defs><filter id="eg"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      <!-- Header alarma -->
+      <rect x="0" y="0" width="400" height="35" rx="4" fill="#1a0000">
+        <animate attributeName="fill" values="#1a0000;#2a0000;#1a0000" dur=".6s" repeatCount="indefinite"/>
+      </rect>
+      <text x="200" y="22" font-family="monospace" font-size="10" fill="#ff2d2d" text-anchor="middle" letter-spacing="3" filter="url(#eg)">⚠ AUTODESTRUCCIÓ ACTIVADA ⚠</text>
+      <!-- Paraules a trobar -->
+      <text x="200" y="50" font-family="monospace" font-size="7" fill="${color}80" text-anchor="middle">PARAULES DE SEGURETAT:</text>
+      ${words.map((w,i)=>`<text x="${50+i*70}" y="64" font-family="monospace" font-size="6.5" fill="${color}" text-anchor="middle">${w}</text>`).join('')}
+      <!-- Graella de lletres (decorativa) -->
+      <rect x="30" y="72" width="340" height="120" rx="3" fill="rgba(0,255,65,.03)" stroke="${color}20"/>
+      ${Array.from({length:10},(_,r)=>Array.from({length:14},(_,c)=>`
+        <text x="${45+c*23}" y="${88+r*11}" font-family="monospace" font-size="8" fill="${color}${r===2&&c===1?'ff':r===4&&c===3?'ff':'30'}">${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random()*26)]}</text>
+      `).join('')).join('')}
+      <!-- Sortida -->
+      <rect x="150" y="195" width="100" height="18" rx="3" fill="${color}15" stroke="${color}60" stroke-width="1">
+        <animate attributeName="opacity" values="1;.4;1" dur="1s" repeatCount="indefinite"/>
+      </rect>
+      <text x="200" y="207" font-family="monospace" font-size="7" fill="${color}" text-anchor="middle" letter-spacing="2">🚀 SORTIDA D'EMERGÈNCIA</text>
+    </svg>`;
+  },
+
+  // ─────────────────────────────────────────────
   //  ADN HELIX — Visualización mejorada
   // ─────────────────────────────────────────────
   dnaHelix: function(config = {}) {
