@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>☢️ BÚNQUER 2087 — Supervivència</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 /* ═══════════════════ RESET & VARS ═══════════════════ */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -747,8 +750,56 @@ body::before{
 <body>
 <div class="alarm-overlay" id="alarmOverlay"></div>
 
+<!-- ═══════════════════ PANTALLA 0: LOBBY ═══════════════════ -->
+<div class="screen active" id="s-lobby">
+  <div class="intro-bg"></div>
+  <div class="intro-content" style="max-width:1100px">
+    <div class="hazard-stripe"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;text-align:left">
+      <!-- Esquerra: info joc -->
+      <div>
+        <div style="font-size:3rem;margin-bottom:8px;filter:drop-shadow(0 0 20px var(--green))">☢️</div>
+        <div class="intro-year" style="font-size:clamp(2rem,6vw,4rem)">Búnquer 2087</div>
+        <div class="intro-title" style="letter-spacing:4px;margin-bottom:16px">Supervivència · Expert · 60 min</div>
+        <div style="font-size:.82rem;line-height:1.9;color:rgba(184,255,184,.75);border-left:2px solid var(--border);padding-left:14px;margin-bottom:20px">
+          Any 2087. Una IA ha destruït la civilització. Sou els últims supervivents atrapats al Búnquer B-7. 
+          Oxigen per a 6 hores. Desxifreu els arxius, localitzeu el generador i activeu la sortida d'emergència.
+        </div>
+        <div style="font-size:.7rem;color:var(--dim);margin-bottom:8px;letter-spacing:3px">FASES DEL JOC</div>
+        <div style="font-size:.72rem;line-height:2;color:rgba(184,255,184,.6)">
+          01 · ☢️ DESPERTAR — Desxifrat binari<br>
+          02 · 🖥️ ARXIUS BINARIS — Terminal ASCII<br>
+          03 · ⚠️ PROTOCOLS — Seqüència d'alarmes<br>
+          04 · 🗺️ MAPA — Coordenades del generador<br>
+          05 · 🔌 PORTA HERMÈTICA — Elements químics<br>
+          06 · 🚨 SORTIDA FINAL — Compte enrere
+        </div>
+      </div>
+      <!-- Dreta: codi sala + equips -->
+      <div>
+        <div style="background:rgba(0,0,0,.6);border:1px solid var(--border);border-radius:6px;padding:24px;margin-bottom:16px;text-align:center">
+          <div style="font-size:.6rem;letter-spacing:4px;color:var(--dim);margin-bottom:8px">CODI DE SALA</div>
+          <div id="roomCodeDisplay" style="font-family:'Orbitron',sans-serif;font-size:3.5rem;font-weight:900;letter-spacing:12px;color:var(--green);text-shadow:0 0 20px var(--green)">----</div>
+          <div style="font-size:.65rem;color:var(--dim);margin:8px 0">Alumnes: <span style="color:var(--amber)">movil.html</span> → introduïu el codi</div>
+          <div id="lobbyQR" style="display:flex;justify-content:center;margin:12px 0;background:#fff;padding:10px;border-radius:6px;width:fit-content;margin:12px auto"></div>
+          <div style="font-size:.6rem;color:var(--dim)">Escaneja per obrir movil.html</div>
+        </div>
+        <div style="background:rgba(0,0,0,.6);border:1px solid var(--border);border-radius:6px;padding:20px;margin-bottom:16px">
+          <div style="font-size:.6rem;letter-spacing:3px;color:var(--green);margin-bottom:12px">EQUIPS CONNECTATS <span id="teamsCountLbl" style="color:var(--amber)">(0)</span></div>
+          <div id="lobbyTeamsList" style="font-size:.75rem;min-height:40px;color:rgba(184,255,184,.5);font-style:italic">Esperant equips...</div>
+        </div>
+        <button id="lobbyStartBtn" onclick="startGameFromLobby()" disabled
+          style="width:100%;padding:16px;font-family:'Orbitron',sans-serif;font-size:.9rem;font-weight:700;letter-spacing:4px;color:#000;background:var(--green);border:none;border-radius:3px;cursor:pointer;box-shadow:var(--glow);transition:all .3s;opacity:.4">
+          ⚡ INICIAR MISSIÓ
+        </button>
+      </div>
+    </div>
+    <div class="hazard-stripe" style="margin-top:30px;margin-bottom:0"></div>
+  </div>
+</div>
+
 <!-- ═══════════════════ PANTALLA 1: INTRO ═══════════════════ -->
-<div class="screen active" id="s-intro">
+<div class="screen" id="s-intro">
   <div class="intro-bg"></div>
   <div class="intro-content">
     <div class="hazard-stripe"></div>
@@ -1239,9 +1290,13 @@ body::before{
 
 <!-- ═══════════════════ SCOREBOARD ═══════════════════ -->
 <div class="scoreboard" id="scoreboard">
-  <div class="scoreboard-title">🏆 RÀNQUING EQUIPS</div>
+  <div class="scoreboard-title">🏆 RÀNQUING EN VIU</div>
   <div id="scoreList">
-    <div style="font-size:.65rem;color:var(--dim);font-style:italic">Mode un jugador actiu</div>
+    <div style="font-size:.65rem;color:var(--dim);font-style:italic">Esperant equips...</div>
+  </div>
+  <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+    <div style="font-size:.5rem;letter-spacing:2px;color:var(--dim);margin-bottom:6px">RESPOSTES</div>
+    <div id="liveAnswersList" style="font-size:.65rem;max-height:120px;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -1312,6 +1367,145 @@ body::before{
 
 <!-- ═══════════════════ JAVASCRIPT ═══════════════════ -->
 <script>
+// ══════════════════════════════════════════════
+//  FIREBASE
+// ══════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyCIWY-_Sv-Bi5PHYy-IUKX3LrC0VxMcxGg",
+  authDomain: "impostor-f0c2d.firebaseapp.com",
+  databaseURL: "https://impostor-f0c2d-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "impostor-f0c2d",
+  storageBucket: "impostor-f0c2d.firebasestorage.app",
+  messagingSenderId: "323566797024",
+  appId: "1:323566797024:web:bb7651fe1f8bc08f7a1085"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ── Helpers Firebase ──
+let roomCode = '';
+let teamsRef = null, scoresRef = null, answersRef = null;
+
+function genCode(){ return Math.random().toString(36).substring(2,6).toUpperCase(); }
+
+// ── LOBBY ──
+function initLobby(){
+  roomCode = genCode();
+  document.getElementById('roomCodeDisplay').textContent = roomCode;
+  // QR
+  try{
+    new QRCode(document.getElementById('lobbyQR'), {
+      text: 'https://escapadelasala.vercel.app/movil.html',
+      width:120, height:120, colorDark:'#000', colorLight:'#fff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  }catch(e){}
+  // Escolta equips
+  teamsRef = db.ref(`rooms/${roomCode}/teams`);
+  teamsRef.on('value', snap => {
+    const data = snap.val() || {};
+    const arr = Object.values(data);
+    document.getElementById('teamsCountLbl').textContent = `(${arr.length})`;
+    const list = document.getElementById('lobbyTeamsList');
+    if(arr.length === 0){
+      list.innerHTML = '<span style="font-style:italic;color:rgba(184,255,184,.3)">Esperant equips...</span>';
+    } else {
+      list.innerHTML = arr.map(t=>`<div style="padding:4px 0;border-bottom:1px solid rgba(0,255,65,.08)">${t.emoji||'⚡'} <strong>${t.name}</strong></div>`).join('');
+    }
+    const btn = document.getElementById('lobbyStartBtn');
+    btn.disabled = arr.length === 0;
+    btn.style.opacity = arr.length > 0 ? '1' : '0.4';
+  });
+}
+
+function startGameFromLobby(){
+  if(teamsRef) teamsRef.off();
+  // Publica la primera fase a Firebase perquè els mòbils la rebin
+  broadcastPhase(1);
+  listenAnswersFirebase();
+  listenScoresFirebase();
+  // Mostra intro cinematogràfica
+  showScreen('s-intro');
+}
+
+function broadcastPhase(phaseNum){
+  const phases = {
+    1: { name:{ca:"☢️ DESPERTAR",es:"☢️ DESPERTAR"}, narrativeTitle:{ca:"Registres de l'any zero",es:"Registros del año cero"}, narrativeText:{ca:"El búnquer ha entrat en mode emergència. Desxifra el codi binari per desbloquejar la primera porta.",es:"El búnker ha entrado en modo emergencia. Descifra el código binario para desbloquear la primera puerta."}, enigma:{ca:"La diferència entre l'any de Txernòbil (1986) i el final de la Guerra Freda (1991). Valor absolut.",es:"La diferencia entre el año de Chernóbil (1986) y el final de la Guerra Fría (1991). Valor absoluto."}, hint:{ca:"|1986 − 1991| = ?",es:"|1986 − 1991| = ?"}, answer:"5", points:100 },
+    2: { name:{ca:"🖥️ ARXIUS BINARIS",es:"🖥️ ARCHIVOS BINARIOS"}, narrativeTitle:{ca:"El culpable",es:"El culpable"}, narrativeText:{ca:"Els arxius estan xifrats en ASCII. Desxifra els dos bytes per trobar les inicials del responsable.",es:"Los archivos están cifrados en ASCII. Descifra los dos bytes para encontrar las iniciales del responsable."}, enigma:{ca:"01000001=A(65). 01001001=I(73). Escriu les inicials del culpable (2 lletres majúscules).",es:"01000001=A(65). 01001001=I(73). Escribe las iniciales del culpable (2 letras mayúsculas)."}, hint:{ca:"A=65, I=73",es:"A=65, I=73"}, answer:"AI", points:150 },
+    3: { name:{ca:"⚠️ PROTOCOLS",es:"⚠️ PROTOCOLOS"}, narrativeTitle:{ca:"Seqüència de supervivència",es:"Secuencia de supervivencia"}, narrativeText:{ca:"Cal activar els protocols en ordre exacte. Memoritza la seqüència de colors i repeteix-la.",es:"Hay que activar los protocolos en orden exacto. Memoriza la secuencia de colores y repítela."}, enigma:{ca:"Memoritza i repeteix la seqüència de 5 colors del panell d'alarmes.",es:"Memoriza y repite la secuencia de 5 colores del panel de alarmas."}, hint:{ca:"Observa bé la seqüència completa abans de repetir.",es:"Observa bien la secuencia completa antes de repetir."}, answer:"SIMON", points:150, minigame:"simon", simonLevel:5 },
+    4: { name:{ca:"🗺️ MAPA",es:"🗺️ MAPA"}, narrativeTitle:{ca:"Localitzar el generador",es:"Localizar el generador"}, narrativeText:{ca:"El generador de reserva és a les coordenades X=7, Y=4 del mapa del búnquer.",es:"El generador de reserva está en las coordenadas X=7, Y=4 del mapa del búnker."}, enigma:{ca:"Localitza el generador al mapa. Coordenades: X=7, Y=4. Escriu '74' per confirmar.",es:"Localiza el generador en el mapa. Coordenadas: X=7, Y=4. Escribe '74' para confirmar."}, hint:{ca:"X=7 és la 8a columna. Y=4 és la 5a fila des de baix.",es:"X=7 es la 8a columna. Y=4 es la 5a fila desde abajo."}, answer:"74", points:200 },
+    5: { name:{ca:"🔌 PORTA HERMÈTICA",es:"🔌 PUERTA HERMÉTICA"}, narrativeTitle:{ca:"Elements químics",es:"Elementos químicos"}, narrativeText:{ca:"La porta necessita els primers 5 elements en ordre atòmic: H, He, Li, Be, B.",es:"La puerta necesita los primeros 5 elementos en orden atómico: H, He, Li, Be, B."}, enigma:{ca:"Escriu els símbols dels 5 primers elements en ordre atòmic, seguits (sense espais).",es:"Escribe los símbolos de los 5 primeros elementos en orden atómico, juntos (sin espacios)."}, hint:{ca:"Hidrogen(1) Heli(2) Liti(3) Beril·li(4) Bor(5)",es:"Hidrógeno(1) Helio(2) Litio(3) Berilio(4) Boro(5)"}, answer:"HHELIBB", points:200, minigame:"lockPuzzle" },
+    6: { name:{ca:"🚨 SORTIDA FINAL",es:"🚨 SALIDA FINAL"}, narrativeTitle:{ca:"Compte enrere",es:"Cuenta atrás"}, narrativeText:{ca:"El virus ha iniciat l'autodestrucció. Calculeu els minuts d'oxigen restants per activar la sortida.",es:"El virus ha iniciado la autodestrucción. Calculad los minutos de oxígeno restantes para activar la salida."}, enigma:{ca:"6 hores d'oxigen menys 45 minuts gastats = ? minuts restants.",es:"6 horas de oxígeno menos 45 minutos gastados = ? minutos restantes."}, hint:{ca:"6×60 = 360 minuts totals. Resta 45.",es:"6×60 = 360 minutos totales. Resta 45."}, answer:"315", points:250, isFinal:true }
+  };
+  const ph = phases[phaseNum];
+  if(!ph) return;
+  const data = {
+    phase: phaseNum - 1,
+    totalPhases: 6,
+    enigma: ph.enigma,
+    phaseName: ph.name,
+    narrativeTitle: ph.narrativeTitle,
+    narrativeText: ph.narrativeText,
+    answer: ph.answer,
+    points: ph.points,
+    hint: ph.hint || null,
+    minigame: ph.minigame || null,
+    simonLevel: ph.simonLevel || null,
+    storyId: 'bunker',
+    storyTitle: {ca:'Búnquer 2087',es:'Búnker 2087'},
+    storyEmoji: '☢️',
+    storyColor: '#00ff41',
+    storyBg: 'radial-gradient(ellipse at 30% 50%,#001a00,#000d00 50%,#020202)',
+    lives: 3,
+    isFinal: !!ph.isFinal,
+    roomCode,
+    ts: Date.now()
+  };
+  db.ref(`rooms/${roomCode}/phase`).set(data);
+  db.ref(`rooms/${roomCode}/answers`).remove();
+}
+
+function listenAnswersFirebase(){
+  if(answersRef) answersRef.off();
+  answersRef = db.ref(`rooms/${roomCode}/answers`);
+  answersRef.on('child_added', snap => {
+    const ans = snap.val();
+    const isOk = ans.correct;
+    // Mostra al scoreboard lateral
+    const list = document.getElementById('liveAnswersList');
+    const div = document.createElement('div');
+    div.style.cssText = `padding:2px 0;border-bottom:1px solid rgba(0,255,65,.06);color:${isOk?'var(--green)':'var(--red)'}`;
+    div.textContent = `${ans.emoji||'⚡'} ${ans.teamName}: ${ans.answer} ${isOk?'✓':'✗'}`;
+    list.prepend(div);
+    // Flash alarm si és incorrecte
+    if(!isOk){
+      const overlay = document.getElementById('alarmOverlay');
+      overlay.style.background = 'rgba(255,0,0,.1)';
+      setTimeout(()=>overlay.style.background='', 400);
+    }
+  });
+}
+
+function listenScoresFirebase(){
+  if(scoresRef) scoresRef.off();
+  scoresRef = db.ref(`rooms/${roomCode}/scores`);
+  scoresRef.on('value', snap => {
+    const data = snap.val() || {};
+    const sorted = Object.entries(data).sort((a,b)=>b[1].score-a[1].score);
+    const list = document.getElementById('scoreList');
+    if(!sorted.length){
+      list.innerHTML = '<div style="font-size:.65rem;color:var(--dim);font-style:italic">Esperant equips...</div>';
+      return;
+    }
+    list.innerHTML = sorted.slice(0,6).map(([id,t],i)=>`
+      <div class="score-team">
+        <span class="rank">${i+1}</span>
+        <span class="name">${t.emoji||'⚡'} ${t.name}</span>
+        <span class="pts">${t.score}</span>
+      </div>`).join('');
+  });
+}
+
 // ══════════════════════════════════════════════
 //  ESTAT GLOBAL
 // ══════════════════════════════════════════════
@@ -1452,6 +1646,8 @@ function startGame(){
   showScreen('s-sala');
   updateHUD();
   updatePhaseChips();
+  // Broadcast fase 1 als mòbils
+  broadcastPhase(1);
 }
 
 // ══════════════════════════════════════════════
@@ -1513,12 +1709,10 @@ function openPhase(n){
     STATE.phase = n;
     updateHUD();
     updatePhaseChips();
-    // Update mission summary in fase 6
     if(n===6) updateMissionSummary();
-    // Start detonation timer hint
-    if(n===6){
-      document.getElementById('alarmOverlay').classList.add('flash');
-    }
+    if(n===6) document.getElementById('alarmOverlay').classList.add('flash');
+    // Broadcast als mòbils
+    broadcastPhase(n);
   }
 }
 
@@ -2104,6 +2298,11 @@ function forceGameOver(){ triggerGameOver('Forçat pel professor'); }
 // ══════════════════════════════════════════════
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape') closeFase();
+});
+
+// Inicialitza el lobby quan carrega la pàgina
+window.addEventListener('load', ()=>{
+  initLobby();
 });
 </script>
 </body>
