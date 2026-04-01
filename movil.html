@@ -206,6 +206,69 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:#fff;font-famil
 @keyframes wp{0%,100%{box-shadow:0 0 0 0 rgba(0,245,255,.25)}50%{box-shadow:0 0 0 16px transparent}}
 
 /* Utils */
+
+/* ═══ SIMON BUTTONS — FIX: eren invisibles ═══ */
+.sb2{width:100%;aspect-ratio:1;border:none;border-radius:14px;cursor:pointer;transition:all .25s;-webkit-user-select:none;font-size:0;position:relative;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.sb2.r{background:radial-gradient(135deg,#ff5555,#cc0000);border:3px solid #ff8888}
+.sb2.b{background:radial-gradient(135deg,#5588ff,#0033cc);border:3px solid #88aaff}
+.sb2.g{background:radial-gradient(135deg,#44dd66,#008833);border:3px solid #88ffaa}
+.sb2.y{background:radial-gradient(135deg,#ffdd44,#cc8800);border:3px solid #ffee99}
+.sb2.act{filter:brightness(2) saturate(1.5);transform:scale(.92);box-shadow:0 0 30px currentColor}
+.sb2::after{content:'';position:absolute;inset:0;border-radius:inherit;background:rgba(255,255,255,.15);opacity:0;transition:opacity .2s}
+.sb2:active::after{opacity:1}
+
+/* ═══ WORD GAME (Xifres i Lletres, Ahorcado) ═══ */
+.letter-tile{display:inline-flex;align-items:center;justify-content:center;width:42px;height:52px;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.2);border-radius:8px;font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:900;color:#fff;cursor:pointer;transition:all .2s;-webkit-user-select:none;user-select:none}
+.letter-tile:active,.letter-tile.sel{background:rgba(255,107,0,.3);border-color:var(--ac);transform:scale(.95)}
+.letter-tile.used{opacity:.2;pointer-events:none;filter:grayscale(1)}
+.letter-tile.ok{background:rgba(0,255,136,.25);border-color:var(--gn);color:var(--gn)}
+.letter-tile.ko{background:rgba(255,51,51,.2);border-color:var(--rd);color:var(--rd)}
+.word-slots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:10px 0}
+.word-slot{width:36px;height:44px;border-bottom:3px solid rgba(255,255,255,.4);display:flex;align-items:flex-end;justify-content:center;font-size:1.3rem;font-weight:900;font-family:'Orbitron',sans-serif;color:#fff;padding-bottom:4px;transition:all .3s}
+.word-slot.filled{border-color:var(--bl)}
+.word-slot.ok{border-color:var(--gn);color:var(--gn)}
+
+/* ═══ MEMORY GAME ═══ */
+.mem-grid{display:grid;gap:8px}
+.mem-card{aspect-ratio:1;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.6rem;transition:all .35s cubic-bezier(.4,0,.2,1);border:2px solid transparent;background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.04));-webkit-user-select:none;user-select:none;backface-visibility:hidden}
+.mem-card.hidden-c{font-size:0;background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(0,245,255,.1));border-color:rgba(255,255,255,.15)}
+.mem-card.flash{background:rgba(255,107,0,.4)!important;border-color:var(--ac)!important;transform:scale(.9)}
+.mem-card.matched{background:rgba(0,255,136,.2)!important;border-color:var(--gn)!important;pointer-events:none;animation:matchPop .4s ease}
+.mem-card.wrong-c{background:rgba(255,51,51,.25)!important;border-color:var(--rd)!important}
+@keyframes matchPop{0%{transform:scale(.9)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+
+/* ═══ IMPOSTOR GAME ═══ */
+.imp-role{padding:16px;border-radius:14px;text-align:center;margin-bottom:10px;animation:rolePop .6s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rolePop{from{transform:scale(0) rotate(-10deg);opacity:0}to{transform:none;opacity:1}}
+.imp-role.crew{background:rgba(0,245,255,.12);border:2px solid var(--bl)}
+.imp-role.imp{background:rgba(255,51,51,.15);border:2px solid var(--rd)}
+.task-list{display:flex;flex-direction:column;gap:6px}
+.task-item{padding:10px 14px;border-radius:10px;border:1.5px solid var(--bd);font-size:.82rem;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.task-item.done{border-color:var(--gn);color:var(--gn);background:rgba(0,255,136,.08)}
+.task-item.sabotaged{border-color:var(--rd);color:var(--rd);background:rgba(255,51,51,.08)}
+.vote-btn{padding:10px;border:2px solid var(--rd);border-radius:10px;background:rgba(255,51,51,.1);color:var(--rd);font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;letter-spacing:1px}
+.vote-btn:active{background:rgba(255,51,51,.35);transform:scale(.97)}
+
+/* ═══ STOCK MARKET ═══ */
+.stock-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.04);border-radius:9px;margin-bottom:6px;border:1px solid rgba(255,255,255,.06)}
+.stock-btn{padding:7px 12px;border:none;border-radius:8px;font-family:'Orbitron',sans-serif;font-size:.58rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:1px}
+.stock-buy{background:rgba(0,255,136,.2);color:var(--gn);border:1px solid var(--gn)}
+.stock-sell{background:rgba(255,51,51,.15);color:var(--rd);border:1px solid var(--rd)}
+.stock-buy:active{background:rgba(0,255,136,.5)}
+.stock-sell:active{background:rgba(255,51,51,.4)}
+
+/* ═══ PAINTBALL / MARCIANITOS ═══ */
+.shoot-btn{width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,#ff3333,#990000);border:none;color:#fff;font-size:2rem;cursor:pointer;box-shadow:0 0 25px rgba(255,0,0,.5);transition:all .15s;-webkit-user-select:none;user-select:none}
+.shoot-btn:active{transform:scale(.88);box-shadow:0 0 50px rgba(255,0,0,.8)}
+.alien-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
+.alien{font-size:1.4rem;text-align:center;cursor:pointer;transition:all .2s;padding:4px;border-radius:8px;border:2px solid transparent}
+.alien:active{background:rgba(255,107,0,.3);border-color:var(--ac);transform:scale(.9)}
+.alien.hit{opacity:0;pointer-events:none;animation:explode .4s ease forwards}
+@keyframes explode{0%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)}100%{opacity:0;transform:scale(0)}}
+
+/* ═══ HANGMAN (Ahorcado) ═══ */
+.hangman-letters{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:8px 0}
+
 ::-webkit-scrollbar{width:2px}::-webkit-scrollbar-thumb{background:var(--ac)}
 .combo{position:fixed;top:60px;left:50%;transform:translateX(-50%);font-family:'Orbitron';font-size:.95rem;font-weight:900;color:var(--go);background:rgba(255,215,0,.1);border:1px solid var(--go);border-radius:16px;padding:6px 16px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none}
 .combo.on{opacity:1}
@@ -235,6 +298,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:#fff;font-famil
     <label class="lbl2">Avatar</label>
     <div class="emg" id="emg"></div>
     <button class="bx" onclick="joinRoom()">⚡ ENTRAR</button>
+    <button class="bx bx-s" onclick="initAudio()" style="margin-top:6px;font-size:.75rem">🔊 Activar So</button>
     <div id="errMsg" style="color:var(--rd);font-size:.8rem;margin-top:8px;text-align:center;display:none"></div>
   </div>
 </div>
@@ -396,9 +460,65 @@ function showErr(m){const e=document.getElementById('errMsg');e.textContent=m;e.
 //  AUDIO ENGINE
 // ════════════════════════════════════════════
 let aC=null;
+let bgMusic=null, bgGain=null, musicEnabled=true;
+
+// Iniciar context àudio amb primer gest d'usuari
+function initAudio(){
+  if(!aC){
+    try{
+      aC=new(window.AudioContext||window.webkitAudioContext)();
+      if(aC.state==='suspended') aC.resume();
+      startBgMusic();
+    }catch(e){}
+  } else if(aC.state==='suspended'){
+    aC.resume();
+    startBgMusic();
+  }
+}
+
+// Música ambient generada per Web Audio
+function startBgMusic(){
+  if(!musicEnabled||!aC||bgGain) return;
+  try{
+    bgGain=aC.createGain(); bgGain.gain.value=0; bgGain.connect(aC.destination);
+    const freqs=[55,82.5,110,165];
+    freqs.forEach((freq,i)=>{
+      const osc=aC.createOscillator(), g=aC.createGain();
+      osc.type=i===0?'sine':'triangle'; osc.frequency.value=freq;
+      g.gain.value=i===0?0.06:0.02;
+      const lfo=aC.createOscillator(), lg=aC.createGain();
+      lfo.frequency.value=0.07+i*0.03; lg.gain.value=freq*0.006;
+      lfo.connect(lg); lg.connect(osc.frequency);
+      lfo.start(); osc.connect(g); g.connect(bgGain); osc.start();
+    });
+    // Fade in suau
+    bgGain.gain.setTargetAtTime(0.15, aC.currentTime, 2);
+  }catch(e){}
+}
+
+function stopBgMusic(){
+  if(bgGain){bgGain.gain.setTargetAtTime(0,aC.currentTime,0.5);}
+}
+
+// Veu en off tetrica
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  setTimeout(()=>{
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang=lang==='ca'?'ca-ES':'es-ES';
+    u.rate=0.72; u.pitch=0.55; u.volume=1;
+    // Intentar veu masculina greu
+    const voices=window.speechSynthesis.getVoices();
+    const male=voices.find(v=>(v.lang.startsWith('ca')||v.lang.startsWith('es'))&&(v.name.toLowerCase().includes('male')||v.name.toLowerCase().includes('jorge')||v.name.toLowerCase().includes('carlos')));
+    if(male) u.voice=male;
+    window.speechSynthesis.speak(u);
+  }, 100);
+}
+
 function snd(type){
   try{
-    if(!aC)aC=new(window.AudioContext||window.webkitAudioContext)();
+    if(!aC)return; // no criar AudioContext sense gest previ
     if(aC.state==='suspended')aC.resume();
     const o=aC.createOscillator(),g=aC.createGain();
     o.connect(g);g.connect(aC.destination);
@@ -428,7 +548,7 @@ function joinRoom(){
   db.ref(`rooms/${code}/scores/${myId}`).set({name,emoji:selEmoji,score:0});
   document.getElementById('wCode').textContent=code;
   document.getElementById('wTeam').textContent=`${selEmoji} ${name}`;
-  snd('click');scr('s-wait');listen();
+  initAudio();snd('click');scr('s-wait');listen();
 }
 
 // ════════════════════════════════════════════
@@ -495,6 +615,7 @@ function showIntro(d){
   const fill=document.getElementById('trFill');if(fill)fill.style.animation='none';
 
   scr('s-intro');
+  initAudio();
   speak(story);
 }
 
@@ -827,20 +948,26 @@ function buildChallenge(d){
   const bbar=document.getElementById('bbar');
   c.innerHTML='';bbar.style.display='flex';
   const type=d.minigame;
-  if(type==='chessMove')           buildChessChallenge(c,d);
-  else if(type==='influencerQuiz'||type==='socialMedia') buildQuizChallenge(c,d);
-  else if(type==='simon')          buildSimonChallenge(c,d);
-  else if(type==='lockPuzzle')     buildLockChallenge(c,d);
-  else if(type==='memoryCards')    buildMemoryChallenge(c,d);
-  else if(type==='wordSearch')     buildWSChallenge(c,d);
-  else if(type==='rapBattle')      buildRapChallenge(c,d);
-  else if(type==='swordDuel')      buildSwordChallenge(c,d);
-  else if(type==='navigation')     buildNavChallenge(c,d);
-  else if(type==='roomExplorer')   buildRoomChallenge(c,d);
-  else if(type==='cipherDial')     buildCipherChallenge(c,d);
-  else if(type==='puzzleSlider')   buildSliderChallenge(c,d);
-  else if(type==='mapNavigator')   buildMapChallenge(c,d);
-  else                             buildDefaultChallenge(c,d);
+  if(type==='chessMove')                    buildChessChallenge(c,d);
+  else if(type==='influencerQuiz'||type==='socialMedia'||type==='quiz') buildQuizChallenge(c,d);
+  else if(type==='simon')                   buildSimonChallenge(c,d);
+  else if(type==='lockPuzzle'||type==='lock') buildLockChallenge(c,d);
+  else if(type==='memoryCards'||type==='memory') buildMemoryChallenge(c,d);
+  else if(type==='hangman'||type==='ahorcado') buildHangmanChallenge(c,d);
+  else if(type==='wordGame'||type==='xifres') buildWordChallenge(c,d);
+  else if(type==='impostor')                buildImpostorChallenge(c,d);
+  else if(type==='stocks'||type==='borsa')  buildStockChallenge(c,d);
+  else if(type==='aliens'||type==='marcianitos') buildAlienChallenge(c,d);
+  else if(type==='cipher'||type==='cipherDial') buildCipherChallenge(c,d);
+  else if(type==='puzzleSlider'||type==='slider') buildSliderChallenge(c,d);
+  else if(type==='wordSearch')              buildWSChallenge(c,d);
+  else if(type==='rapBattle')               buildRapChallenge(c,d);
+  else if(type==='swordDuel')               buildSwordChallenge(c,d);
+  else if(type==='navigation')              buildNavChallenge(c,d);
+  else if(type==='roomExplorer')            buildRoomChallenge(c,d);
+  else if(type==='mapNavigator')            buildMapChallenge(c,d);
+  else if(type==='sequence')                buildSimonChallenge(c,d);
+  else                                      buildDefaultChallenge(c,d);
 }
 
 // ── DEFAULT CHALLENGE ──
@@ -1088,24 +1215,107 @@ function buildQuizChallenge(c,d){
 
 // ── SIMON ──
 function buildSimonChallenge(c,d){
-  const maxL=d.simonLevel||4;let seq=[],pI=0,pT=false,lvl=1;
+  const maxL=d.simonLevel||4;
+  const COLORS=['🔴','🔵','🟢','🟡'];
+  const NAMES=['VERMELL','BLAU','VERD','GROC'];
+  const NOTES=[523,659,784,988]; // Do Mi Sol Si
+  let seq=[],pI=0,pT=false,lvl=1;
+  
   function add(){seq.push(Math.floor(Math.random()*4));pI=0;pT=false;play();}
-  function play(){upS('👁️ Observa...');let i=0;const iv=setInterval(()=>{if(i>=seq.length){clearInterval(iv);pT=true;upS('🎮 El teu torn!');return;}fl(seq[i]);snd('click');i++;},700);}
-  function fl(idx){const ids=['sR','sB','sG','sY'];const el=document.getElementById(ids[idx]);if(el){el.classList.add('act');setTimeout(()=>el.classList.remove('act'),320);}}
+  function play(){
+    upS('👁️ Observa la seqüència...');
+    let i=0;
+    const iv=setInterval(()=>{
+      if(i>=seq.length){clearInterval(iv);pT=true;upS('🎮 EL TEU TORN! Toca els botons en ordre');return;}
+      fl(seq[i],true);i++;
+    },800);
+  }
+  function fl(idx,withNote){
+    const ids=['sR','sB','sG','sY'];
+    const el=document.getElementById(ids[idx]);
+    if(el){
+      el.classList.add('act');
+      setTimeout(()=>el.classList.remove('act'),400);
+    }
+    if(withNote&&aC){
+      try{
+        const o=aC.createOscillator(),g=aC.createGain();
+        o.type='sine'; o.frequency.value=NOTES[idx];
+        g.gain.setValueAtTime(0.4,aC.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001,aC.currentTime+0.45);
+        o.connect(g);g.connect(aC.destination);
+        o.start();o.stop(aC.currentTime+0.45);
+      }catch(e){}
+    }
+  }
   function upS(m){const s=document.getElementById('sSt');if(s)s.textContent=m;}
+  
   c.innerHTML=`<div style="text-align:center">
-    <div style="font-size:.7rem;color:rgba(255,255,255,.3);margin-bottom:8px">Nivell ${lvl} de ${maxL}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:200px;margin:0 auto">
+    <div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-bottom:10px;font-family:'Orbitron'">NIVELL <span id="sLvl">${lvl}</span> DE ${maxL} · Seqüència: <span id="sLen">-</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:220px;margin:0 auto 10px">
       <button class="sb2 r" id="sR" onclick="SP(0)"></button>
       <button class="sb2 b" id="sB" onclick="SP(1)"></button>
       <button class="sb2 g" id="sG" onclick="SP(2)"></button>
       <button class="sb2 y" id="sY" onclick="SP(3)"></button>
     </div>
-    <div id="sSt" style="font-family:'Orbitron';font-size:.65rem;color:var(--bl);margin-top:9px;min-height:16px"></div>
-    <button id="sStart" class="bx" onclick="sSt()" style="margin-top:8px;padding:9px;width:auto;min-width:110px;font-size:.78rem">▶ INICIAR</button>
+    <div id="sSt" style="font-family:'Orbitron';font-size:.7rem;color:var(--bl);margin-top:6px;min-height:18px;letter-spacing:1px">Prem INICIAR</div>
+    <div id="seqVis" style="display:flex;gap:4px;justify-content:center;margin-top:6px;min-height:20px;flex-wrap:wrap"></div>
+    <button id="sStart" class="bx" onclick="simonStart()" style="margin-top:10px;padding:10px;width:auto;min-width:120px;font-size:.8rem">▶ INICIAR</button>
   </div>`;
-  window.sSt=()=>{document.getElementById('sStart').style.display='none';seq=[];lvl=1;add();};
-  window.SP=(idx)=>{if(!pT)return;fl(idx);if(idx!==seq[pI]){snd('ko');loseLife();pT=false;upS('❌ Error!');seq=[];lvl=1;const sb=document.getElementById('sStart');if(sb){sb.style.display='inline-block';sb.textContent='🔄 Reiniciar';}}else{pI++;snd('click');if(pI>=seq.length){if(lvl>=maxL){snd('ok');upS('🏆 Completat!');setTimeout(()=>doSend(d.answer||'SIMON'),700);}else{lvl++;upS('⭐ Nivell '+lvl);setTimeout(add,700);}}}};
+  
+  window.simonStart=()=>{
+    document.getElementById('sStart').style.display='none';
+    seq=[];lvl=1;
+    document.getElementById('sLvl').textContent=lvl;
+    add();
+  };
+  
+  window.SP=(idx)=>{
+    if(!pT)return;
+    fl(idx,true);
+    if(idx!==seq[pI]){
+      snd('ko');loseLife();pT=false;
+      upS('❌ Error! Seqüència perduda');
+      seq=[];lvl=1;
+      const sv=document.getElementById('seqVis');if(sv)sv.innerHTML='';
+      document.getElementById('sLvl').textContent=lvl;
+      const sb=document.getElementById('sStart');
+      if(sb){sb.style.display='inline-block';sb.textContent='🔄 Tornar a intentar';}
+    } else {
+      pI++;
+      // Mostrar progrés
+      const sv=document.getElementById('seqVis');
+      if(sv){
+        const dot=document.createElement('span');
+        dot.textContent=COLORS[idx];
+        dot.style.cssText='font-size:1.1rem;animation:fadeUp .3s ease';
+        sv.appendChild(dot);
+      }
+      if(pI>=seq.length){
+        if(lvl>=maxL){
+          snd('ok');upS('🏆 COMPLETAT! Seqüència perfecta!');
+          setTimeout(()=>doSend(d.answer||'SIMON'),800);
+        } else {
+          lvl++;
+          document.getElementById('sLvl').textContent=lvl;
+          const sv2=document.getElementById('seqVis');if(sv2)sv2.innerHTML='';
+          upS('⭐ Nivell '+lvl+'! Prepara't...');
+          setTimeout(add,1200);
+        }
+      }
+    }
+  };
+  // Actualitzar longitud visible
+  const orig_add=add;
+  // mostrar longitud
+  const origAddBase=function(){
+    seq.push(Math.floor(Math.random()*4));pI=0;pT=false;
+    const sl=document.getElementById('sLen');if(sl)sl.textContent=seq.length;
+    const sv=document.getElementById('seqVis');if(sv)sv.innerHTML='';
+    play();
+  };
+  // Override add
+  window.simonAddSeq=origAddBase;
 }
 
 // ── LOCK ──
@@ -1324,6 +1534,357 @@ function buildMapChallenge(c,d){
     };
   }render();
 }
+
+// ── MEMORY CARDS ──
+function buildMemoryChallenge(c,d){
+  const theme=d.memoryTheme||'default';
+  const POOLS={
+    default:['🔥','💎','⚡','🌙','🔮','🗡️','🛡️','🦅','🔱','⚓','🧿','🦊'],
+    space:['🚀','⭐','🌙','🪐','☄️','🛸','🌟','💫','🔭','🌌','👾','🛰️'],
+    animals:['🦁','🐘','🦊','🐺','🦅','🐬','🦋','🐸','🐉','🦈','🦉','🦇'],
+    fantasy:['🐉','⚔️','🔮','🏰','🧙','🦄','🔥','💎','🌟','🗝️','🧝','🪄']
+  };
+  const pool=(POOLS[theme]||POOLS.default).slice(0,d.memoryPairs||6);
+  const cards=[...pool,...pool].sort(()=>Math.random()-.5).map((e,i)=>({id:i,emoji:e,revealed:false,matched:false}));
+  let first=null,lock=false,pairs=0,totalPairs=pool.length;
+  const cols=Math.ceil(Math.sqrt(cards.length));
+  
+  function render(){
+    c.innerHTML=`
+    <div style="font-size:.62rem;color:rgba(255,255,255,.4);text-align:center;margin-bottom:8px">🧠 Parelles trobades: <strong style="color:var(--gn)">${pairs}/${totalPairs}</strong></div>
+    <div class="mem-grid" style="grid-template-columns:repeat(${cols},1fr);max-width:${cols*58}px;margin:0 auto">
+      ${cards.map((card,i)=>`<div class="mem-card ${card.matched?'matched':card.revealed?'':'hidden-c'}" id="mc${i}" onclick="memTap(${i})">${card.revealed||card.matched?card.emoji:'?'}</div>`).join('')}
+    </div>`;
+    window.memTap=(idx)=>{
+      if(lock||cards[idx].revealed||cards[idx].matched)return;
+      snd('click');if(navigator.vibrate)navigator.vibrate(20);
+      cards[idx].revealed=true;
+      const el=document.getElementById('mc'+idx);
+      if(el){el.textContent=cards[idx].emoji;el.classList.remove('hidden-c');}
+      if(!first){first=idx;return;}
+      const fIdx=first;first=null;lock=true;
+      if(cards[fIdx].emoji===cards[idx].emoji){
+        snd('ok');pairs++;cards[fIdx].matched=cards[idx].matched=true;lock=false;
+        [fIdx,idx].forEach(i=>{const e=document.getElementById('mc'+i);if(e)e.classList.add('matched');});
+        if(pairs>=totalPairs){setTimeout(()=>{doSend(d.answer||'MEMORY');snd('ok');},600);}
+      } else {
+        setTimeout(()=>{
+          cards[fIdx].revealed=cards[idx].revealed=false;lock=false;
+          [fIdx,idx].forEach(i=>{const e=document.getElementById('mc'+i);if(e){e.classList.add('hidden-c');e.textContent='?';}});
+          snd('ko');
+        },900);
+        [fIdx,idx].forEach(i=>{const e=document.getElementById('mc'+i);if(e)e.classList.add('wrong-c');});
+        setTimeout(()=>[fIdx,idx].forEach(i=>{const e=document.getElementById('mc'+i);if(e)e.classList.remove('wrong-c');}),850);
+      }
+    };
+  }render();
+}
+
+// ── HANGMAN (Ahorcado) ──
+function buildHangmanChallenge(c,d){
+  const word=(d.answer||'ESCAPE').toUpperCase();
+  const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  let wrong=[],guessed=[];
+  const MAX=10;
+  const PARTS_DESC=['Base','Pal','Biga','Corda','Cap','Cos','Braç E','Braç D','Cama E','Cama D'];
+  
+  function render(){
+    const won=word.split('').every(l=>guessed.includes(l)||l===' ');
+    const lost=wrong.length>=MAX;
+    const hangH=160;
+    // SVG penjat
+    const parts=[
+      `<line x1="20" y1="${hangH}" x2="60" y2="${hangH}" stroke="var(--ac)" stroke-width="3" stroke-linecap="round"/>`,
+      `<line x1="40" y1="${hangH}" x2="40" y2="20" stroke="var(--ac)" stroke-width="2.5"/>`,
+      `<line x1="40" y1="22" x2="85" y2="22" stroke="var(--ac)" stroke-width="2.5"/>`,
+      `<line x1="85" y1="22" x2="85" y2="38" stroke="var(--ac)" stroke-width="2"/>`,
+      `<circle cx="85" cy="48" r="10" fill="none" stroke="var(--ac)" stroke-width="2.5"/>`,
+      `<line x1="85" y1="58" x2="85" y2="95" stroke="var(--ac)" stroke-width="2.5"/>`,
+      `<line x1="85" y1="68" x2="65" y2="85" stroke="var(--ac)" stroke-width="2.5"/>`,
+      `<line x1="85" y1="68" x2="105" y2="85" stroke="var(--ac)" stroke-width="2.5"/>`,
+      `<line x1="85" y1="95" x2="65" y2="120" stroke="var(--ac)" stroke-width="2.5"/>`,
+      `<line x1="85" y1="95" x2="105" y2="120" stroke="var(--ac)" stroke-width="2.5"/>`,
+    ].slice(0,wrong.length);
+    
+    c.innerHTML=`
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div style="flex-shrink:0">
+        <svg width="130" height="${hangH+10}" viewBox="0 0 130 ${hangH+10}" style="background:rgba(0,0,0,.3);border-radius:10px;border:1px solid rgba(255,255,255,.1)">
+          ${parts.join('')}
+          ${won?`<text x="85" y="50" font-size="20" text-anchor="middle" dominant-baseline="middle">😊</text>`:''}
+        </svg>
+        <div style="text-align:center;font-size:.65rem;color:${wrong.length>=7?'var(--rd)':'rgba(255,255,255,.4)'};margin-top:4px;font-family:'Orbitron'">${wrong.length}/${MAX}</div>
+      </div>
+      <div style="flex:1">
+        <div class="word-slots">${word.split('').map(l=>l===' '?'<div style="width:12px"></div>':`<div class="word-slot ${guessed.includes(l)?'ok':''}">${guessed.includes(l)?l:''}</div>`).join('')}</div>
+        ${wrong.length>0?`<div style="font-size:.72rem;color:var(--rd);margin-bottom:6px">❌ ${wrong.join(' ')}</div>`:''}
+        ${won?`<div style="color:var(--gn);font-weight:700;font-size:.9rem;margin-bottom:6px">🎉 La paraula era: ${word}</div>`:''}
+        ${lost?`<div style="color:var(--rd);font-weight:700;font-size:.9rem;margin-bottom:6px">💀 La paraula era: <strong>${word}</strong></div>`:''}
+        <div class="hangman-letters">
+          ${alphabet.map(l=>`<div class="letter-tile ${guessed.includes(l)?(word.includes(l)?'ok':'used ko'):''}" onclick="hangTap('${l}')">${l}</div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+    
+    window.hangTap=(letter)=>{
+      if(guessed.includes(letter)||won||lost)return;
+      guessed.push(letter);
+      snd(word.includes(letter)?'ok':'ko');
+      if(navigator.vibrate)navigator.vibrate(word.includes(letter)?[30]:[80]);
+      if(!word.includes(letter))wrong.push(letter);
+      render();
+      const newWon=word.split('').every(l=>guessed.includes(l)||l===' ');
+      const newLost=wrong.length>=MAX;
+      if(newWon){snd('ok');setTimeout(()=>doSend(d.answer||'HANGMAN'),800);}
+      else if(newLost){loseLife();}
+    };
+  }render();
+}
+
+// ── XIFRES I LLETRES (Paraula més llarga) ──
+function buildWordChallenge(c,d){
+  const letters=d.letters||(()=>{
+    const V='AEIOUAEIOU', C='BCDFGHJKLMNPQRSTVWXYZ';
+    const pool=[];
+    for(let i=0;i<4;i++) pool.push(V[Math.floor(Math.random()*V.length)]);
+    for(let i=0;i<6;i++) pool.push(C[Math.floor(Math.random()*C.length)]);
+    return pool.sort(()=>Math.random()-.5);
+  })();
+  let word=[],timeLeft=d.wordTime||90,timerId=null,submitted_w=false;
+  
+  function render(){
+    c.innerHTML=`
+    <div style="text-align:center;margin-bottom:10px">
+      <div style="font-family:'Orbitron';font-size:1.6rem;color:${timeLeft<20?'var(--rd)':'var(--ac)'};font-weight:900">${timeLeft}s</div>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;margin-bottom:12px">
+      ${letters.map((l,i)=>`<div class="letter-tile ${word.includes(i)?'sel used':''}" onclick="wordTap(${i})">${l}</div>`).join('')}
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;min-height:52px;margin-bottom:10px;padding:8px;background:rgba(0,0,0,.3);border-radius:10px;border:1px solid rgba(255,255,255,.1)">
+      ${word.map((i,pos)=>`<div class="letter-tile filled" onclick="wordRemove(${pos})" style="border-color:var(--bl)">${letters[i]}</div>`).join('')}
+      ${word.length===0?'<span style="color:rgba(255,255,255,.2);font-size:.75rem;align-self:center">Toca les lletres</span>':''}
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="wordClear()" style="flex:1;padding:10px;background:rgba(255,255,255,.06);border:1px solid var(--bd);border-radius:10px;color:rgba(255,255,255,.6);font-family:'Rajdhani';font-weight:700;cursor:pointer">🗑️ Esborrar</button>
+      <button onclick="wordSubmit()" style="flex:2;padding:10px;background:linear-gradient(135deg,var(--ac),var(--pk));border:none;border-radius:10px;color:#fff;font-family:'Orbitron';font-size:.75rem;font-weight:700;cursor:pointer">✓ ENVIAR</button>
+    </div>`;
+    
+    window.wordTap=(i)=>{if(word.includes(i))return;word.push(i);snd('click');render();};
+    window.wordRemove=(pos)=>{word.splice(pos,1);snd('click');render();};
+    window.wordClear=()=>{word=[];snd('click');render();};
+    window.wordSubmit=()=>{
+      if(word.length===0||submitted_w)return;
+      submitted_w=true;
+      clearInterval(timerId);
+      const formed=word.map(i=>letters[i]).join('');
+      doSend(formed);
+      snd('ok');
+    };
+  }
+  
+  // Timer
+  timerId=setInterval(()=>{
+    timeLeft--;render();
+    if(timeLeft<=0){clearInterval(timerId);if(!submitted_w){submitted_w=true;const formed=word.map(i=>letters[i]).join('');doSend(formed||'NONE');}};
+  },1000);
+  render();
+}
+
+// ── IMPOSTOR (Among Us style) ──
+function buildImpostorChallenge(c,d){
+  const isImpostor=d.impostorRole==='impostor';
+  const tasks=d.tasks||[
+    {id:'t1',text:lang==='ca'?'🔧 Reparar la generadora':'🔧 Reparar el generador',done:false},
+    {id:'t2',text:lang==='ca'?'💡 Calibrar els llums':'💡 Calibrar las luces',done:false},
+    {id:'t3',text:lang==='ca'?'🖥️ Enviar el informe':'🖥️ Enviar el informe',done:false},
+    {id:'t4',text:lang==='ca'?'🔌 Connectar cables':'🔌 Conectar cables',done:false}
+  ];
+  let sabotaged=[];
+  
+  c.innerHTML=`
+  <div class="imp-role ${isImpostor?'imp':'crew'}">
+    <div style="font-family:'Orbitron';font-size:.75rem;font-weight:900;letter-spacing:2px;color:${isImpostor?'var(--rd)':'var(--bl)'}">
+      ${isImpostor?'🔴 SOU L'IMPOSTOR':'🟢 SOU TRIPULANT'}
+    </div>
+    <div style="font-size:.75rem;margin-top:5px;color:rgba(255,255,255,.7)">
+      ${isImpostor?
+        (lang==='ca'?'Sabotegeu tasques sense ser descoberts!':'¡Saboteéis tareas sin ser descubiertos!'):
+        (lang==='ca'?'Completeu les tasques. Voteu l'impostor!':'¡Completad las tareas. ¡Votad al impostor!')}
+    </div>
+  </div>
+  <div class="task-list" id="taskList">
+    ${tasks.map(t=>`<div class="task-item" id="ti_${t.id}" onclick="${isImpostor?`sabTask('${t.id}')`:`doTask('${t.id}')`}">
+      ${t.text}
+      ${isImpostor?'<span style="float:right;opacity:.4;font-size:.7rem">⚠ SABOTEJAR</span>':'<span style="float:right;opacity:.4;font-size:.7rem">👆 COMPLETAR</span>'}
+    </div>`).join('')}
+  </div>
+  ${isImpostor?`<button class="vote-btn" onclick="impostorHide()" style="margin-top:10px;width:100%">🚨 VOTAR SOSPITÓS</button>`:''}`;
+  
+  window.doTask=(id)=>{
+    const el=document.getElementById('ti_'+id);
+    if(el&&!el.classList.contains('done')){
+      el.classList.add('done');el.textContent+=' ✅';snd('ok');
+      if(navigator.vibrate)navigator.vibrate([30,30,30]);
+      const allDone=tasks.every(t=>document.getElementById('ti_'+t.id)?.classList.contains('done'));
+      if(allDone){snd('ok');setTimeout(()=>doSend(d.answer||'CREW'),700);}
+    }
+  };
+  window.sabTask=(id)=>{
+    const el=document.getElementById('ti_'+id);
+    if(el&&!el.classList.contains('sabotaged')){
+      el.classList.add('sabotaged');el.textContent+=' ❌ SABOTEJAT';snd('ko');
+      sabotaged.push(id);
+      if(sabotaged.length>=2){snd('ok');setTimeout(()=>doSend(d.answer||'IMPOSTOR'),600);}
+    }
+  };
+  window.impostorHide=()=>doSend(d.answer||'IMPOSTOR');
+}
+
+// ── STOCK MARKET (Borsa) ──
+function buildStockChallenge(c,d){
+  const cos=d.stockCompanies||['NERD','BOT','XYZ'];
+  const prices=cos.map(()=>80+Math.floor(Math.random()*60));
+  const portfolio={};cos.forEach(c2=>portfolio[c2]={shares:0,cost:0});
+  let credits=d.startCredits||1000;
+  let rounds=d.stockRounds||5, curRound=0;
+  
+  function round(){
+    // Preus fluctuen
+    cos.forEach((_,i)=>{
+      const change=Math.random()>.45?1:-1;
+      prices[i]=Math.max(10,Math.min(300,prices[i]+change*Math.floor(5+Math.random()*20)));
+    });
+    curRound++;
+    if(curRound>=rounds){
+      // Vendre tot al final
+      cos.forEach(c2=>{credits+=portfolio[c2].shares*prices[cos.indexOf(c2)];portfolio[c2].shares=0;});
+      doSend(String(Math.round(credits)));
+      return;
+    }
+    render();
+  }
+  
+  function render(){
+    const total=credits+cos.reduce((s,c2,i)=>s+portfolio[c2].shares*prices[i],0);
+    c.innerHTML=`
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <div style="font-family:'Orbitron';font-size:.7rem;color:var(--go)">💰 ${Math.round(credits)} CR</div>
+      <div style="font-family:'Orbitron';font-size:.65rem;color:rgba(255,255,255,.4)">Ronda ${curRound+1}/${rounds}</div>
+      <div style="font-family:'Orbitron';font-size:.7rem;color:var(--gn)">📈 Total: ${Math.round(total)}</div>
+    </div>
+    ${cos.map((co,i)=>{
+      const p=prices[i],port=portfolio[co],val=port.shares*p,up=p>=100;
+      return `<div class="stock-row">
+        <span style="font-family:'Orbitron';font-size:.65rem;color:rgba(255,255,255,.8);min-width:40px">${co}</span>
+        <span style="font-family:monospace;font-size:.85rem;color:${up?'var(--gn)':'var(--rd)'};min-width:35px">${p}</span>
+        <span style="font-size:.65rem;color:rgba(255,255,255,.4);flex:1;text-align:center">${port.shares} acc</span>
+        <button class="stock-btn stock-buy" onclick="stockBuy(${i})" ${credits<p?'disabled style="opacity:.3"':''}>COMPRAR</button>
+        <button class="stock-btn stock-sell" onclick="stockSell(${i})" ${port.shares<=0?'disabled style="opacity:.3"':''}>VENDRE</button>
+      </div>`;
+    }).join('')}
+    <button onclick="stockNextRound()" class="bx" style="margin-top:8px;padding:10px;font-size:.75rem">⏩ PRÒXIMA RONDA</button>`;
+    
+    window.stockBuy=(i)=>{if(credits>=prices[i]){credits-=prices[i];portfolio[cos[i]].shares++;snd('click');render();}};
+    window.stockSell=(i)=>{if(portfolio[cos[i]].shares>0){credits+=prices[i];portfolio[cos[i]].shares--;snd('ok');render();}};
+    window.stockNextRound=()=>round();
+  }
+  render();
+}
+
+// ── MARCIANITOS (Space Invaders simple) ──
+function buildAlienChallenge(c,d){
+  const ALIENS_PER_ROW=5, ROWS=2;
+  let aliens=Array.from({length:ROWS*ALIENS_PER_ROW},(_,i)=>({id:i,alive:true}));
+  let shots=0, hit=0;
+  const ALIEN_EMOJIS=['👾','🛸','👽','💀','🤖'];
+  
+  function render(){
+    const alive=aliens.filter(a=>a.alive).length;
+    c.innerHTML=`
+    <div style="font-family:'Orbitron';font-size:.65rem;color:var(--ac);text-align:center;margin-bottom:6px">
+      Alienígenes: <strong>${alive}</strong> · Tirs: ${shots} · Encertats: ${hit}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(${ALIENS_PER_ROW},1fr);gap:6px;max-width:280px;margin:0 auto 12px">
+      ${aliens.map((a,i)=>`<div class="alien ${a.alive?'':'hit'}" id="al${i}" onclick="shootAlien(${i})">${a.alive?ALIEN_EMOJIS[i%ALIEN_EMOJIS.length]:'💥'}</div>`).join('')}
+    </div>
+    <div style="text-align:center;margin-top:8px">
+      <button class="shoot-btn" onclick="shootRandom()">🔫</button>
+      <div style="font-size:.6rem;color:rgba(255,255,255,.3);margin-top:6px">Elimina tots els alienígenes!</div>
+    </div>`;
+    window.shootAlien=(i)=>{
+      if(!aliens[i].alive)return;
+      aliens[i].alive=false;shots++;hit++;
+      snd('sword');if(navigator.vibrate)navigator.vibrate([20]);
+      render();
+      if(aliens.every(a=>!a.alive)){snd('ok');setTimeout(()=>doSend(d.answer||'DESTROY'),600);}
+    };
+    window.shootRandom=()=>{
+      const alive=aliens.filter(a=>a.alive);
+      if(alive.length===0)return;
+      shots++;
+      if(Math.random()>.3){
+        const target=alive[Math.floor(Math.random()*alive.length)];
+        target.alive=false;hit++;snd('sword');
+      } else {snd('ko');}
+      if(navigator.vibrate)navigator.vibrate([15]);
+      render();
+      if(aliens.every(a=>!a.alive)){snd('ok');setTimeout(()=>doSend(d.answer||'DESTROY'),600);}
+    };
+  }
+  render();
+}
+
+// ── CIPHER DIAL (Roda Cèsar interactiva) ──
+function buildCipherChallenge(c,d){
+  const L='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let shift=d.shift||3;
+  const encoded=d.encodedText||(()=>{const s=d.answer||'ESCAPE';return s.split('').map(l=>{const i=L.indexOf(l);return i>=0?L[(i+shift)%26]:l;}).join('');})();
+  
+  function render(){
+    const decoded=encoded.split('').map(l=>{const i=L.indexOf(l);return i>=0?L[((i-shift)+26)%26]:l;}).join('');
+    c.innerHTML=`
+    <div style="text-align:center;margin-bottom:10px">
+      <div style="font-size:.6rem;color:var(--ac);letter-spacing:2px;margin-bottom:6px">🔄 RODA CÉSAR — DESPLAÇAMENT</div>
+      <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:10px">
+        <button onclick="shiftChange(-1)" style="padding:8px 14px;background:rgba(255,255,255,.08);border:1px solid var(--bd);border-radius:8px;color:#fff;font-size:1.1rem;cursor:pointer">◀</button>
+        <div style="font-family:'Orbitron';font-size:2rem;color:var(--bl);width:50px;text-align:center;font-weight:900">+${shift}</div>
+        <button onclick="shiftChange(1)" style="padding:8px 14px;background:rgba(255,255,255,.08);border:1px solid var(--bd);border-radius:8px;color:#fff;font-size:1.1rem;cursor:pointer">▶</button>
+      </div>
+      <div style="padding:10px;background:rgba(0,0,0,.4);border-radius:10px;margin-bottom:6px;border:1px solid rgba(255,255,255,.1)">
+        <div style="font-size:.55rem;color:rgba(255,255,255,.35);margin-bottom:4px">MISSATGE XIFRAT</div>
+        <div style="font-family:monospace;font-size:1.1rem;letter-spacing:4px;color:var(--rd)">${encoded}</div>
+      </div>
+      <div style="padding:10px;background:rgba(0,245,255,.05);border-radius:10px;border:1px solid rgba(0,245,255,.2)">
+        <div style="font-size:.55rem;color:var(--bl);margin-bottom:4px">DESXIFRAT (shift -${shift})</div>
+        <div style="font-family:monospace;font-size:1.1rem;letter-spacing:4px;color:var(--bl)">${decoded}</div>
+      </div>
+    </div>
+    <button onclick="cipherSubmit()" class="bx" style="margin-top:6px;padding:11px;font-size:.78rem">🔓 CONFIRMAR: "${decoded}"</button>`;
+    window.shiftChange=(dir)=>{shift=((shift+dir+26)%26);snd('click');render();};
+    window.cipherSubmit=()=>{snd('ok');doSend(decoded);};
+  }
+  render();
+}
+
+// ── PUZZLE SLIDER ──
+function buildSliderChallenge(c,d){
+  const n=d.puzzleSize||3, total=n*n;
+  const emojis=d.puzzleEmojis||['🔥','💎','⚡','🌙','🔮','🗡️','🛡️','🦅'];
+  let board=Array.from({length:total},(_,i)=>i);
+  for(let i=0;i<80;i++){const empty=board.indexOf(total-1);const possible=[];if(empty%n>0)possible.push(empty-1);if(empty%n<n-1)possible.push(empty+1);if(empty>=n)possible.push(empty-n);if(empty<total-n)possible.push(empty+n);const r=possible[Math.floor(Math.random()*possible.length)];[board[empty],board[r]]=[board[r],board[empty]];}
+  let emptyI=board.indexOf(total-1);
+  function canMove(idx){const er=Math.floor(emptyI/n),ec=emptyI%n,cr=Math.floor(idx/n),cc=idx%n;return Math.abs(er-cr)+Math.abs(ec-cc)===1;}
+  function solved(){return board.every((v,i)=>v===i);}
+  function render(){
+    c.innerHTML=`
+    <div style="text-align:center;margin-bottom:6px;font-size:.62rem;color:rgba(255,255,255,.35)">Ordena les peces fins recrear la imatge</div>
+    <div style="display:grid;grid-template-columns:repeat(${n},1fr);gap:4px;max-width:${n*68}px;margin:0 auto">
+      ${board.map((v,i)=>`<div onclick="slideMove(${i})" style="aspect-ratio:1;border-radius:10px;background:${v===total-1?'rgba(0,0,0,.2)':'rgba(255,255,255,.07)'};display:flex;align-items:center;justify-content:center;font-size:1.5rem;cursor:${v===total-1?'default':'pointer'};border:2px solid ${v===total-1?'rgba(255,255,255,.04)':'rgba(255,255,255,.15)'};transition:all .18s;user-select:none;-webkit-user-select:none">${v===total-1?'':emojis[v]||String(v+1)}</div>`).join('')}
+    </div>`;
+    window.slideMove=(idx)=>{if(!canMove(idx)||board[idx]===total-1)return;[board[idx],board[emptyI]]=[board[emptyI],board[idx]];emptyI=idx;snd('click');if(navigator.vibrate)navigator.vibrate(15);render();if(solved()){snd('ok');c.insertAdjacentHTML('beforeend','<div style="text-align:center;padding:14px;color:var(--gn);font-size:1rem;font-weight:700">🔓 Puzzle completat!</div>');setTimeout(()=>doSend(d.answer||'PUZZLE'),600);}};
+  }render();
+}
+
 </script>
 </body>
 </html>
