@@ -1732,6 +1732,231 @@ const STORIES = [
     ]
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  //  NEW 1. L'ESTACIÓ ORBITAL — Impostors + Jocs nous
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: "orbital", emoji: "🛸", lives: 4, totalPhases: 6,
+    color: "#a855f7", bg: "radial-gradient(ellipse at 40% 50%,#1a0030,#000015)",
+    font: "'Orbitron',sans-serif", level: "medio",
+    diff: { ca: "Mitjà", es: "Medio" },
+    dur: { ca: "50 min", es: "50 min" },
+    ageLabel: { ca: "12-15 anys", es: "12-15 años" },
+    title: { ca: "Estació Orbital Caos", es: "Estación Orbital Caos" },
+    desc: { ca: "Impostors · Espai · Traïció · Caça de sospitosos", es: "Impostores · Espacio · Traición · Caza de sospechosos" },
+    synopsis: {
+      ca: "L'estació orbital té un impostor entre la tripulació. Completeu les tasques, identifiqueu-lo i escapeu!",
+      es: "La estación orbital tiene un impostor entre la tripulación. ¡Completad las tareas, identificadlo y escapad!"
+    },
+    phases: [
+      {
+        name: { ca: "ALERTA ROJA", es: "ALERTA ROJA" },
+        narrativeTitle: { ca: "Sistema d'alerta activat", es: "Sistema de alerta activado" },
+        narrativeText: { ca: "El sistema detecta una anomalia. Algú entre vosaltres no és qui diu ser!", es: "¡El sistema detecta una anomalía. Alguien entre vosotros no es quien dice ser!" },
+        visual: { type: "circuitPuzzle", config: { nodes: 7, color: "#a855f7", solution: [0,2,4,6] } },
+        enigma: { ca: "Primer, activa el circuit de seguretat. Segueix els nodes il·luminats.", es: "Primero, activa el circuito de seguridad. Sigue los nodos iluminados." },
+        answer: "CIRCUIT", hint: { ca: "Segueix els números en ordre: 0→2→4→6", es: "Sigue los números en orden: 0→2→4→6" }, points: 100
+      },
+      {
+        name: { ca: "TASQUES ORBITALS", es: "TAREAS ORBITALES" },
+        narrativeTitle: { ca: "Assignació de tasques", es: "Asignación de tareas" },
+        narrativeText: { ca: "Cada equip ha rebut les seves tasques. L'IMPOSTOR intentarà sabotejar-les. Completeu les vostres tasques i estigueu alerta!", es: "¡Cada equipo ha recibido sus tareas. El IMPOSTOR intentará sabotearlas. ¡Completad vuestras tareas y estad alerta!" },
+        minigame: "impostor",
+        impostorRole: "crew",
+        tasks: [
+          { id: "t1", text: "🔧 Reparar reactor", done: false },
+          { id: "t2", text: "💡 Calibrar panells", done: false },
+          { id: "t3", text: "📡 Enviar senyal", done: false },
+          { id: "t4", text: "🔌 Connectar cables", done: false }
+        ],
+        enigma: { ca: "Completa totes les tasques! L'impostor intentarà aturar-te.", es: "¡Completa todas las tareas! El impostor intentará pararte." },
+        answer: "CREW", points: 150
+      },
+      {
+        name: { ca: "MEMORY SISTEMES", es: "MEMORY SISTEMAS" },
+        narrativeTitle: { ca: "Arxius de seguretat", es: "Archivos de seguridad" },
+        narrativeText: { ca: "El sistema d'arxiu mostra parells d'imatges. Memoritza la posició de cada parell!", es: "¡El sistema de archivo muestra parejas de imágenes. ¡Memoriza la posición de cada pareja!" },
+        minigame: "memory",
+        memoryTheme: "space",
+        memoryPairs: 6,
+        enigma: { ca: "Troba tots els parells d'icones espacials per desbloquejar el sistema.", es: "Encuentra todas las parejas de iconos espaciales para desbloquear el sistema." },
+        answer: "MEMORY", points: 150
+      },
+      {
+        name: { ca: "XIFRES ESPACIALS", es: "CIFRAS ESPACIALES" },
+        narrativeTitle: { ca: "Paraula clau de la missió", es: "Palabra clave de la misión" },
+        narrativeText: { ca: "Tens 90 segons! Forma la paraula més llarga possible amb les lletres de la missió.", es: "¡Tienes 90 segundos! Forma la palabra más larga posible con las letras de la misión." },
+        minigame: "wordGame",
+        letters: ['O','X','I','G','E','N','A','R','L','S'],
+        wordTime: 90,
+        enigma: { ca: "Forma la paraula més llarga! Les lletres disponibles son: O X I G E N A R L S", es: "¡Forma la palabra más larga! Las letras disponibles son: O X I G E N A R L S" },
+        answer: "VARIABLE", hint: { ca: "Prova paraules com LAIRONS, ORANGES...", es: "Prueba palabras como NEGARLO, SEÑORIAL..." }, points: 200
+      },
+      {
+        name: { ca: "EL CODI SECRET", es: "EL CÓDIGO SECRETO" },
+        narrativeTitle: { ca: "Desxifra el missatge", es: "Descifra el mensaje" },
+        narrativeText: { ca: "L'impostor ha deixat un missatge xifrat. Usa la roda Cèsar per desxifrar-lo!", es: "¡El impostor ha dejado un mensaje cifrado. ¡Usa la rueda César para descifrarlo!" },
+        minigame: "cipher",
+        shift: 4,
+        encodedText: "XEMRXS",
+        enigma: { ca: "Desxifra XEMRXS amb desplaçament -4. Usa la roda per trobar la resposta.", es: "Descifra XEMRXS con desplazamiento -4. Usa la rueda para encontrar la respuesta." },
+        answer: "TATITO", hint: { ca: "X-4=T, E-4=A, M-4=I...", es: "X-4=T, E-4=A, M-4=I..." }, points: 150
+      },
+      {
+        name: { ca: "ELIMINACIÓ FINAL", es: "ELIMINACIÓN FINAL" },
+        narrativeTitle: { ca: "Vot decisiu", es: "Voto decisivo" },
+        narrativeText: { ca: "Hem descobert l'impostor! Resoleu el cadenat final per expulsar-lo de l'estació.", es: "¡Hemos descubierto al impostor! Resolved el candado final para expulsarle de la estación." },
+        minigame: "lock",
+        enigma: { ca: "El codi és el nombre primer entre 10 i 20 que és senar.", es: "El código es el número primo entre 10 y 20 que es impar." },
+        answer: "13", hint: { ca: "11, 13, 17, 19 son primers. Suma'ls: 11+13=?? No... és el segon.", es: "11, 13, 17, 19 son primos. El segundo es..." }, points: 250, isFinal: true
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  NEW 2. LA GRAN INVASIÓ — Marcianitos + Ahorcado + Stocks
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: "invasion", emoji: "👾", lives: 3, totalPhases: 5,
+    color: "#00ff88", bg: "radial-gradient(ellipse at 50% 30%,#001a08,#000500)",
+    font: "'Orbitron',sans-serif", level: "medio",
+    diff: { ca: "Mitjà", es: "Medio" },
+    dur: { ca: "45 min", es: "45 min" },
+    ageLabel: { ca: "12-15 anys", es: "12-15 años" },
+    title: { ca: "La Gran Invasió", es: "La Gran Invasión" },
+    desc: { ca: "Marcianitos · Borsa · Ahorcado · Acció trepidant", es: "Marcianitos · Bolsa · Ahorcado · Acción trepidante" },
+    synopsis: {
+      ca: "Els alienígenes han envaït la Terra. Necessiteu recursos (borsa), informació (ahorcado) i força (marcianitos) per guanyar!",
+      es: "¡Los alienígenas han invadido la Tierra. Necesitáis recursos (bolsa), información (ahorcado) y fuerza (marcianitos) para ganar!"
+    },
+    phases: [
+      {
+        name: { ca: "FINANÇAMENT", es: "FINANCIAMIENTO" },
+        narrativeTitle: { ca: "Mercat de guerra", es: "Mercado de guerra" },
+        narrativeText: { ca: "Per defensar la Terra necessiteu diners. Invertiu saviament al mercat! Cada equip comença amb 1000 crèdits.", es: "Para defender la Tierra necesitáis dinero. ¡Invertid sabiamente en el mercado! Cada equipo empieza con 1000 créditos." },
+        minigame: "stocks",
+        stockCompanies: ["ARMES","TECH","MEDI"],
+        startCredits: 1000,
+        stockRounds: 4,
+        enigma: { ca: "Invertiu i multipliqueu els vostres crèdits. Guanya l'equip amb més capital al final!", es: "¡Invertid y multiplicad vuestros créditos. ¡Gana el equipo con más capital al final!" },
+        answer: "VARIABLE", points: 200
+      },
+      {
+        name: { ca: "INTEL·LIGÈNCIA", es: "INTELIGENCIA" },
+        narrativeTitle: { ca: "Nom en clau de l'enemic", es: "Nombre en clave del enemigo" },
+        narrativeText: { ca: "Els alienígenes s'anomenen amb un nom en clau. Descobriu-lo amb el joc de l'ahorcado!", es: "¡Los alienígenas se llaman con un nombre en clave. ¡Descubridlo con el juego del ahorcado!" },
+        minigame: "hangman",
+        enigma: { ca: "Descobriu la paraula amagada lletra a lletra. Aneu amb compte: 10 errors i perdeu!", es: "¡Descubrid la palabra oculta letra a letra. Cuidado: 10 errores y perdéis!" },
+        answer: "XENOBOT", hint: { ca: "Comença per X", es: "Empieza por X" }, points: 150
+      },
+      {
+        name: { ca: "MEMORIA TACTICA", es: "MEMORIA TÁCTICA" },
+        narrativeTitle: { ca: "Mapa de l'enemic", es: "Mapa del enemigo" },
+        narrativeText: { ca: "El mapa de l'enemic mostra la posició de les seves bases. Memoritza les parelles!", es: "¡El mapa del enemigo muestra la posición de sus bases. Memoriza las parejas!" },
+        minigame: "memory",
+        memoryTheme: "default",
+        memoryPairs: 6,
+        enigma: { ca: "Troba totes les parelles del mapa per desvelar les bases enemigues.", es: "Encuentra todas las parejas del mapa para desvelar las bases enemigas." },
+        answer: "MEMORY", points: 150
+      },
+      {
+        name: { ca: "ELIMINACIÓ", es: "ELIMINACIÓN" },
+        narrativeTitle: { ca: "Dispareu als marcianitos!", es: "¡Disparad a los marcianitos!" },
+        narrativeText: { ca: "Les ones d'alienígenes s'acosten! Heu de disparar a tots abans que arribin. Al vostre mòbil teniu el canó. FOGO!", es: "¡Las oleadas de alienígenas se acercan! Tenéis que disparar a todos antes de que lleguen. ¡En vuestro móvil tenéis el cañón. FUEGO!" },
+        minigame: "aliens",
+        enigma: { ca: "Elimina tots els alienígenes de la pantalla per salvar la Terra!", es: "¡Elimina a todos los alienígenas de la pantalla para salvar la Tierra!" },
+        answer: "DESTROY", points: 200
+      },
+      {
+        name: { ca: "PARAULA CLAU", es: "PALABRA CLAVE" },
+        narrativeTitle: { ca: "Codi de pau", es: "Código de paz" },
+        narrativeText: { ca: "L'últim pas! Formeu la paraula clau que desactivarà la invasió. Teniu 90 segons i les lletres disponibles.", es: "¡El último paso! Formad la palabra clave que desactivará la invasión. Tenéis 90 segundos y las letras disponibles." },
+        minigame: "wordGame",
+        letters: ['P','A','U','T','E','R','R','A','V','I'],
+        wordTime: 90,
+        enigma: { ca: "Forma la paraula més llarga amb: P A U T E R R A V I (90 seg)", es: "Forma la palabra más larga con: P A U T E R R A V I (90 seg)" },
+        answer: "VARIABLE", hint: { ca: "Prova PARTITURA, PRIVATER...", es: "Prueba PRIVATIVA, REPARATIVA..." }, points: 250, isFinal: true
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  NEW 3. EL GRAN DETECTIU — Investigació, diferències, lògica
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: "detective2", emoji: "🔍", lives: 4, totalPhases: 6,
+    color: "#ffd700", bg: "radial-gradient(ellipse at 30% 40%,#1a1000,#080600)",
+    font: "'Special Elite',cursive", level: "dificil",
+    diff: { ca: "Difícil", es: "Difícil" },
+    dur: { ca: "55 min", es: "55 min" },
+    ageLabel: { ca: "15+ anys", es: "15+ años" },
+    title: { ca: "El Gran Detectiu", es: "El Gran Detective" },
+    desc: { ca: "Investigació · 7 Diferències · Lògica deductiva · Enigmes", es: "Investigación · 7 Diferencias · Lógica deductiva · Enigmas" },
+    synopsis: {
+      ca: "Un robatori al museu. Pistes, mentides i enigmes us esperen. Sou els únics que podeu resoldre el cas!",
+      es: "Un robo en el museo. Pistas, mentiras y enigmas os esperan. ¡Sois los únicos que pueden resolver el caso!"
+    },
+    phases: [
+      {
+        name: { ca: "ESCENA DEL CRIM", es: "ESCENA DEL CRIMEN" },
+        narrativeTitle: { ca: "El museu a les 3AM", es: "El museo a las 3AM" },
+        narrativeText: { ca: "Han robat el quadre de la sala 7. L'escena té pistes. Memoritza tots els detalls — els necessitaràs!", es: "Han robado el cuadro de la sala 7. La escena tiene pistas. Memoriza todos los detalles — los necesitarás." },
+        minigame: "memory",
+        memoryTheme: "default",
+        memoryPairs: 8,
+        enigma: { ca: "Memoritza les parelles per associar cada pista amb el seu origen.", es: "Memoriza las parejas para asociar cada pista con su origen." },
+        answer: "MEMORY", points: 100
+      },
+      {
+        name: { ca: "SOSPITÓS PRINCIPAL", es: "SOSPECHOSO PRINCIPAL" },
+        narrativeTitle: { ca: "Qui és el lladre?", es: "¿Quién es el ladrón?" },
+        narrativeText: { ca: "Tres sospitosos. Cadascun diu la seva versió. Un menteix. El lladre és la persona que ment.", es: "Tres sospechosos. Cada uno dice su versión. Uno miente. El ladrón es la persona que miente." },
+        enigma: { ca: "ANNA: 'Jo era a casa a les 3AM'. BERNAT: 'L'Anna era al museu'. CARLOS: 'El Bernat diu la veritat'. Si el lladre és qui menteix, qui ha robat?", es: "ANNA: 'Yo estaba en casa a las 3AM'. BERNAT: 'Anna estaba en el museo'. CARLOS: 'Bernat dice la verdad'. Si el ladrón es quien miente, ¿quién robó?" },
+        answer: "ANNA", hint: { ca: "Si Bernat diu la veritat, llavors l'Anna ment", es: "Si Bernat dice la verdad, entonces Anna miente" }, points: 150
+      },
+      {
+        name: { ca: "CODI DEL SOTERRANI", es: "CÓDIGO DEL SÓTANO" },
+        narrativeTitle: { ca: "Porta blindada", es: "Puerta blindada" },
+        narrativeText: { ca: "El soterrani on han amagat el quadre té una porta amb cadenat. El codi és numèric.", es: "El sótano donde han ocultado el cuadro tiene una puerta con candado. El código es numérico." },
+        minigame: "lock",
+        enigma: { ca: "Quants dies té un any de traspàs × quantes dimensions té un cub = ?  Pista: és un nombre de 3 xifres.", es: "¿Cuántos días tiene un año bisiesto × cuántas dimensiones tiene un cubo = ? Pista: es un número de 3 cifras." },
+        answer: "1098", hint: { ca: "366 × 3 = ?", es: "366 × 3 = ?" }, points: 150
+      },
+      {
+        name: { ca: "L'AHORCADO DEL DETECTIVE", es: "EL AHORCADO DEL DETECTIVE" },
+        narrativeTitle: { ca: "Arma del delicte", es: "Arma del delito" },
+        narrativeText: { ca: "L'arma usada per obrir la vitrina té un nom. Descobreix-lo amb l'ahorcado!", es: "El arma usada para abrir la vitrina tiene un nombre. ¡Descúbrelo con el ahorcado!" },
+        minigame: "hangman",
+        enigma: { ca: "Descobreix l'arma del delicte. Pista: s'usa per tallar.", es: "Descubre el arma del delito. Pista: se usa para cortar." },
+        answer: "BISTURI", hint: { ca: "Comença per B. 7 lletres.", es: "Empieza por B. 7 letras." }, points: 200
+      },
+      {
+        name: { ca: "CHESS: TRAMPA AL DETECTIU", es: "CHESS: TRAMPA AL DETECTIVE" },
+        narrativeTitle: { ca: "Magnus Carlsen vs el lladre", es: "Magnus Carlsen vs el ladrón" },
+        narrativeText: { ca: "El lladre és un mestre dels escacs. Fa un moviment que et deixa en escac. Escapeu!", es: "El ladrón es un maestro del ajedrez. Hace un movimiento que te deja en jaque. ¡Escaped!" },
+        minigame: "chessMove",
+        board: {
+          pieces: {'e4':'♔','d1':'♖','f8':'♚','c5':'♞'},
+          hl: ['d8','f6','e6'],
+          q: { ca: 'El rei negre a f8 està amenaçat. Mou la torre ♖ per fer escac mat. Quina casella?', es: 'El rey negro en f8 está amenazado. Mueve la torre ♖ para dar jaque mate. ¿Qué casilla?' },
+          ans: 'f1'
+        },
+        enigma: { ca: "Fes escac al rei negre mogent la torre ♖ blanca a la casella correcta.", es: "Da jaque al rey negro moviendo la torre ♖ blanca a la casilla correcta." },
+        answer: "F1", hint: { ca: "La torre ha d'anar a la columna F", es: "La torre debe ir a la columna F" }, points: 200
+      },
+      {
+        name: { ca: "CAPTURA FINAL", es: "CAPTURA FINAL" },
+        narrativeTitle: { ca: "Paraula d'arrest", es: "Palabra de arresto" },
+        narrativeText: { ca: "Teniu totes les proves! Formeu la paraula que identifica el crim principal per ordenar l'arrest.", es: "¡Tenéis todas las pruebas! Formad la palabra que identifica el crimen principal para ordenar el arresto." },
+        minigame: "wordGame",
+        letters: ['R','O','B','A','T','O','R','I','E','S'],
+        wordTime: 90,
+        enigma: { ca: "Forma la paraula més llarga amb: R O B A T O R I E S", es: "Forma la palabra más larga con: R O B A T O R I E S" },
+        answer: "VARIABLE", hint: { ca: "ROBATORIS té 9 lletres!", es: "ROBATORIOS tiene 9 letras." }, points: 250, isFinal: true
+      }
+    ]
+  }
+
 ];
 
 // Exportació compatible amb navegadors i Node.js
