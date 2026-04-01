@@ -967,6 +967,9 @@ function buildChallenge(d){
   else if(type==='roomExplorer')            buildRoomChallenge(c,d);
   else if(type==='mapNavigator')            buildMapChallenge(c,d);
   else if(type==='sequence')                buildSimonChallenge(c,d);
+  else if(type==='sevenDiffs'||type==='diferencies') buildSevenDiffsChallenge(c,d);
+  else if(type==='paintball')               buildPaintballChallenge(c,d);
+  else if(type==='collectivePuzzle'||type==='rompecabezas') buildCollectivePuzzleChallenge(c,d);
   else                                      buildDefaultChallenge(c,d);
 }
 
@@ -1337,19 +1340,6 @@ function buildLockChallenge(c,d){
     window.LCk=()=>{if(vals.join('')===tgt.join('')){snd('ok');c.innerHTML=`<div style="text-align:center;padding:20px;font-size:3rem;color:var(--gn)">🔓<div style="font-family:'Orbitron';font-size:.9rem;margin-top:6px">OBERT!</div></div>`;setTimeout(()=>doSend(tgt.join('')),700);}else{snd('ko');loseLife();const dl=c.querySelector('div[style*="flex;gap"]');if(dl){dl.style.animation='shk .4s';setTimeout(()=>{if(dl)dl.style.animation='';},500);}}};
   }r();
 }
-
-// ── MEMORY ──
-function buildMemoryChallenge(c,d){
-  const pairs=d.pairs||['🦁','🐉','🦅','🦊','🦈','🤖'];
-  const cards=[...pairs,...pairs].sort(()=>Math.random()-.5).map((e,i)=>({i,e,f:false,m:false}));
-  let first=null,second=null,lk=false,matches=0;
-  function r(){
-    c.innerHTML=`<div class="mflash">${cards.map(card=>`<div class="mcard ${card.f||card.m?'flash':''} ${card.m?'ok':''}" id="mc${card.i}" onclick="MF(${card.i})">${card.f||card.m?card.e:'❓'}</div>`).join('')}</div>
-    <div style="text-align:center;margin-top:7px;font-size:.7rem;color:rgba(255,255,255,.3)">${matches}/${pairs.length} parelles</div>`;
-    window.MF=(id)=>{const card=cards[id];if(lk||card.f||card.m)return;card.f=true;snd('click');const el=document.getElementById('mc'+id);if(el)el.classList.add('flash');if(el)el.textContent=card.e;if(!first){first=card;return;}second=card;lk=true;if(first.e===second.e){snd('ok');first.m=second.m=true;matches++;setTimeout(()=>{r();if(matches>=pairs.length)setTimeout(()=>doSend(d.answer||'MEMORY'),400);first=second=null;lk=false;},350);}else{setTimeout(()=>{cards[first.i].f=cards[second.i].f=false;r();first=second=null;lk=false;loseLife();},800);}};
-  }r();
-}
-
 // ── WORD SEARCH ──
 function buildWSChallenge(c,d){
   const words=(d.words||['ESCAPE']).map(w=>w.toUpperCase());
@@ -1426,55 +1416,7 @@ function showWin(w){
   spawnConf();scr('s-win');speak(lang==='ca'?"Enhorabona! Heu completat l'aventura!":"¡Enhorabuena! ¡Habéis completado la aventura!");
 }
 function spawnConf(){const c=document.getElementById('confC');c.innerHTML='';['#ff6b00','#00f5ff','#ff0080','#ffd700','#00ff88'].forEach((col,ci)=>{for(let i=0;i<12;i++){const p=document.createElement('div');p.className='cf';p.style.cssText=`left:${ci*20+Math.random()*18}%;background:${col};width:${5+Math.random()*8}px;height:${5+Math.random()*8}px;animation-duration:${2+Math.random()*3}s;animation-delay:${Math.random()*2}s`;c.appendChild(p);}});}
-function speak(txt){if(!('speechSynthesis'in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.lang=lang==='ca'?'ca-ES':'es-ES';u.rate=.88;u.volume=.78;speechSynthesis.speak(u);}
-
-// ── 🔡 CIPHER DIAL ──
-function buildCipherChallenge(c,d){
-  const enc=d.encoded||'KHOOR';const tgtShift=d.shift||3;let sh=0;
-  function dec(txt,s){return txt.split('').map(ch=>/[A-Z]/.test(ch)?String.fromCharCode(((ch.charCodeAt(0)-65-s+26)%26)+65):ch).join('');}
-  function render(){
-    c.innerHTML=`<div style="text-align:center;padding:4px 0">
-      <div style="font-size:.62rem;color:rgba(255,255,255,.3);margin-bottom:6px">MISSATGE XIFRAT</div>
-      <div style="font-family:'Orbitron';font-size:1.2rem;letter-spacing:5px;color:var(--pk);padding:10px;border:1px solid rgba(255,0,128,.3);border-radius:10px;margin-bottom:14px">${enc}</div>
-      <div style="display:flex;align-items:center;gap:14px;justify-content:center;margin-bottom:12px">
-        <button onclick="CS2(-1)" style="width:40px;height:40px;background:rgba(255,255,255,.08);border:1px solid var(--bd);color:#fff;border-radius:50%;font-size:1.1rem;cursor:pointer">◀</button>
-        <div>
-          <div style="font-size:.58rem;color:rgba(255,255,255,.28);margin-bottom:2px">DESPLAÇAMENT</div>
-          <div style="font-family:'Orbitron';font-size:1.3rem;color:var(--go)" id="sv2">${sh}</div>
-        </div>
-        <button onclick="CS2(1)" style="width:40px;height:40px;background:rgba(255,255,255,.08);border:1px solid var(--bd);color:#fff;border-radius:50%;font-size:1.1rem;cursor:pointer">▶</button>
-      </div>
-      <div style="font-size:.62rem;color:rgba(255,255,255,.3);margin-bottom:4px">DESXIFRAT</div>
-      <div style="font-family:'Orbitron';font-size:1.3rem;letter-spacing:5px;color:var(--bl);padding:10px 16px;background:rgba(0,0,0,.55);border:2px solid var(--bl);border-radius:10px;margin-bottom:12px" id="cdsp2">${dec(enc,sh)}</div>
-      <button onclick="CCf2()" style="padding:12px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--pk));color:#fff;font-family:'Orbitron';font-size:.78rem;font-weight:700;cursor:pointer">✓ CONFIRMAR</button>
-    </div>`;
-    window.CS2=(dir)=>{sh=(sh+dir+26)%26;snd('click');const sv=document.getElementById('sv2');const cd=document.getElementById('cdsp2');if(sv)sv.textContent=sh;if(cd)cd.textContent=dec(enc,sh);};
-    window.CCf2=()=>doSend(dec(enc,sh));
-  }render();
-}
-
-// ── 🧩 PUZZLE SLIDER ──
-function buildSliderChallenge(c,d){
-  const sz=d.puzzleSize||3;const n=sz*sz;
-  const emojis=d.puzzleEmojis||['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','🔓'];
-  let board=Array.from({length:n},(_,i)=>i);
-  // Shuffle
-  for(let i=n-2;i>0;i--){const j=1+Math.floor(Math.random()*i);[board[i],board[j]]=[board[j],board[i]];}
-  let emptyI=board.indexOf(n-1);
-  function canMove(idx){const er=Math.floor(emptyI/sz),ec=emptyI%sz,cr=Math.floor(idx/sz),cc=idx%sz;return Math.abs(er-cr)+Math.abs(ec-cc)===1;}
-  function solved(){return board.every((v,i)=>v===i);}
-  function render(){
-    c.innerHTML=`<div style="text-align:center">
-      <div style="font-size:.62rem;color:rgba(255,255,255,.3);margin-bottom:8px">Ordena les peces</div>
-      <div style="display:grid;grid-template-columns:repeat(${sz},1fr);gap:3px;max-width:${sz*56}px;margin:0 auto;aspect-ratio:1">
-        ${board.map((v,i)=>`<div onclick="SL2(${i})" style="background:${v===n-1?'rgba(0,0,0,.25)':'rgba(255,255,255,.07)'};border-radius:9px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:${v===n-1?'default':'pointer'};border:2px solid ${v===n-1?'rgba(255,255,255,.06)':'var(--bd)'};transition:all .18s;user-select:none">${v===n-1?'':emojis[v]||v+1}</div>`).join('')}
-      </div>
-    </div>`;
-    window.SL2=(idx)=>{if(!canMove(idx)||board[idx]===n-1)return;[board[idx],board[emptyI]]=[board[emptyI],board[idx]];emptyI=idx;snd('click');render();if(solved()){snd('ok');c.insertAdjacentHTML('beforeend','<div style="text-align:center;padding:12px;color:var(--gn);font-size:1rem;font-weight:700">🔓 Completat!</div>');setTimeout(()=>doSend(d.answer||'PUZZLE'),500);}};
-  }render();
-}
-
-// ── 🗺️ MAP NAVIGATOR ──
+function speak(txt){if(!('speechSynthesis'in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.lang=lang==='ca'?'ca-ES':'es-ES';u.rate=.88;u.volume=.78;speechSynthesis.speak(u);}// ── 🗺️ MAP NAVIGATOR ──
 function buildMapChallenge(c,d){
   const locs=d.mapLocations||[
     {id:'A',x:18,y:72,e:'🏛️',n:'Museu',ok:false},
@@ -1883,6 +1825,247 @@ function buildSliderChallenge(c,d){
     </div>`;
     window.slideMove=(idx)=>{if(!canMove(idx)||board[idx]===total-1)return;[board[idx],board[emptyI]]=[board[emptyI],board[idx]];emptyI=idx;snd('click');if(navigator.vibrate)navigator.vibrate(15);render();if(solved()){snd('ok');c.insertAdjacentHTML('beforeend','<div style="text-align:center;padding:14px;color:var(--gn);font-size:1rem;font-weight:700">🔓 Puzzle completat!</div>');setTimeout(()=>doSend(d.answer||'PUZZLE'),600);}};
   }render();
+}
+
+// ── 7 DIFERÈNCIES (mòbil interactiu) ──
+function buildSevenDiffsChallenge(c,d){
+  // Generem dues imatges SVG temàtiques quasi idèntiques
+  // L'usuari toca on veu diferències
+  const theme=d.diffTheme||'space';
+  const totalDiffs=7;
+  let found=[];
+
+  // Definim elements base + modificats per tema
+  const themes={
+    space:{
+      base:[
+        {tag:'circle',attrs:{cx:20,cy:15,r:8,fill:'#4a90d9',opacity:0.8},label:'Planeta'},
+        {tag:'circle',attrs:{cx:80,cy:25,r:5,fill:'#ff6b00',opacity:0.7},label:'Sol'},
+        {tag:'polygon',attrs:{points:'50,5 55,20 70,20 58,28 62,43 50,34 38,43 42,28 30,20 45,20',fill:'#ffd700'},label:'Estrella'},
+        {tag:'rect',attrs:{x:35,y:50,width:30,height:40,rx:3,fill:'#2a2a4a'},label:'Nau'},
+        {tag:'circle',attrs:{cx:50,cy:60,r:5,fill:'#00f5ff',opacity:0.6},label:'Ull nau'},
+        {tag:'circle',attrs:{cx:15,cy:70,r:3,fill:'white',opacity:0.6},label:'Estrella1'},
+        {tag:'circle',attrs:{cx:90,cy:80,r:2,fill:'white',opacity:0.5},label:'Estrella2'},
+        {tag:'circle',attrs:{cx:70,cy:40,r:2.5,fill:'white',opacity:0.7},label:'Estrella3'},
+        {tag:'rect',attrs:{x:5,y:5,width:8,height:12,rx:2,fill:'#888',opacity:0.5},label:'Asteroide'},
+      ],
+      diffs:[
+        // idx, attribut modificat, valor nou, posició aproximada [x%,y%]
+        {idx:0, attr:'fill', val:'#ff0080', pos:[20,15], label:'Color planeta'},
+        {idx:1, attr:'r', val:9, pos:[80,25], label:'Mida sol'},
+        {idx:2, attr:'fill', val:'#00f5ff', pos:[50,20], label:'Color estrella'},
+        {idx:3, attr:'fill', val:'#4a90d9', pos:[50,65], label:'Color nau'},
+        {idx:4, attr:'r', val:8, pos:[50,60], label:'Ull nau gran'},
+        {idx:5, attr:'opacity', val:0, pos:[15,70], label:'Estrella desapareguda'},
+        {idx:6, attr:'cy', val:50, pos:[90,50], label:'Estrella moguda'},
+      ]
+    }
+  };
+
+  const t = themes[theme] || themes.space;
+
+  function buildSVG(modified){
+    const W=100, H=100;
+    const stars = Array.from({length:12},(_,i)=>
+      `<circle cx="${Math.sin(i*47)*45+50}" cy="${Math.cos(i*31)*40+45}" r="${0.4+i%3*0.3}" fill="white" opacity="0.3"/>`
+    ).join('');
+    const shapes = t.base.map((el,i)=>{
+      let attrs = {...el.attrs};
+      if(modified){
+        const diff = t.diffs.find(d2=>d2.idx===i);
+        if(diff) attrs[diff.attr] = diff.val;
+      }
+      const attrStr = Object.entries(attrs).map(([k,v])=>`${k}="${v}"`).join(' ');
+      return `<${el.tag} ${attrStr}/>`;
+    }).join('');
+    return `<rect width="100" height="100" fill="#000015"/>
+      ${stars}${shapes}`;
+  }
+
+  // Zones clicables a la imatge B — cada diferència té una zona
+  function getZones(){
+    return t.diffs.map((diff,i)=>({
+      x: diff.pos[0], y: diff.pos[1], id: i,
+      found: found.includes(i)
+    }));
+  }
+
+  function render(){
+    const zones = getZones();
+    c.innerHTML=`
+    <div style="font-size:.62rem;color:rgba(255,255,255,.45);text-align:center;margin-bottom:6px">
+      Diferències trobades: <strong style="color:var(--gn)">${found.length}/${totalDiffs}</strong> · Toca a la imatge DRETA
+    </div>
+    <div style="display:flex;gap:6px;width:100%">
+      <div style="flex:1">
+        <div style="font-size:.5rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:3px">ORIGINAL</div>
+        <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.15)">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">
+            ${buildSVG(false)}
+          </svg>
+        </div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:.5rem;color:var(--ac);text-align:center;margin-bottom:3px">TROBA LES DIFERÈNCIES ▼</div>
+        <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(255,107,0,.3);cursor:crosshair" id="diffB">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block" onclick="diffClick(event)">
+            ${buildSVG(true)}
+            ${zones.map(z=>z.found?`<circle cx="${z.x}" cy="${z.y}" r="8" fill="none" stroke="var(--gn)" stroke-width="2" opacity="0.9"/>`:
+              '').join('')}
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div id="diffFb" style="min-height:18px;text-align:center;font-size:.75rem;margin-top:5px;padding:4px"></div>`;
+
+    window.diffClick=(e)=>{
+      const svg = e.currentTarget;
+      const rect = svg.getBoundingClientRect();
+      const px = ((e.clientX - rect.left) / rect.width) * 100;
+      const py = ((e.clientY - rect.top) / rect.height) * 100;
+      // Cerca si hem tocat prop d'una diferència no trobada
+      const RADIUS = 12;
+      const hit = t.diffs.find((diff,i)=>
+        !found.includes(i) &&
+        Math.hypot(px - diff.pos[0], py - diff.pos[1]) < RADIUS
+      );
+      const fb = document.getElementById('diffFb');
+      if(hit){
+        const idx = t.diffs.indexOf(hit);
+        found.push(idx);
+        snd('ok');
+        if(navigator.vibrate) navigator.vibrate([30,20,30]);
+        if(fb) fb.innerHTML = `<span style="color:var(--gn)">✅ ${hit.label} trobada! (${found.length}/${totalDiffs})</span>`;
+        render();
+        if(found.length >= totalDiffs){
+          setTimeout(()=>doSend(d.answer||'DIFFS'),700);
+        }
+      } else {
+        snd('ko');
+        if(fb) fb.innerHTML = `<span style="color:rgba(255,255,255,.3)">❌ Res aquí... continua buscant</span>`;
+        setTimeout(()=>{ if(document.getElementById('diffFb')) document.getElementById('diffFb').innerHTML=''; }, 1200);
+      }
+    };
+  }
+  render();
+}
+
+// ── PAINTBALL (disparar coordenades al projector) ──
+function buildPaintballChallenge(c,d){
+  const GRID_W = d.pbCols || 5;
+  const GRID_H = d.pbRows || 4;
+  const targets = d.pbTargets || (() => {
+    // Generar targets aleatoris
+    const t = [];
+    const total = GRID_W * GRID_H;
+    const n = d.pbCount || 5;
+    const used = new Set();
+    while(t.length < n){
+      const idx = Math.floor(Math.random() * total);
+      if(!used.has(idx)){ used.add(idx); t.push(idx); }
+    }
+    return t;
+  })();
+
+  let shots = 0;
+  let hitCells = [];
+  let missCells = [];
+
+  function render(){
+    const remaining = targets.filter(t=>!hitCells.includes(t)).length;
+    c.innerHTML = `
+    <div style="font-family:'Orbitron';font-size:.62rem;color:var(--ac);text-align:center;margin-bottom:8px">
+      🎯 Objectius restants: <strong style="color:${remaining===0?'var(--gn)':remaining<=2?'var(--rd)':'var(--ac)'}">${remaining}</strong> · Tirs: ${shots}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(${GRID_W},1fr);gap:5px;max-width:${GRID_W*58}px;margin:0 auto 10px">
+      ${Array.from({length:GRID_W*GRID_H},(_,i)=>{
+        const isHit = hitCells.includes(i);
+        const isMiss = missCells.includes(i);
+        return `<div onclick="pbShoot(${i})" style="aspect-ratio:1;border-radius:10px;
+          background:${isHit?'rgba(255,107,0,.4)':isMiss?'rgba(255,255,255,.04)':'rgba(0,245,255,.06)'};
+          border:2px solid ${isHit?'var(--ac)':isMiss?'rgba(255,255,255,.06)':'rgba(0,245,255,.2)'};
+          display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:${isHit||isMiss?'default':'pointer'};
+          transition:all .2s;-webkit-user-select:none;user-select:none">
+          ${isHit?'💥':isMiss?'<span style="opacity:.2">·</span>':'🎯'}
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button onclick="pbReload()" style="padding:10px 20px;background:rgba(255,255,255,.07);border:1px solid var(--bd);border-radius:10px;color:rgba(255,255,255,.6);font-family:'Orbitron';font-size:.65rem;cursor:pointer;letter-spacing:1px">🔄 RECARREGAR</button>
+    </div>
+    <div id="pbFb" style="text-align:center;font-size:.75rem;min-height:18px;margin-top:6px;padding:4px"></div>`;
+
+    window.pbShoot = (idx)=>{
+      if(hitCells.includes(idx)||missCells.includes(idx)) return;
+      shots++;
+      const fb = document.getElementById('pbFb');
+      if(targets.includes(idx)){
+        hitCells.push(idx);
+        snd('sword');
+        if(navigator.vibrate) navigator.vibrate([20,10,40]);
+        if(fb) fb.innerHTML = `<span style="color:var(--ac)">💥 IMPACTE! ${targets.filter(t=>!hitCells.includes(t)).length} restants</span>`;
+      } else {
+        missCells.push(idx);
+        snd('ko');
+        if(navigator.vibrate) navigator.vibrate([80]);
+        if(fb) fb.innerHTML = `<span style="color:rgba(255,255,255,.3)">Miss... intenta altra casella</span>`;
+      }
+      render();
+      if(targets.every(t=>hitCells.includes(t))){
+        snd('ok');
+        setTimeout(()=>doSend(d.answer||'PAINTBALL'),700);
+      }
+    };
+    window.pbReload = ()=>{ snd('click'); render(); };
+  }
+  render();
+}
+
+// ── ROMPECABEZAS COL·LECTIU (cada equip rep fragments) ──
+function buildCollectivePuzzleChallenge(c,d){
+  // Cada equip veu el seu fragment del puzzle
+  // Han de comunicar-se verbalment per assemblar l'ordre
+  const totalPieces = d.puzzlePieces || 9;
+  const myPieces = d.myPieces || [0,3,6]; // quins fragments té aquest equip
+  const solution = d.puzzleSolution || [0,1,2,3,4,5,6,7,8];
+  const EMOJIS = d.puzzleItems || ['🔥','⭐','💎','🌙','🔮','⚡','🗡️','🛡️','🏆'];
+  const COLS = Math.ceil(Math.sqrt(totalPieces));
+
+  let myOrder = [...myPieces]; // l'equip pot reordenar les seves peces
+  let submitted_p = false;
+
+  function render(){
+    c.innerHTML = `
+    <div style="padding:10px;background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.2);border-radius:12px;margin-bottom:10px">
+      <div style="font-family:'Orbitron';font-size:.58rem;color:var(--ac);margin-bottom:6px">🧩 LES TEVES PECES (${myPieces.length}/${totalPieces})</div>
+      <div style="font-size:.72rem;color:rgba(255,255,255,.6);line-height:1.4">Comuniqueu verbalment amb els altres equips la posició de cada peça. Cada peça té un número de posició al puzzle final.</div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px;flex-wrap:wrap">
+      ${myPieces.map((pieceIdx,i)=>`
+        <div style="text-align:center">
+          <div style="font-size:2rem;padding:10px 14px;background:rgba(255,255,255,.07);border-radius:12px;border:2px solid rgba(255,255,255,.2);position:relative">
+            ${EMOJIS[pieceIdx]||'❓'}
+            <div style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;background:var(--ac);border-radius:50%;font-family:'Orbitron';font-size:.6rem;font-weight:900;display:flex;align-items:center;justify-content:center;color:#000">${solution.indexOf(pieceIdx)+1}</div>
+          </div>
+          <div style="font-size:.55rem;color:rgba(255,255,255,.4);margin-top:3px">Posició ${solution.indexOf(pieceIdx)+1}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="padding:10px;background:rgba(0,245,255,.05);border:1px solid rgba(0,245,255,.2);border-radius:10px;margin-bottom:8px;font-size:.75rem;color:rgba(255,255,255,.65);line-height:1.5">
+      <strong style="color:var(--bl)">Com jugar:</strong> Digueu en veu alta quines peces teniu i a quina posició van. Coordina't amb els altres equips per assemblar el puzzle complet!
+    </div>
+    <div style="font-family:'Orbitron';font-size:.6rem;color:rgba(255,255,255,.35);text-align:center;margin-bottom:8px">
+      Ordre del puzzle (${COLS}×${COLS}): ${solution.map((p,i)=>`${i+1}:${EMOJIS[p]}`).join(' ')}</div>
+    <button onclick="cpSubmit()" class="bx" style="padding:11px;font-size:.75rem">✅ JA HEM ASSEMBLA EL PUZZLE!</button>`;
+
+    window.cpSubmit = ()=>{
+      if(submitted_p) return;
+      submitted_p = true;
+      snd('ok');
+      doSend(d.answer||'PUZZLE');
+    };
+  }
+  render();
 }
 
 </script>
