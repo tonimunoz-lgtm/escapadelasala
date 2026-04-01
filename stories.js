@@ -1728,7 +1728,7 @@ const STORIES = [
           es: "Última prueba: selecciona la respuesta correcta para enviar el informe y completar la misión."
         },
         answer: "2", hint: { ca: "Mark Zuckerberg és el CEO d'aquesta empresa", es: "Mark Zuckerberg es el CEO de esta empresa" }, points: 250, isFinal: true
-      }
+      },
     ]
   }
 
