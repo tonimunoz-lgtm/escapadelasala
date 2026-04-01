@@ -1,356 +1,185 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- *  ESCAPE CLASS — MOTOR DE MINIJOCS INTERACTIVOS v3.0
- *  Ahora con juegos reales que retornan HTML interactivo
+ *  ESCAPE CLASS — MOTOR DE MINIJOCS VISUALS v5.0
+ *  Jocs visuals per al PROJECTOR
  * ═══════════════════════════════════════════════════════════════
  */
 
 window.MINIGAMES = {
-  
-  // ─────────────────────────────────────────────
-  //  MAPA DEL TRESOR — SVG Estático pero mejorado
-  // ─────────────────────────────────────────────
+
   treasureMap: function(config = {}) {
     const { paths = 3, finalX = [70, 65], color = '#8B4513', seed = 42 } = config;
-    
-    function seededRandom(s) {
-      let x = Math.sin(s) * 10000;
-      return x - Math.floor(x);
-    }
-
-    let waypoints = [];
-    for (let i = 0; i < paths + 2; i++) {
-      waypoints.push({
-        x: 10 + seededRandom(seed + i * 7) * 80,
-        y: 10 + seededRandom(seed + i * 13) * 80
-      });
-    }
-    waypoints[waypoints.length - 1] = { x: finalX[0], y: finalX[1] };
-
-    const pathD = waypoints.map((p, i) =>
-      i === 0 ? `M ${p.x},${p.y}` : `Q ${(waypoints[i-1].x+p.x)/2+seededRandom(seed+i)*10-5},${(waypoints[i-1].y+p.y)/2+seededRandom(seed+i*3)*10-5} ${p.x},${p.y}`
-    ).join(' ');
-
-    const islands = Array.from({length: 4}, (_, i) => ({
-      x: 15 + seededRandom(seed + i * 17) * 70,
-      y: 15 + seededRandom(seed + i * 23) * 70,
-      r: 4 + seededRandom(seed + i) * 8
-    }));
-
+    function sr(s) { let x = Math.sin(s) * 10000; return x - Math.floor(x); }
+    let wps = [];
+    for (let i = 0; i < paths + 2; i++) wps.push({ x: 10 + sr(seed + i * 7) * 80, y: 10 + sr(seed + i * 13) * 80 });
+    wps[wps.length - 1] = { x: finalX[0], y: finalX[1] };
+    const pathD = wps.map((p, i) => i === 0 ? `M ${p.x},${p.y}` :
+      `Q ${(wps[i-1].x+p.x)/2+sr(seed+i)*10-5},${(wps[i-1].y+p.y)/2+sr(seed+i*3)*10-5} ${p.x},${p.y}`).join(' ');
+    const islands = Array.from({length:4},(_,i)=>({ x:15+sr(seed+i*17)*70, y:15+sr(seed+i*23)*70, r:4+sr(seed+i)*8 }));
     return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"
-      style="width:100%;max-width:400px;filter:sepia(0.8) contrast(1.1) drop-shadow(0 4px 8px rgba(0,0,0,0.5));border-radius:12px;border:3px solid ${color}60;animation:mapFloat 6s ease-in-out infinite">
-      <defs>
-        <filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3"/>
-          <feColorMatrix type="saturate" values="0"/><feBlend in="SourceGraphic" mode="multiply"/></filter>
-        <radialGradient id="xGlow" cx="50%" cy="50%"><stop offset="0%" stop-color="#FFD700" stop-opacity="0.8"/>
-          <stop offset="100%" stop-color="#FFD700" stop-opacity="0"/></radialGradient>
-      </defs>
-      <rect width="100" height="100" fill="#d4b483" filter="url(#paper)"/>
-      <rect x="2" y="2" width="96" height="96" fill="none" stroke="${color}" stroke-width="0.8" stroke-dasharray="4,2"/>
-      
-      ${islands.map(il => `<ellipse cx="${il.x}" cy="${il.y}" rx="${il.r}" ry="${il.r*0.7}" fill="#8B6914" opacity="0.4"/>
-        <ellipse cx="${il.x}" cy="${il.y}" rx="${il.r*0.6}" ry="${il.r*0.4}" fill="#6B8A3A" opacity="0.5"/>`).join('')}
-      
-      <path d="${pathD}" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="2,1" opacity="0.8">
-        <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="2s" repeatCount="indefinite"/>
-      </path>
-      
-      ${waypoints.slice(0, -1).map((p, i) => `<circle cx="${p.x}" cy="${p.y}" r="1.5" fill="${color}" opacity="0.6"/>`).join('')}
-      
-      <!-- Rosa de los vientos animada -->
-      <g transform="translate(88,12)">
-        <circle r="6" fill="#d4b483" stroke="${color}" stroke-width="0.5"/>
-        <text x="0" y="-3" font-size="3" fill="${color}" text-anchor="middle" font-weight="bold">N</text>
-        <path d="M 0,-5 L 1.5,0 L 0,5 L -1.5,0 Z" fill="${color}" opacity="0.6">
-          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="20s" repeatCount="indefinite"/>
-        </path>
-      </g>
-      
-      <!-- X animada con brillo -->
+      style="width:100%;max-width:420px;filter:sepia(0.7) contrast(1.1) drop-shadow(0 4px 12px rgba(0,0,0,0.6));border-radius:10px;border:3px solid ${color}80">
+      <defs><filter id="paper2"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3"/><feColorMatrix type="saturate" values="0.3"/><feBlend in="SourceGraphic" mode="multiply"/></filter></defs>
+      <rect width="100" height="100" fill="#d4b483"/>
+      <rect width="100" height="100" fill="rgba(180,120,60,.18)" filter="url(#paper2)"/>
+      <rect x="2" y="2" width="96" height="96" fill="none" stroke="${color}" stroke-width="1" stroke-dasharray="4,2"/>
+      ${islands.map(il=>`<ellipse cx="${il.x}" cy="${il.y}" rx="${il.r}" ry="${il.r*0.7}" fill="#8B6914" opacity="0.5"/>
+        <ellipse cx="${il.x}" cy="${il.y}" rx="${il.r*0.6}" ry="${il.r*0.4}" fill="#4a7a2a" opacity="0.55"/>`).join('')}
+      <path d="${pathD}" fill="none" stroke="${color}" stroke-width="1.8" stroke-dasharray="3,1.5" opacity="0.9">
+        <animate attributeName="stroke-dashoffset" from="0" to="-30" dur="3s" repeatCount="indefinite"/></path>
+      ${wps.slice(0,-1).map(p=>`<circle cx="${p.x}" cy="${p.y}" r="1.8" fill="${color}" opacity="0.7"/>`).join('')}
+      <g transform="translate(88,12)"><circle r="6.5" fill="#d4b483" stroke="${color}" stroke-width="0.8"/>
+        <text x="0" y="-3.5" font-size="3.5" fill="${color}" text-anchor="middle" font-weight="bold">N</text>
+        <text x="0" y="6" font-size="3.5" fill="${color}" text-anchor="middle" font-weight="bold">S</text>
+        <text x="-5" y="1.5" font-size="3" fill="${color}" text-anchor="middle">W</text>
+        <text x="5" y="1.5" font-size="3" fill="${color}" text-anchor="middle">E</text></g>
       <g transform="translate(${finalX[0]},${finalX[1]})">
-        <circle r="6" fill="url(#xGlow)" opacity="0.6">
-          <animate attributeName="r" values="4;6;4" dur="1.5s" repeatCount="indefinite"/>
-        </circle>
-        <line x1="-4" y1="-4" x2="4" y2="4" stroke="#cc0000" stroke-width="2" stroke-linecap="round"/>
-        <line x1="4" y1="-4" x2="-4" y2="4" stroke="#cc0000" stroke-width="2" stroke-linecap="round"/>
-      </g>
+        <circle r="8" fill="#FFD700" opacity="0.3"><animate attributeName="r" values="6;10;6" dur="1.5s" repeatCount="indefinite"/></circle>
+        <line x1="-5" y1="-5" x2="5" y2="5" stroke="#cc0000" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="5" y1="-5" x2="-5" y2="5" stroke="#cc0000" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="0" y="11" font-size="3.5" fill="#cc0000" text-anchor="middle" font-weight="bold">TRESOR</text></g>
     </svg>`;
   },
 
-  // ─────────────────────────────────────────────
-  //  RODA DE CODIS — Interactiva visualmente
-  // ─────────────────────────────────────────────
   cipherWheel: function(config = {}) {
     const { shift = 3, highlightLetter = 'A', color = '#00f5ff' } = config;
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const inner = letters.slice(shift) + letters.slice(0, shift);
-    
-    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" 
-      style="width:100%;max-width:320px;filter:drop-shadow(0 4px 12px ${color}40)">
-      <defs>
-        <radialGradient id="grad1"><stop offset="0%" stop-color="${color}20"/><stop offset="100%" stop-color="transparent"/></radialGradient>
-      </defs>
-      <circle cx="50" cy="50" r="48" fill="#0a0a1a" stroke="${color}" stroke-width="0.5"/>
-      <circle cx="50" cy="50" r="48" fill="url(#grad1)"/>
-      
-      ${Array.from({length: 26}, (_, i) => {
-        const angle = (360/26)*i - 90;
-        const rad = angle * Math.PI / 180;
-        const x1 = 50 + 42 * Math.cos(rad);
-        const y1 = 50 + 42 * Math.sin(rad);
-        const x2 = 50 + 28 * Math.cos(rad);
-        const y2 = 50 + 28 * Math.sin(rad);
-        const xm = 50 + 35 * Math.cos(rad);
-        const ym = 50 + 35 * Math.sin(rad);
-        const isHL = letters[i] === highlightLetter;
-        
-        return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${isHL?2:0.5}" opacity="${isHL?1:0.3}"/>
-          <text x="${xm}" y="${ym}" font-size="3.5" fill="${isHL?'#FFD700':color}" text-anchor="middle" dominant-baseline="middle" 
-            font-weight="${isHL?'bold':'normal'}" style="font-family:monospace">${letters[i]}</text>
-          <text x="${50+20*Math.cos(rad)}" y="${50+20*Math.sin(rad)}" font-size="3" fill="${color}66" text-anchor="middle" dominant-baseline="middle"
-            style="font-family:monospace">${inner[i]}</text>`;
+    const L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', inner = L.slice(shift) + L.slice(0, shift);
+    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:340px;filter:drop-shadow(0 4px 16px ${color}50)">
+      <circle cx="50" cy="50" r="48" fill="#0a0a1a" stroke="${color}" stroke-width="0.8"/>
+      <circle cx="50" cy="50" r="36" fill="#050510" stroke="${color}40" stroke-width="0.5"/>
+      <circle cx="50" cy="50" r="22" fill="#0a0a1a" stroke="${color}" stroke-width="1.2"/>
+      ${Array.from({length:26},(_,i)=>{
+        const a=(360/26)*i-90, r=a*Math.PI/180;
+        const isHL=L[i]===highlightLetter;
+        return `<line x1="${50+44*Math.cos(r)}" y1="${50+44*Math.sin(r)}" x2="${50+30*Math.cos(r)}" y2="${50+30*Math.sin(r)}" stroke="${color}" stroke-width="${isHL?2:0.5}" opacity="${isHL?1:0.25}"/>
+          <text x="${50+37*Math.cos(r)}" y="${50+37*Math.sin(r)}" font-size="${isHL?4.5:3.5}" fill="${isHL?'#FFD700':color}" text-anchor="middle" dominant-baseline="middle" font-weight="${isHL?'bold':'normal'}" style="font-family:monospace">${L[i]}</text>
+          <text x="${50+26*Math.cos(r)}" y="${50+26*Math.sin(r)}" font-size="3" fill="${color}80" text-anchor="middle" dominant-baseline="middle" style="font-family:monospace">${inner[i]}</text>`;
       }).join('')}
-      
-      <circle cx="50" cy="50" r="15" fill="#0a0a1a" stroke="${color}" stroke-width="1"/>
-      <text x="50" y="48" font-size="4" fill="${color}" text-anchor="middle" font-family="Orbitron">+${shift}</text>
-      <text x="50" y="54" font-size="2.5" fill="${color}80" text-anchor="middle">DESPLAÇAMENT</text>
-      
-      <!-- Flecha indicadora -->
-      <polygon points="50,8 48,12 52,12" fill="${color}"/>
+      <text x="50" y="47" font-size="5" fill="${color}" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">+${shift}</text>
+      <text x="50" y="54" font-size="2.8" fill="${color}60" text-anchor="middle">DESPLAÇAMENT</text>
+      <polygon points="50,3 48,8 52,8" fill="${color}"/>
     </svg>`;
   },
 
-  // ─────────────────────────────────────────────
-  //  CIRCUIT PUZZLE — Visual mejorado
-  // ─────────────────────────────────────────────
   circuitPuzzle: function(config = {}) {
     const { nodes = 6, color = '#00f5ff', solution = [0,2,4,5] } = config;
     const positions = [[20,20],[60,15],[85,35],[75,65],[45,80],[15,60],[50,45],[30,50],[65,45],[40,25]].slice(0, nodes);
-    
     const edges = [];
-    for (let i = 0; i < nodes; i++) {
-      for (let j = i+1; j < nodes; j++) {
-        const dx = positions[i][0]-positions[j][0], dy = positions[i][1]-positions[j][1];
-        const dist = Math.sqrt(dx*dx+dy*dy);
-        if (dist < 50) edges.push([i, j, dist]);
-      }
+    for (let i = 0; i < nodes; i++) for (let j = i+1; j < nodes; j++) {
+      const dx=positions[i][0]-positions[j][0], dy=positions[i][1]-positions[j][1];
+      if(Math.sqrt(dx*dx+dy*dy)<55) edges.push([i,j]);
     }
-    
-    const solEdges = solution.slice(0,-1).map((n,i) => [n, solution[i+1]]);
-    
-    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" 
-      style="width:100%;max-width:360px;background:#020210;border-radius:12px;border:2px solid ${color}30">
-      <defs>
-        <filter id="glow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      </defs>
-      
-      <!-- Grid animado -->
-      ${Array.from({length:10},(_,i)=>`<line x1="${i*10}" y1="0" x2="${i*10}" y2="100" stroke="${color}08" stroke-width="0.3"/>
-        <line x1="0" y1="${i*10}" x2="100" y2="${i*10}" stroke="${color}08" stroke-width="0.3"/>`).join('')}
-      
-      <!-- Conexiones -->
-      ${edges.map(([a,b]) => {
-        const isSol = solEdges.some(([x,y]) => (x===a&&y===b)||(x===b&&y===a));
-        return `<line x1="${positions[a][0]}" y1="${positions[a][1]}" x2="${positions[b][0]}" y2="${positions[b][1]}"
-          stroke="${isSol ? color : color+'15'}" stroke-width="${isSol ? 2 : 0.5}" stroke-linecap="round"
-          ${isSol ? `filter="url(#glow)" stroke-dasharray="4,2"` : ''}>
-          ${isSol ? '<animate attributeName="stroke-dashoffset" from="0" to="-8" dur="1s" repeatCount="indefinite"/>' : ''}
-        </line>`;
+    const solEdges = solution.slice(0,-1).map((n,i)=>[n,solution[i+1]]);
+    const isSolEdge=(a,b)=>solEdges.some(([x,y])=>(x===a&&y===b)||(x===b&&y===a));
+    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:380px;background:#020210;border-radius:12px;border:2px solid ${color}40">
+      ${Array.from({length:8},(_,i)=>`<line x1="${i*14}" y1="0" x2="${i*14}" y2="100" stroke="${color}08" stroke-width="0.5"/>
+        <line x1="0" y1="${i*14}" x2="100" y2="${i*14}" stroke="${color}08" stroke-width="0.5"/>`).join('')}
+      ${edges.map(([a,b])=>`<line x1="${positions[a][0]}" y1="${positions[a][1]}" x2="${positions[b][0]}" y2="${positions[b][1]}"
+        stroke="${isSolEdge(a,b)?color:'rgba(255,255,255,0.08)'}" stroke-width="${isSolEdge(a,b)?1.5:0.5}" opacity="${isSolEdge(a,b)?0.9:0.3}"/>`).join('')}
+      ${positions.map((p,i)=>{
+        const isSol=solution.includes(i);
+        return `<circle cx="${p[0]}" cy="${p[1]}" r="${isSol?5:3.5}" fill="${isSol?color:'rgba(255,255,255,0.15)'}" stroke="${isSol?'#fff':color}" stroke-width="${isSol?1.5:0.5}">
+          ${isSol?`<animate attributeName="r" values="4.5;6.5;4.5" dur="1.8s" repeatCount="indefinite"/>`:''}
+        </circle>
+        <text x="${p[0]}" y="${p[1]}" font-size="2.8" fill="${isSol?'#000':'rgba(255,255,255,.4)'}" text-anchor="middle" dominant-baseline="middle" font-weight="bold">${i}</text>`;
       }).join('')}
-      
-      <!-- Nodos -->
-      ${positions.map(([x,y], i) => {
-        const isSol = solution.includes(i);
-        const isStart = i === solution[0];
-        const isEnd = i === solution[solution.length-1];
-        
-        return `<g>
-          <circle cx="${x}" cy="${y}" r="${isSol?6:4}" fill="${isSol?color:'#0a0a1a'}" stroke="${color}" stroke-width="${isSol?2:1}"
-            filter="${isSol?'url(#glow)':''}">
-            ${isSol ? '<animate attributeName="r" values="'+ (isSol?6:4) + ';' + (isSol?7:4) + ';' + (isSol?6:4) + '" dur="2s" repeatCount="indefinite"/>' : ''}
-          </circle>
-          ${isStart?`<text x="${x}" y="${y-10}" font-size="4" fill="${color}" text-anchor="middle">INICI</text>`:''}
-          ${isEnd?`<text x="${x}" y="${y+10}" font-size="4" fill="${color}" text-anchor="middle">FINAL</text>`:''}
-          <text x="${x}" y="${y}" font-size="${isSol?4:3}" fill="${isSol?'#000':color}" text-anchor="middle" dominant-baseline="middle" font-weight="bold">${i}</text>
-        </g>`;
-      }).join('')}
+      <text x="50" y="96" font-size="3" fill="${color}60" text-anchor="middle" font-family="monospace">CONNECTA ELS NODES BRILLANTS</text>
     </svg>`;
   },
 
-  // ─────────────────────────────────────────────
-  //  PIXEL SECRET — Mejorado con animación
-  // ─────────────────────────────────────────────
   pixelSecret: function(config = {}) {
-    const { code = '42', color = '#ff6b00', noise = true } = config;
-    const GRID = 16;
-    const CELL = 100/GRID;
-    
-    // Generar patrón de dígitos pixelados
-    const grid = Array.from({length: GRID}, () => Array(GRID).fill(0));
-    const digits = code.toString().split('');
-    const charW = 4, charH = 5;
-    const startX = Math.floor((GRID - digits.length*(charW+1))/2);
-    const startY = Math.floor((GRID - charH)/2);
-    
-    // Mapa de dígitos simples (1=píxel encendido)
-    const digitMap = {
-      '0':[[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],
-      '1':[[0,1,0,0],[1,1,0,0],[0,1,0,0],[0,1,0,0],[1,1,1,0]],
-      '2':[[1,1,1,0],[0,0,1,0],[0,1,0,0],[1,0,0,0],[1,1,1,0]],
-      '3':[[1,1,1,0],[0,0,1,0],[0,1,1,0],[0,0,1,0],[1,1,1,0]],
-      '4':[[1,0,1,0],[1,0,1,0],[1,1,1,0],[0,0,1,0],[0,0,1,0]],
-      '5':[[1,1,1,0],[1,0,0,0],[1,1,1,0],[0,0,1,0],[1,1,1,0]],
-      '6':[[0,1,1,0],[1,0,0,0],[1,1,1,0],[1,0,1,0],[0,1,1,0]],
-      '7':[[1,1,1,0],[0,0,1,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
-      '8':[[0,1,1,0],[1,0,1,0],[0,1,1,0],[1,0,1,0],[0,1,1,0]],
-      '9':[[0,1,1,0],[1,0,1,0],[0,1,1,0],[0,0,1,0],[0,1,1,0]],
-      'A':[[0,1,1,0],[1,0,1,0],[1,1,1,0],[1,0,1,0],[1,0,1,0]],
-      'B':[[1,1,1,0],[1,0,1,0],[1,1,0,0],[1,0,1,0],[1,1,1,0]],
-      'C':[[0,1,1,0],[1,0,0,0],[1,0,0,0],[1,0,0,0],[0,1,1,0]]
-    };
-    
-    digits.forEach((d, di) => {
-      const map = digitMap[d] || digitMap['0'];
-      map.forEach((row, ri) => {
-        row.forEach((v, ci) => {
-          const gx = startX + di*(charW+1) + ci;
-          const gy = startY + ri;
-          if(gx >= 0 && gx < GRID && gy >= 0 && gy < GRID) grid[gy][gx] = v ? 2 : 0;
-        });
-      });
-    });
-    
-    // Añadir ruido
-    if(noise) {
-      for(let y=0; y<GRID; y++) for(let x=0; x<GRID; x++) {
-        if(grid[y][x]===0 && Math.random()<0.15) grid[y][x]=1;
-      }
-    }
-
-    return `<div style="display:inline-block;background:#000;padding:8px;border:2px solid ${color};border-radius:8px;box-shadow:0 0 20px ${color}40">
-      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:300px;image-rendering:pixelated">
-        ${grid.map((row, y) => row.map((v, x) => v===0 ? '' : 
-          `<rect x="${x*CELL}" y="${y*CELL}" width="${CELL}" height="${CELL}" fill="${v===2 ? color : color+'30'}" opacity="${v===2?1:0.3}">
-            ${v===2 ? `<animate attributeName="opacity" values="1;0.7;1" dur="${1+Math.random()}s" repeatCount="indefinite"/>` : ''}
-          </rect>`
-        ).join('')).join('')}
+    const { code = '42', color = '#00f5ff', noise = true } = config;
+    const GRID=16, CELL=100/GRID;
+    const grid=Array.from({length:GRID},()=>Array(GRID).fill(0));
+    const DM={'0':[[1,1,1],[1,0,1],[1,0,1],[1,0,1],[1,1,1]],'1':[[0,1,0],[0,1,0],[0,1,0],[0,1,0],[0,1,0]],'2':[[1,1,1],[0,0,1],[1,1,1],[1,0,0],[1,1,1]],'3':[[1,1,1],[0,0,1],[1,1,1],[0,0,1],[1,1,1]],'4':[[1,0,1],[1,0,1],[1,1,1],[0,0,1],[0,0,1]],'5':[[1,1,1],[1,0,0],[1,1,1],[0,0,1],[1,1,1]],'6':[[1,1,1],[1,0,0],[1,1,1],[1,0,1],[1,1,1]],'7':[[1,1,1],[0,0,1],[0,0,1],[0,0,1],[0,0,1]],'8':[[1,1,1],[1,0,1],[1,1,1],[1,0,1],[1,1,1]],'9':[[1,1,1],[1,0,1],[1,1,1],[0,0,1],[1,1,1]],'A':[[0,1,0],[1,0,1],[1,1,1],[1,0,1],[1,0,1]],'B':[[1,1,0],[1,0,1],[1,1,0],[1,0,1],[1,1,0]],'C':[[0,1,1],[1,0,0],[1,0,0],[1,0,0],[0,1,1]]};
+    const digits=String(code).toUpperCase().split('');
+    const total=digits.length, charW=4, totalW=total*(charW+1)-1;
+    const startX=Math.floor((GRID-totalW)/2), startY=5;
+    digits.forEach((d,di)=>{const map=DM[d]||DM['0'];map.forEach((row,ri)=>row.forEach((v,ci)=>{const gx=startX+di*(charW+1)+ci,gy=startY+ri;if(gx>=0&&gx<GRID&&gy>=0&&gy<GRID)grid[gy][gx]=v?2:0;}));});
+    if(noise){for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){if(grid[y][x]===0&&Math.random()<0.12)grid[y][x]=1;}}
+    return `<div style="display:inline-block;background:#000;padding:10px;border:2px solid ${color};border-radius:10px;box-shadow:0 0 25px ${color}50;width:100%;max-width:320px">
+      <div style="font-family:Orbitron,monospace;font-size:0.55rem;color:${color};text-align:center;margin-bottom:6px;letter-spacing:3px;opacity:0.7">MISSATGE XIFRAT</div>
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;image-rendering:pixelated;display:block">
+        <rect width="100" height="100" fill="#000510"/>
+        ${grid.map((row,y)=>row.map((v,x)=>v===0?'':`<rect x="${x*CELL}" y="${y*CELL}" width="${CELL}" height="${CELL}" fill="${v===2?color:color+'25'}" opacity="${v===2?1:0.4}">${v===2?`<animate attributeName="opacity" values="1;0.7;1" dur="${1.2+((x+y)*7%10)*0.08}s" repeatCount="indefinite"/>`:''}</rect>`).join('')).join('')}
       </svg>
-      <div style="text-align:center;margin-top:8px;font-family:Orbitron;font-size:0.8rem;color:${color}">CODI AMAGAT</div>
+      <div style="font-family:Orbitron,monospace;font-size:0.5rem;color:${color}70;text-align:center;margin-top:6px;letter-spacing:2px">OBSERVA ELS PÍXELS BRILLANTS</div>
     </div>`;
   },
 
-  // ─────────────────────────────────────────────
-  //  STAR PATTERN — Constelación animada
-  // ─────────────────────────────────────────────
   starPattern: function(config = {}) {
-    const { stars = 8, pattern = [0,3,7,11], color = '#00f5ff', title = 'CONSTEL·LACIÓ' } = config;
-    const pts = Array.from({length: stars}, (_, i) => {
-      const angle = (360/stars)*i - 90;
-      const r = 30 + (i%3)*8;
-      return {
-        x: 50 + r * Math.cos(angle*Math.PI/180),
-        y: 50 + r * Math.sin(angle*Math.PI/180)
-      };
-    });
-    
-    const lines = [];
-    for(let i=0; i<pattern.length-1; i++) lines.push([pattern[i], pattern[i+1]]);
-    
-    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:320px;background:radial-gradient(ellipse at center,${color}10,transparent)">
-      <!-- Estrellas de fondo -->
-      ${Array.from({length:30},(_,i)=>`<circle cx="${Math.random()*100}" cy="${Math.random()*100}" r="${Math.random()*0.5+0.2}" fill="white" opacity="${Math.random()*0.5+0.2}">
-        <animate attributeName="opacity" values="0;1;0" dur="${2+Math.random()*3}s" repeatCount="indefinite"/>
-      </circle>`).join('')}
-      
-      <!-- Líneas de constelación -->
-      ${lines.map(([a,b])=>`<line x1="${pts[a].x}" y1="${pts[a].y}" x2="${pts[b].x}" y2="${pts[b].y}" stroke="${color}" stroke-width="1" opacity="0.8" stroke-dasharray="2,1">
-        <animate attributeName="stroke-dashoffset" from="0" to="-6" dur="1s" repeatCount="indefinite"/>
-      </line>`).join('')}
-      
-      <!-- Estrellas principales -->
-      ${pts.map((p,i) => {
-        const isHL = pattern.includes(i);
-        return `<g>
-          <circle cx="${p.x}" cy="${p.y}" r="${isHL?3:1.5}" fill="${isHL?color:'white'}" opacity="${isHL?1:0.6}" filter="${isHL?'drop-shadow(0 0 4px '+color+')':''}">
-            ${isHL?'<animate attributeName="r" values="3;4;3" dur="1.5s" repeatCount="indefinite"/>' : ''}
-          </circle>
-          <text x="${p.x+3}" y="${p.y-3}" font-size="3" fill="${color}80" font-family="monospace">${i}</text>
-        </g>`;
-      }).join('')}
-      
-      <text x="50" y="95" font-size="4" fill="${color}" text-anchor="middle" font-family="Orbitron" letter-spacing="2">${title}</text>
+    const { stars = 8, pattern = [0,3,7], color = '#00f5ff', title = 'CONSTEL·LACIÓ' } = config;
+    const pts=Array.from({length:stars},(_,i)=>{const a=(360/stars)*i-90,r=a*Math.PI/180,radius=28+(i%3)*9;return{x:50+radius*Math.cos(r),y:50+radius*Math.sin(r)};});
+    const lines=[];for(let i=0;i<pattern.length-1;i++)lines.push([pattern[i],pattern[i+1]]);
+    return `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:340px;background:radial-gradient(ellipse at 50% 45%,#050520,#000008);border-radius:12px">
+      ${Array.from({length:40},(_,i)=>`<circle cx="${Math.sin(i*47)*50+50}" cy="${Math.cos(i*31)*45+45}" r="${0.3+Math.random()*0.8}" fill="white" opacity="${0.15+Math.random()*0.5}"><animate attributeName="opacity" values="0.1;0.8;0.1" dur="${2+Math.random()*4}s" repeatCount="indefinite"/></circle>`).join('')}
+      ${lines.map(([a,b])=>`<line x1="${pts[a].x}" y1="${pts[a].y}" x2="${pts[b].x}" y2="${pts[b].y}" stroke="${color}" stroke-width="1.2" opacity="0.85"><animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite"/></line>`).join('')}
+      ${pts.map((p,i)=>{const isHL=pattern.includes(i);return `<g>${isHL?`<circle cx="${p.x}" cy="${p.y}" r="8" fill="${color}" opacity="0.1"><animate attributeName="r" values="6;11;6" dur="2s" repeatCount="indefinite"/></circle>`:''}
+        <circle cx="${p.x}" cy="${p.y}" r="${isHL?4:2}" fill="${isHL?color:'rgba(255,255,255,0.5)'}" opacity="${isHL?1:0.6}">${isHL?`<animate attributeName="r" values="3.5;5.5;3.5" dur="1.5s" repeatCount="indefinite"/>`:''}
+        </circle>
+        <text x="${p.x+5}" y="${p.y-4}" font-size="3.5" fill="${color}90" font-family="monospace">${i}</text></g>`;}).join('')}
+      <text x="50" y="103" font-size="4.5" fill="${color}" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold" letter-spacing="2">${title}</text>
+      <text x="50" y="108" font-size="2.8" fill="${color}60" text-anchor="middle">CONNECTA: ${pattern.join(' → ')}</text>
     </svg>`;
   },
 
-  // ─────────────────────────────────────────────
-  //  PANEL DE CONTROL — Interruptores mejorados
-  // ─────────────────────────────────────────────
   controlPanel: function(config = {}) {
-    const { switches = ['A','B','C','D'], solution = [0,2,3,1], color = '#ff6b00', label = 'PANEL' } = config;
-    
-    return `<svg viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:400px;background:linear-gradient(180deg,#1a1a1a,#0d0d0d);border:2px solid ${color};border-radius:12px">
-      <rect x="0" y="0" width="100" height="70" rx="8" fill="url(#bg)" stroke="${color}" stroke-width="0.5"/>
-      <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2a2a2a"/><stop offset="100%" stop-color="#0a0a0a"/></linearGradient>
-        <linearGradient id="ledOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${color}60"/></linearGradient>
-      </defs>
-      
-      <text x="50" y="10" font-size="5" fill="${color}" text-anchor="middle" font-family="Orbitron" letter-spacing="1">${label}</text>
-      
-      ${switches.map((sw, i) => {
-        const x = 15 + (i * (70/switches.length));
-        const isActive = solution.includes(i);
-        return `<g transform="translate(${x}, 20)">
-          <rect x="0" y="0" width="12" height="25" rx="2" fill="#1a1a1a" stroke="${color}40" stroke-width="0.5"/>
-          <circle cx="6" cy="5" r="2" fill="${isActive ? 'url(#ledOn)' : '#333'}" filter="${isActive?'drop-shadow(0 0 3px '+color+')':''}">
-            ${isActive ? '<animate attributeName="opacity" values="1;0.5;1" dur="1s" repeatCount="indefinite"/>' : ''}
-          </circle>
-          <text x="6" y="18" font-size="6" fill="${color}" text-anchor="middle" font-family="monospace">${sw}</text>
-          <text x="6" y="35" font-size="3" fill="${color}80" text-anchor="middle">${i+1}</text>
-        </g>`;
-      }).join('')}
-      
-      <rect x="10" y="55" width="80" height="10" rx="2" fill="#000" stroke="${color}40"/>
-      <text x="50" y="62" font-size="4" fill="${color}60" text-anchor="middle" font-family="monospace">SECUENCIA ACTIVA</text>
+    const { switches = ['A','B','C','D'], solution = [0,2], color = '#ff6b00', label = 'PANEL' } = config;
+    const n=switches.length, panW=Math.max(80,n*18), uid=label.replace(/\W/g,'');
+    return `<svg viewBox="0 0 ${panW+20} 90" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:480px;background:linear-gradient(180deg,#1a1a2e,#0d0d1a);border-radius:12px;border:2px solid ${color}50">
+      <defs><radialGradient id="led${uid}" cx="50%" cy="30%"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${color}60"/></radialGradient></defs>
+      <rect x="4" y="4" width="${panW+12}" height="82" rx="8" fill="none" stroke="${color}20" stroke-width="0.5"/>
+      <text x="${(panW+20)/2}" y="16" font-size="6" fill="${color}" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold" letter-spacing="2">${label}</text>
+      <line x1="10" y1="22" x2="${panW+10}" y2="22" stroke="${color}30" stroke-width="0.5"/>
+      ${switches.map((sw,i)=>{const x=10+i*(panW/n),cx=x+(panW/n)/2,isA=solution.includes(i);return `<g>
+        <rect x="${cx-6}" y="25" width="12" height="35" rx="3" fill="#0a0a1a" stroke="${color}50" stroke-width="0.8"/>
+        ${isA?`<circle cx="${cx}" cy="30" r="8" fill="${color}" opacity="0.12"><animate attributeName="r" values="6;11;6" dur="1.5s" repeatCount="indefinite"/></circle>`:''}
+        <circle cx="${cx}" cy="30" r="3.5" fill="${isA?`url(#led${uid})`:'#111'}" stroke="${isA?color:'rgba(255,255,255,0.15)'}" stroke-width="1">
+          ${isA?`<animate attributeName="opacity" values="1;0.6;1" dur="${0.8+i*0.15}s" repeatCount="indefinite"/>`:''}
+        </circle>
+        <rect x="${cx-3}" y="${isA?36:44}" width="6" height="12" rx="2" fill="${isA?color:'rgba(255,255,255,0.2)'}" opacity="${isA?0.9:0.4}"/>
+        <text x="${cx}" y="70" font-size="${sw.length>2?3.5:5}" fill="${isA?color:'rgba(255,255,255,0.5)'}" text-anchor="middle" font-family="monospace" font-weight="bold">${sw}</text>
+        <text x="${cx}" y="80" font-size="3" fill="${color}50" text-anchor="middle">${i+1}</text>
+      </g>`}).join('')}
     </svg>`;
   },
 
-  // ─────────────────────────────────────────────
-  //  ADN HELIX — Visualización mejorada
-  // ─────────────────────────────────────────────
   dnaHelix: function(config = {}) {
     const { seq1 = 'ATGCGA', seq2 = 'TACGCT', mutPos = 3, color = '#4ade80' } = config;
-    const n = seq1.length;
-    const BASE_COLORS = { A:'#ff6b00', T:'#00f5ff', G:'#4ade80', C:'#ff0080' };
-    
-    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:300px;background:radial-gradient(ellipse at center,${color}10,transparent);border-radius:12px;border:2px solid ${color}30">
-      ${Array.from({length: n}, (_, i) => {
-        const y = 15 + (i * 70/n);
-        const wave = Math.sin((i/n)*Math.PI*2 + Date.now()/1000); // Animación sutil
-        const x1 = 25 + Math.sin((i/n)*Math.PI*2)*10;
-        const x2 = 75 + Math.sin((i/n)*Math.PI*2)*10;
-        const isMut = i === mutPos;
-        const b1 = seq1[i], b2 = seq2[i];
-        
-        return `<g>
-          <line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${isMut?'#ff4444':color+'40'}" stroke-width="${isMut?2:1}" stroke-dasharray="${isMut?'4,2':'none'}"/>
-          <circle cx="${x1}" cy="${y}" r="4" fill="${BASE_COLORS[b1]||color}" stroke="#000" stroke-width="0.5">
-            ${isMut?'<animate attributeName="r" values="4;5;4" dur="0.5s" repeatCount="indefinite"/>' : ''}
-          </circle>
-          <text x="${x1}" y="${y}" font-size="3" fill="#000" text-anchor="middle" dominant-baseline="middle" font-weight="bold">${b1}</text>
-          <circle cx="${x2}" cy="${y}" r="4" fill="${BASE_COLORS[b2]||color}" stroke="#000" stroke-width="0.5"/>
-          <text x="${x2}" y="${y}" font-size="3" fill="#000" text-anchor="middle" dominant-baseline="middle" font-weight="bold">${b2}</text>
-          ${isMut ? `<rect x="${Math.min(x1,x2)-6}" y="${y-6}" width="${Math.abs(x2-x1)+12}" height="12" rx="2" fill="none" stroke="#ff4444" stroke-width="1" stroke-dasharray="2,1">
-            <animate attributeName="opacity" values="1;0.3;1" dur="0.8s" repeatCount="indefinite"/>
-          </rect>` : ''}
-        </g>`;
-      }).join('')}
-      
-      <path d="M ${Array.from({length:n},(_,i)=>`${25+Math.sin((i/n)*Math.PI*2)*10},${15+(i*70/n)}`).join(' L ')}" 
-        fill="none" stroke="${color}" stroke-width="1" opacity="0.3"/>
-      <path d="M ${Array.from({length:n},(_,i)=>`${75+Math.sin((i/n)*Math.PI*2)*10},${15+(i*70/n)}`).join(' L ')}" 
-        fill="none" stroke="${color}" stroke-width="1" opacity="0.3"/>
+    const n=seq1.length, BC={A:'#ff6b00',T:'#00f5ff',G:'#4ade80',C:'#ff0080'};
+    return `<svg viewBox="0 0 100 ${18+n*15+10}" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:300px;background:radial-gradient(ellipse at 50% 50%,${color}15,#000);border-radius:12px;border:2px solid ${color}30">
+      <text x="50" y="10" font-size="4" fill="${color}" text-anchor="middle" font-family="Orbitron,monospace">SEQÜÈNCIA ADN</text>
+      ${Array.from({length:n},(_,i)=>{const y=18+i*15,wave=Math.sin((i/n)*Math.PI*2),x1=25+wave*12,x2=75+wave*12,isMut=i===mutPos,b1=seq1[i],b2=seq2[i];return `<g>
+        <line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${isMut?'#ff4444':color+'50'}" stroke-width="${isMut?2:1}" stroke-dasharray="${isMut?'none':'3,1'}"/>
+        <circle cx="${x1}" cy="${y}" r="5" fill="${BC[b1]||color}" stroke="#000" stroke-width="0.8"/>
+        <text x="${x1}" y="${y}" font-size="3.5" fill="#000" text-anchor="middle" dominant-baseline="middle" font-weight="bold">${b1}</text>
+        <circle cx="${x2}" cy="${y}" r="5" fill="${BC[b2]||color}" stroke="#000" stroke-width="0.8"/>
+        <text x="${x2}" y="${y}" font-size="3.5" fill="#000" text-anchor="middle" dominant-baseline="middle" font-weight="bold">${b2}</text>
+        ${isMut?`<rect x="${Math.min(x1,x2)-8}" y="${y-7}" width="${Math.abs(x2-x1)+16}" height="14" rx="3" fill="none" stroke="#ff4444" stroke-width="1.5"><animate attributeName="opacity" values="1;0.3;1" dur="0.8s" repeatCount="indefinite"/></rect>
+        <text x="${(x1+x2)/2}" y="${y-10}" font-size="3" fill="#ff4444" text-anchor="middle">⚠ MUTACIÓ</text>`:''}
+      </g>`}).join('')}
     </svg>`;
+  },
+
+  stockMarket: function(config = {}) {
+    const { companies = ['TECH','FOOD','BANK'], prices = [100,85,120], color = '#00ff88' } = config;
+    const maxP=Math.max(...prices);
+    return `<div style="background:#020f08;border:2px solid ${color}50;border-radius:12px;padding:12px;font-family:Orbitron,monospace;max-width:400px">
+      <div style="font-size:0.65rem;color:${color};letter-spacing:3px;margin-bottom:10px;text-align:center">📈 MERCAT DE VALORS EN VIU</div>
+      ${companies.map((c,i)=>{const pct=((prices[i]/100-1)*100).toFixed(0),up=prices[i]>=100;return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px">
+        <span style="font-size:0.65rem;color:rgba(255,255,255,0.7);min-width:45px">${c}</span>
+        <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px">
+          <div style="height:100%;width:${(prices[i]/maxP*100).toFixed(0)}%;background:${up?color:'#ff4444'};border-radius:3px"></div>
+        </div>
+        <span style="font-family:monospace;font-size:0.75rem;color:${up?color:'#ff4444'};min-width:35px;text-align:right">${prices[i]}</span>
+        <span style="font-size:0.6rem;color:${up?color:'#ff4444'};min-width:42px;text-align:right">${up?'+':''}${pct}%</span>
+      </div>`}).join('')}
+      <div style="text-align:center;font-size:0.5rem;color:${color}50;margin-top:6px">CADA EQUIP TÉ 1000 CR · COMPRA · VEN · AGUANTA</div>
+    </div>`;
   }
+
 };
