@@ -629,15 +629,19 @@ function typeWriter(el,text,spd=18){
 //  Each archetype has unique visual language
 // ════════════════════════════════════════════
 function getArch(id){
-  if(/dragon|drac|foc|castle|fantasi/i.test(id))return'fantasy';
-  if(/pirat|mar|tresor|naval|ship/i.test(id))return'pirate';
-  if(/cyber|hack|digital|xarx|net|tech/i.test(id))return'cyber';
-  if(/spy|enigma|agent|secret|shadow/i.test(id))return'spy';
-  if(/espai|space|galaxy|cosmos|nau/i.test(id))return'space';
-  if(/lab|cienci|virus|bio|dna/i.test(id))return'lab';
-  if(/jungle|selva|tribu|ancient|egypt/i.test(id))return'jungle';
-  if(/zombie|horror|mort|dead|terror/i.test(id))return'horror';
-  return'adventure';
+  if(!id) return 'generic';
+  const s=id.toLowerCase();
+  if(/dragon|drac|foc|castle|fantasi|wizard|magic|arcana/.test(s)) return 'fantasy';
+  if(/pirat|tresor|naval|ship|capità/.test(s)) return 'pirate';
+  if(/cyber|hack|digital|xarx|net|tech|robot|androide/.test(s)) return 'cyber';
+  if(/spy|enigma|agent|secret|shadow|detecti/.test(s)) return 'spy';
+  if(/espai|space|galaxy|cosmos|nau|orbital|aurora|astro/.test(s)) return 'space';
+  if(/lab|cienci|virus|bio|dna|quimic/.test(s)) return 'lab';
+  if(/jungle|selva|tribu|ancient|egypt|safari|animal/.test(s)) return 'jungle';
+  if(/zombie|horror|mort|dead|terror|escape|institut/.test(s)) return 'horror';
+  if(/invasion|alien|marcian|game|party|joc/.test(s)) return 'invasion';
+  if(/detective|polici|crimina|robatori/.test(s)) return 'noir';
+  return 'generic';
 }
 
 function buildIntroScene(arch,ph,col,d){
@@ -651,9 +655,12 @@ function buildIntroScene(arch,ph,col,d){
     lab: buildLabScene,
     jungle: buildJungleScene,
     horror: buildHorrorScene,
-    adventure: buildAdventureScene
+    invasion: buildInvasionScene,
+    noir: buildNoirScene,
+    generic: buildGenericScene,
+    adventure: buildGenericScene
   };
-  return(scenes[arch]||buildAdventureScene)(W,H,col,ph);
+  return(scenes[arch]||buildGenericScene)(W,H,col,ph);
 }
 
 function buildPirateScene(W,H,col,ph){
@@ -858,6 +865,95 @@ function buildHorrorScene(W,H,col,ph){
     <!-- Warning text -->
     <rect x="${W*.1}" y="${H*.78}" width="${W*.8}" height="20" rx="4" fill="rgba(255,0,0,.1)" stroke="var(--rd)" stroke-width=".5" opacity=".4"/>
     <text x="${W*.5}" y="${H*.78+13}" font-family="monospace" font-size="8" text-anchor="middle" fill="#ff3333" opacity=".6">⚠ PERILL EXTREM ⚠</text>
+  </svg>`;
+}
+
+
+// ── INVASION SCENE — Marcianitos envaint la Terra ──
+function buildInvasionScene(W,H,col,ph){
+  const stars=Array.from({length:60},(_,i)=>`<circle cx="${Math.sin(i*37)*W/2+W/2}" cy="${Math.cos(i*29)*H*.4+H*.25}" r="${.3+Math.random()*1.5}" fill="white" opacity="${.2+Math.random()*.7}"><animate attributeName="opacity" values="${Math.random()};1;${Math.random()}" dur="${1.5+Math.random()*3}s" repeatCount="indefinite"/></circle>`).join('');
+  const cityLine=`M0,${H*.7} `+Array.from({length:18},(_,i)=>`L${i*W/17},${H*(.55+Math.random()*.18)} L${(i+.5)*W/17},${H*(.55+Math.random()*.18)}`).join(' ')+` L${W},${H*.7} L${W},${H} L0,${H} Z`;
+  const alienRows=[H*.08,H*.18,H*.28];
+  const alienTypes=['👾','🛸','💀'];
+  const alienSvg=alienRows.map((y,ri)=>Array.from({length:8},(_,ci)=>{
+    const x=W*.06+ci*(W*.11);
+    const delay=ri*.3+ci*.08;
+    return `<text x="${x}" y="${y}" font-size="${H*.045}" text-anchor="middle" opacity="${ph<ri?.3:.9}">
+      ${alienTypes[ri%3]}
+      <animate attributeName="y" values="${y};${y-H*.015};${y}" dur="${1.2+delay*.1}s" repeatCount="indefinite"/>
+    </text>
+    <line x1="${x}" y1="${y+H*.03}" x2="${W*.5}" y2="${H*.85}" stroke="${col}" stroke-width=".5" opacity="${ph===2?.4:0}"/>`;
+  }).join('')
+  ).join('');
+  const explosions=ph>=1?Array.from({length:4},(_,i)=>`
+    <circle cx="${W*(.15+i*.22)}" cy="${H*(.65+Math.random()*.1)}" r="${H*.03+i*5}" fill="none" stroke="#ff6b00" stroke-width="2" opacity=".6">
+      <animate attributeName="r" values="0;${H*.06}" dur="${.8+i*.2}s" begin="${i*.3}s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".8;0" dur="${.8+i*.2}s" begin="${i*.3}s" repeatCount="indefinite"/>
+    </circle>`).join(''):'';
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+    <rect width="${W}" height="${H}" fill="#000008"/>
+    ${stars}
+    ${alienSvg}
+    <path d="${cityLine}" fill="#0a0008" stroke="${col}40" stroke-width=".8"/>
+    ${Array.from({length:6},(_,i)=>`<rect x="${W*(.05+i*.16)}" y="${H*(.6+Math.random()*.1)}" width="${W*.04}" height="${H*.08}" fill="${col}30" stroke="${col}20" stroke-width=".5"/>
+    <rect x="${W*(.05+i*.16)}" y="${H*(.58+Math.random()*.05)}" width="${W*.04}" height="${W*.015}" fill="${col}50"/>`).join('')}
+    ${explosions}
+    <text x="${W*.5}" y="${H*.95}" font-size="${H*.022}" fill="${col}60" text-anchor="middle" font-family="Orbitron,monospace">TERRA SOTA ATAC</text>
+  </svg>`;
+}
+
+// ── NOIR DETECTIVE SCENE — Pluja, ombres, misteri ──
+function buildNoirScene(W,H,col,ph){
+  const rainLines=Array.from({length:60},(_,i)=>`<line x1="${Math.random()*W}" y1="${Math.random()*H}" x2="${Math.random()*W+10}" y2="${Math.random()*H+30}" stroke="rgba(150,150,200,.25)" stroke-width=".5"><animate attributeName="y1" from="${-H*.2}" to="${H*1.2}" dur="${.4+Math.random()*.4}s" begin="${Math.random()*2}s" repeatCount="indefinite"/></line>`).join('');
+  const cityBg=Array.from({length:14},(_,i)=>{
+    const bx=i*W*.075, bh=H*(.25+Math.random()*.35), by=H-bh;
+    const windows=Array.from({length:Math.floor(bh/15)},(_,wi)=>Array.from({length:3},(_,wj)=>`<rect x="${bx+3+wj*8}" y="${by+8+wi*12}" width="4" height="5" fill="${Math.random()>.6?'#ffd70050':'transparent'}"/>`).join('')
+    ).join('');
+    return `<rect x="${bx}" y="${by}" width="${W*.068}" height="${bh}" fill="#050508" stroke="${col}15" stroke-width=".5"/>${windows}`;
+  }).join('');
+  const detective=`
+    <ellipse cx="${W*.25}" cy="${H*.82}" rx="${W*.04}" ry="${H*.03}" fill="#0a0a1a" opacity=".8"/>
+    <rect x="${W*.2}" y="${H*.6}" width="${W*.1}" height="${H*.22}" rx="3" fill="#0a0a1a"/>
+    <circle cx="${W*.25}" cy="${H*.56}" r="${W*.04}" fill="#0a0a1a"/>
+    <rect x="${W*.2}" y="${H*.56}" width="${W*.1}" height="${H*.04}" rx="2" fill="#080810"/>
+    <line x1="${W*.16}" y1="${H*.68}" x2="${W*.1}" y2="${H*.78}" stroke="#0a0a1a" stroke-width="3"/>
+    <ellipse cx="${W*.25}" cy="${H*.53}" rx="${W*.07}" ry="${H*.025}" fill="#0a0a1a"/>`;
+  const spotlight=`<radialGradient id="spot${ph}"><stop offset="0%" stop-color="${col}" stop-opacity=".15"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+    <ellipse cx="${W*.5}" cy="${H*.3}" rx="${W*.3}" ry="${H*.25}" fill="url(#spot${ph})"/>`;
+  const clues=ph>=1?[
+    `<rect x="${W*.55}" y="${H*.4}" width="${W*.12}" height="${H*.08}" fill="#1a1000" stroke="${col}40" stroke-width="1"/><text x="${W*.61}" y="${H*.46}" font-size="${H*.02}" fill="${col}90" text-anchor="middle">PISTA #1</text>`,
+    `<circle cx="${W*.75}" cy="${H*.55}" r="${W*.025}" fill="none" stroke="#ff4444" stroke-width="1.5"/><text x="${W*.75}" y="${H*.55}" font-size="${H*.025}" text-anchor="middle" dominant-baseline="middle">?</text>`
+  ].join(''):'';
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+    <defs>${spotlight}</defs>
+    <rect width="${W}" height="${H}" fill="#020208"/>
+    ${rainLines}${cityBg}${detective}${clues}
+    <text x="${W*.5}" y="${H*.95}" font-size="${H*.02}" fill="${col}50" text-anchor="middle" font-family="monospace">INVESTIGACIÓ EN CURS</text>
+  </svg>`;
+}
+
+// ── GENERIC SCENE — Partícules temàtiques per a qualsevol historia ──
+function buildGenericScene(W,H,col,ph){
+  const particles=Array.from({length:40},(_,i)=>`<circle cx="${Math.random()*W}" cy="${Math.random()*H}" r="${1+Math.random()*3}" fill="${col}" opacity="${.1+Math.random()*.4}">
+    <animate attributeName="cy" values="${Math.random()*H};${Math.random()*H}" dur="${3+Math.random()*5}s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="${Math.random()*.3};${.3+Math.random()*.5};${Math.random()*.3}" dur="${2+Math.random()*4}s" repeatCount="indefinite"/>
+  </circle>`).join('');
+  const lines=Array.from({length:6},(_,i)=>`<line x1="0" y1="${H*(i*.18)}" x2="${W}" y2="${H*(i*.18)}" stroke="${col}" stroke-width=".3" opacity=".08"/>
+    <line x1="${W*(i*.18)}" y1="0" x2="${W*(i*.18)}" y2="${H}" stroke="${col}" stroke-width=".3" opacity=".06"/>`).join('');
+  const hexes=Array.from({length:8},(_,i)=>{
+    const cx=W*(.1+Math.random()*.8), cy=H*(.1+Math.random()*.8), r=W*.04+Math.random()*W*.04;
+    const pts=Array.from({length:6},(_,j)=>`${cx+r*Math.cos(j*Math.PI/3)},${cy+r*Math.sin(j*Math.PI/3)}`).join(' ');
+    return `<polygon points="${pts}" fill="none" stroke="${col}" stroke-width=".5" opacity="${.05+Math.random()*.1}"/>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+    <rect width="${W}" height="${H}" fill="#04040c"/>
+    ${lines}${hexes}${particles}
+    <circle cx="${W*.5}" cy="${H*.45}" r="${H*.15}" fill="${col}" opacity=".03">
+      <animate attributeName="r" values="${H*.12};${H*.18};${H*.12}" dur="4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="${W*.5}" cy="${H*.45}" r="${H*.08}" fill="${col}" opacity=".05">
+      <animate attributeName="r" values="${H*.06};${H*.1};${H*.06}" dur="3s" repeatCount="indefinite"/>
+    </circle>
   </svg>`;
 }
 
@@ -1487,40 +1583,72 @@ function buildMemoryChallenge(c,d){
     fantasy:['🐉','⚔️','🔮','🏰','🧙','🦄','🔥','💎','🌟','🗝️','🧝','🪄']
   };
   const pool=(POOLS[theme]||POOLS.default).slice(0,d.memoryPairs||6);
-  const cards=[...pool,...pool].sort(()=>Math.random()-.5).map((e,i)=>({id:i,emoji:e,revealed:false,matched:false}));
-  let first=null,lock=false,pairs=0,totalPairs=pool.length;
+  const cards=[...pool,...pool]
+    .sort(()=>Math.random()-.5)
+    .map((emoji,i)=>({id:i,emoji,matched:false}));
+  let firstId=null,lock=false,pairs=0,totalPairs=pool.length;
   const cols=Math.ceil(Math.sqrt(cards.length));
-  
-  function render(){
-    c.innerHTML=`
-    <div style="font-size:.62rem;color:rgba(255,255,255,.4);text-align:center;margin-bottom:8px">🧠 Parelles trobades: <strong style="color:var(--gn)">${pairs}/${totalPairs}</strong></div>
-    <div class="mem-grid" style="grid-template-columns:repeat(${cols},1fr);max-width:${cols*58}px;margin:0 auto">
-      ${cards.map((card,i)=>`<div class="mem-card ${card.matched?'matched':card.revealed?'':'hidden-c'}" id="mc${i}" onclick="memTap(${i})">${card.revealed||card.matched?card.emoji:'?'}</div>`).join('')}
-    </div>`;
-    window.memTap=(idx)=>{
-      if(lock||cards[idx].revealed||cards[idx].matched)return;
-      snd('click');if(navigator.vibrate)navigator.vibrate(20);
-      cards[idx].revealed=true;
-      const el=document.getElementById('mc'+idx);
-      if(el){el.textContent=cards[idx].emoji;el.classList.remove('hidden-c');}
-      if(!first){first=idx;return;}
-      const fIdx=first;first=null;lock=true;
-      if(cards[fIdx].emoji===cards[idx].emoji){
-        snd('ok');pairs++;cards[fIdx].matched=cards[idx].matched=true;lock=false;
-        [fIdx,idx].forEach(i=>{const e=document.getElementById('mc'+i);if(e)e.classList.add('matched');});
-        if(pairs>=totalPairs){setTimeout(()=>{doSend(d.answer||'MEMORY');snd('ok');},600);}
+
+  // Construir DOM una sola vegada — NO re-render en cada tap
+  const wrap=document.createElement('div');
+  wrap.innerHTML=`<div style="font-size:.62rem;color:rgba(255,255,255,.4);text-align:center;margin-bottom:8px">
+    🧠 Parelles: <strong id="mScore" style="color:var(--gn)">0/${totalPairs}</strong>
+  </div>
+  <div id="mGrid" class="mem-grid" style="grid-template-columns:repeat(${cols},1fr);max-width:${cols*62}px;margin:0 auto"></div>`;
+  c.innerHTML='';
+  c.appendChild(wrap);
+
+  const grid=document.getElementById('mGrid');
+  cards.forEach(card=>{
+    const el=document.createElement('div');
+    el.className='mem-card hidden-c';
+    el.id='mc'+card.id;
+    el.textContent='?';
+    el.addEventListener('click',()=>{
+      // Guard: ignorar si bloquejat, ja revelada, o ja matched
+      if(lock||card.matched) return;
+      if(!el.classList.contains('hidden-c')) return; // ja visible (és la primera)
+
+      // Revelar
+      el.textContent=card.emoji;
+      el.classList.remove('hidden-c');
+      snd('click');
+      if(navigator.vibrate)navigator.vibrate(20);
+
+      if(firstId===null){
+        firstId=card.id; // primera selecció — esperar segona
       } else {
-        setTimeout(()=>{
-          cards[fIdx].revealed=cards[idx].revealed=false;lock=false;
-          [fIdx,idx].forEach(i=>{const e=document.getElementById('mc'+i);if(e){e.classList.add('hidden-c');e.textContent='?';}});
-          snd('ko');
-        },900);
-        [fIdx,idx].forEach(i=>{const e=document.getElementById('mc'+i);if(e)e.classList.add('wrong-c');});
-        setTimeout(()=>[fIdx,idx].forEach(i=>{const e=document.getElementById('mc'+i);if(e)e.classList.remove('wrong-c');}),850);
+        const fId=firstId; firstId=null; lock=true;
+        const fCard=cards[fId];
+        const fEl=document.getElementById('mc'+fId);
+
+        if(fCard.emoji===card.emoji){
+          // ✅ Parella!
+          snd('ok'); pairs++;
+          card.matched=fCard.matched=true;
+          el.classList.add('matched');
+          if(fEl) fEl.classList.add('matched');
+          lock=false;
+          const sc=document.getElementById('mScore');
+          if(sc) sc.textContent=`${pairs}/${totalPairs}`;
+          if(pairs>=totalPairs) setTimeout(()=>doSend(d.answer||'MEMORY'),600);
+        } else {
+          // ❌ No parella — mostrar breu i girar de nou
+          el.classList.add('wrong-c');
+          if(fEl) fEl.classList.add('wrong-c');
+          setTimeout(()=>{
+            snd('ko');
+            el.classList.remove('wrong-c'); el.classList.add('hidden-c'); el.textContent='?';
+            if(fEl){fEl.classList.remove('wrong-c');fEl.classList.add('hidden-c');fEl.textContent='?';}
+            lock=false;
+          },900);
+        }
       }
-    };
-  }render();
+    });
+    grid.appendChild(el);
+  });
 }
+
 
 // ── HANGMAN (Ahorcado) ──
 function buildHangmanChallenge(c,d){
@@ -1733,47 +1861,134 @@ function buildStockChallenge(c,d){
   render();
 }
 
-// ── MARCIANITOS (Space Invaders simple) ──
+// ── MARCIANITOS — Aliens que es mouen, temps real ──
 function buildAlienChallenge(c,d){
-  const ALIENS_PER_ROW=5, ROWS=2;
-  let aliens=Array.from({length:ROWS*ALIENS_PER_ROW},(_,i)=>({id:i,alive:true}));
-  let shots=0, hit=0;
-  const ALIEN_EMOJIS=['👾','🛸','👽','💀','🤖'];
+  const ROWS=d.alienRows||2, COLS=d.alienCols||5;
+  const ALIEN_TYPES=['👾','👽','💀','🤖','🛸'];
+  const TOTAL=ROWS*COLS;
   
-  function render(){
-    const alive=aliens.filter(a=>a.alive).length;
-    c.innerHTML=`
-    <div style="font-family:'Orbitron';font-size:.65rem;color:var(--ac);text-align:center;margin-bottom:6px">
-      Alienígenes: <strong>${alive}</strong> · Tirs: ${shots} · Encertats: ${hit}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(${ALIENS_PER_ROW},1fr);gap:6px;max-width:280px;margin:0 auto 12px">
-      ${aliens.map((a,i)=>`<div class="alien ${a.alive?'':'hit'}" id="al${i}" onclick="shootAlien(${i})">${a.alive?ALIEN_EMOJIS[i%ALIEN_EMOJIS.length]:'💥'}</div>`).join('')}
-    </div>
-    <div style="text-align:center;margin-top:8px">
-      <button class="shoot-btn" onclick="shootRandom()">🔫</button>
-      <div style="font-size:.6rem;color:rgba(255,255,255,.3);margin-top:6px">Elimina tots els alienígenes!</div>
-    </div>`;
-    window.shootAlien=(i)=>{
-      if(!aliens[i].alive)return;
-      aliens[i].alive=false;shots++;hit++;
-      snd('sword');if(navigator.vibrate)navigator.vibrate([20]);
-      render();
-      if(aliens.every(a=>!a.alive)){snd('ok');setTimeout(()=>doSend(d.answer||'DESTROY'),600);}
-    };
-    window.shootRandom=()=>{
-      const alive=aliens.filter(a=>a.alive);
-      if(alive.length===0)return;
-      shots++;
-      if(Math.random()>.3){
-        const target=alive[Math.floor(Math.random()*alive.length)];
-        target.alive=false;hit++;snd('sword');
-      } else {snd('ko');}
-      if(navigator.vibrate)navigator.vibrate([15]);
-      render();
-      if(aliens.every(a=>!a.alive)){snd('ok');setTimeout(()=>doSend(d.answer||'DESTROY'),600);}
-    };
+  // Estat
+  let aliens=Array.from({length:TOTAL},(_,i)=>({
+    id:i, alive:true,
+    emoji:ALIEN_TYPES[Math.floor(i/COLS)%ALIEN_TYPES.length],
+    exploding:false
+  }));
+  let score=0, shots=0, hits=0;
+  let gameOver=false;
+  
+  // Moviment dels aliens
+  let alienX=0, alienDir=1, alienY=0;
+  let moveInterval=null;
+  
+  function countAlive(){return aliens.filter(a=>a.alive).length;}
+
+  function startMovement(){
+    moveInterval=setInterval(()=>{
+      if(gameOver)return;
+      alienX+=alienDir*3;
+      if(alienX>20||alienX<-20){alienDir*=-1;alienY+=8;}
+      // Els aliens baixen massa — game over
+      if(alienY>50&&countAlive()>0){
+        // Seguir endavant (l'alumne no pot perdre en escape room)
+      }
+      renderAliens();
+    },500+countAlive()*30); // Accelera quan queden menys
   }
-  render();
+
+  function renderAliens(){
+    const grid=document.getElementById('alienGrid');
+    if(!grid)return;
+    // Actualitzar posicions sense re-render complet
+    aliens.forEach(a=>{
+      const el=document.getElementById('al'+a.id);
+      if(!el)return;
+      if(!a.alive){el.style.opacity='0';return;}
+      const row=Math.floor(a.id/COLS), col=a.id%COLS;
+      const baseX=col*(100/COLS)+alienX;
+      const baseY=row*20+alienY;
+      el.style.transform=`translate(${alienX}px,${alienY}px)`;
+    });
+  }
+
+  // Renderitzar el joc
+  c.innerHTML=`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <div style="font-family:'Orbitron';font-size:.62rem;color:var(--ac)">👾 <strong>${TOTAL}</strong> aliens</div>
+    <div style="font-family:'Orbitron';font-size:.62rem;color:var(--gn)">Eliminats: <strong id="alKills">0</strong></div>
+    <div style="font-family:'Orbitron';font-size:.62rem;color:rgba(255,255,255,.4)">Tirs: <strong id="alShots">0</strong></div>
+  </div>
+  <!-- Camp de batalla -->
+  <div id="alienGrid" style="position:relative;height:140px;background:linear-gradient(180deg,#000008,#000520);border-radius:10px;overflow:hidden;border:1px solid rgba(0,245,255,.2);margin-bottom:8px">
+    <!-- Estreles de fons -->
+    ${Array.from({length:20},(_,i)=>`<div style="position:absolute;left:${Math.random()*100}%;top:${Math.random()*100}%;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;background:white;border-radius:50%;opacity:${.2+Math.random()*.5}"></div>`).join('')}
+    <!-- Aliens -->
+    ${aliens.map(a=>{
+      const row=Math.floor(a.id/COLS), col=a.id%COLS;
+      const leftPct=(col/(COLS-1))*85+7.5;
+      const topPct=(row/(ROWS-1||1))*40+5;
+      return `<div id="al${a.id}" onclick="alShoot(${a.id})" style="
+        position:absolute;left:${leftPct}%;top:${topPct}%;
+        font-size:1.4rem;cursor:pointer;transition:transform .5s ease;
+        -webkit-user-select:none;user-select:none;
+        text-shadow:0 0 8px rgba(255,100,0,.6);
+        animation:alienBob .8s ${a.id*.1}s ease-in-out infinite alternate">${a.emoji}</div>`;
+    }).join('')}
+    <!-- Terra / bunquers -->
+    <div style="position:absolute;bottom:0;left:0;right:0;height:20px;background:rgba(0,245,255,.05);border-top:1px solid rgba(0,245,255,.2);display:flex;gap:8px;align-items:center;padding:0 10px">
+      ${Array.from({length:3},(_,i)=>`<div id="bunker${i}" style="width:20px;height:12px;background:rgba(0,245,255,.2);border-radius:3px;border:1px solid rgba(0,245,255,.4)"></div>`).join('')}
+      <div style="flex:1;text-align:right;font-family:'Orbitron';font-size:.5rem;color:rgba(0,245,255,.4)">DEFENSA TERRA</div>
+    </div>
+  </div>
+  <!-- Botó de dispar i joystick -->
+  <div style="display:flex;gap:10px;align-items:center;justify-content:center">
+    <button class="shoot-btn" onclick="alRandom()" id="shootBtn">🔫</button>
+    <div style="text-align:center;font-size:.55rem;color:rgba(255,255,255,.3)">
+      Toca els aliens<br>o el botó de dispar
+    </div>
+  </div>
+  <style>@keyframes alienBob{from{transform:translateY(0)}to{transform:translateY(-5px)}}</style>`;
+
+  // Afegir listeners
+  window.alShoot=(id)=>{
+    if(gameOver||!aliens[id].alive)return;
+    aliens[id].alive=false; shots++; hits++;
+    const el=document.getElementById('al'+id);
+    if(el){
+      el.textContent='💥';
+      el.style.animation='none';
+      el.style.fontSize='1.6rem';
+      setTimeout(()=>{el.style.opacity='0';},400);
+    }
+    snd('sword');
+    if(navigator.vibrate)navigator.vibrate([15,5,30]);
+    document.getElementById('alKills').textContent=hits;
+    document.getElementById('alShots').textContent=shots;
+    if(countAlive()===0){
+      clearInterval(moveInterval);gameOver=true;
+      snd('ok');
+      setTimeout(()=>doSend(d.answer||'DESTROY'),700);
+    }
+  };
+
+  window.alRandom=()=>{
+    shots++;
+    document.getElementById('alShots').textContent=shots;
+    if(navigator.vibrate)navigator.vibrate([20]);
+    const alive=aliens.filter(a=>a.alive);
+    if(alive.length===0)return;
+    // 60% de probabilitat d'encertar
+    if(Math.random()>.4){
+      const target=alive[Math.floor(Math.random()*alive.length)];
+      alShoot(target.id);
+    } else {
+      snd('ko');
+      // Flash de miss
+      const btn=document.getElementById('shootBtn');
+      if(btn){btn.style.boxShadow='0 0 20px rgba(255,255,0,.5)';setTimeout(()=>btn.style.boxShadow='',300);}
+    }
+  };
+
+  startMovement();
 }
 
 // ── CIPHER DIAL (Roda Cèsar interactiva) ──
@@ -1827,129 +2042,192 @@ function buildSliderChallenge(c,d){
   }render();
 }
 
-// ── 7 DIFERÈNCIES (mòbil interactiu) ──
+// ── 7 DIFERÈNCIES (mòbil interactiu) — Escena elaborada ──
 function buildSevenDiffsChallenge(c,d){
-  // Generem dues imatges SVG temàtiques quasi idèntiques
-  // L'usuari toca on veu diferències
-  const theme=d.diffTheme||'space';
-  const totalDiffs=7;
+  // Escena SVG elaborada: laboratori, espai, o pirata segons tema
+  const theme=d.diffTheme||'lab';
   let found=[];
+  const TOTAL=7;
+  
+  // Definim les diferències: [id, descriu, cx, cy (% de 100x100), visibleEnB]
+  // La diferència 6 (índex 6) és IMPOSSIBLE — mai es revela al clicar
+  const DIFFS=[
+    {id:0, label:'Color recipient',  cx:22, cy:35, visible:true},
+    {id:1, label:'Bombolla extra',   cx:55, cy:28, visible:true},
+    {id:2, label:'Agulla del rellotge',cx:78,cy:22, visible:true},
+    {id:3, label:'Taca a la paret',  cx:85, cy:60, visible:true},
+    {id:4, label:'Planta diferent',  cx:15, cy:72, visible:true},
+    {id:5, label:'Calaix obert',     cx:48, cy:78, visible:true},
+    {id:6, label:'Ombra del sostre', cx:40, cy:8,  visible:false}, // IMPOSSIBLE
+  ];
 
-  // Definim elements base + modificats per tema
-  const themes={
-    space:{
-      base:[
-        {tag:'circle',attrs:{cx:20,cy:15,r:8,fill:'#4a90d9',opacity:0.8},label:'Planeta'},
-        {tag:'circle',attrs:{cx:80,cy:25,r:5,fill:'#ff6b00',opacity:0.7},label:'Sol'},
-        {tag:'polygon',attrs:{points:'50,5 55,20 70,20 58,28 62,43 50,34 38,43 42,28 30,20 45,20',fill:'#ffd700'},label:'Estrella'},
-        {tag:'rect',attrs:{x:35,y:50,width:30,height:40,rx:3,fill:'#2a2a4a'},label:'Nau'},
-        {tag:'circle',attrs:{cx:50,cy:60,r:5,fill:'#00f5ff',opacity:0.6},label:'Ull nau'},
-        {tag:'circle',attrs:{cx:15,cy:70,r:3,fill:'white',opacity:0.6},label:'Estrella1'},
-        {tag:'circle',attrs:{cx:90,cy:80,r:2,fill:'white',opacity:0.5},label:'Estrella2'},
-        {tag:'circle',attrs:{cx:70,cy:40,r:2.5,fill:'white',opacity:0.7},label:'Estrella3'},
-        {tag:'rect',attrs:{x:5,y:5,width:8,height:12,rx:2,fill:'#888',opacity:0.5},label:'Asteroide'},
-      ],
-      diffs:[
-        // idx, attribut modificat, valor nou, posició aproximada [x%,y%]
-        {idx:0, attr:'fill', val:'#ff0080', pos:[20,15], label:'Color planeta'},
-        {idx:1, attr:'r', val:9, pos:[80,25], label:'Mida sol'},
-        {idx:2, attr:'fill', val:'#00f5ff', pos:[50,20], label:'Color estrella'},
-        {idx:3, attr:'fill', val:'#4a90d9', pos:[50,65], label:'Color nau'},
-        {idx:4, attr:'r', val:8, pos:[50,60], label:'Ull nau gran'},
-        {idx:5, attr:'opacity', val:0, pos:[15,70], label:'Estrella desapareguda'},
-        {idx:6, attr:'cy', val:50, pos:[90,50], label:'Estrella moguda'},
-      ]
-    }
-  };
-
-  const t = themes[theme] || themes.space;
-
-  function buildSVG(modified){
-    const W=100, H=100;
-    const stars = Array.from({length:12},(_,i)=>
-      `<circle cx="${Math.sin(i*47)*45+50}" cy="${Math.cos(i*31)*40+45}" r="${0.4+i%3*0.3}" fill="white" opacity="0.3"/>`
-    ).join('');
-    const shapes = t.base.map((el,i)=>{
-      let attrs = {...el.attrs};
-      if(modified){
-        const diff = t.diffs.find(d2=>d2.idx===i);
-        if(diff) attrs[diff.attr] = diff.val;
-      }
-      const attrStr = Object.entries(attrs).map(([k,v])=>`${k}="${v}"`).join(' ');
-      return `<${el.tag} ${attrStr}/>`;
-    }).join('');
-    return `<rect width="100" height="100" fill="#000015"/>
-      ${stars}${shapes}`;
+  // Generar les dues escenes SVG (tema laboratori per defecte)
+  function buildLabA(){
+    return `
+    <rect width="100" height="100" fill="#001a0a"/>
+    <rect x="0" y="82" width="100" height="18" fill="#0a0500"/>
+    <!-- Paret de fons amb rajoles -->
+    ${Array.from({length:5},(_,i)=>Array.from({length:8},(_,j)=>`<rect x="${j*13}" y="${i*16}" width="12" height="15" fill="none" stroke="#00200a" stroke-width=".3"/>`).join('')).join('')}
+    <!-- Taulell de laboratori -->
+    <rect x="0" y="65" width="100" height="5" fill="#0d1a0d" stroke="#00ff8830" stroke-width=".5"/>
+    <!-- Recipient 1 — BLAU a la versió A -->
+    <ellipse cx="22" cy="55" rx="6" ry="12" fill="#003399" stroke="#0066ff" stroke-width=".8" opacity=".85"/>
+    <ellipse cx="22" cy="43" rx="6" ry="2" fill="#0044cc" opacity=".9"/>
+    <ellipse cx="22" cy="50" rx="2.5" ry="2.5" fill="#66aaff" opacity=".6"/>
+    <!-- Recipient 2 — verd -->
+    <ellipse cx="42" cy="50" rx="5" ry="14" fill="#004400" stroke="#00ff44" stroke-width=".8" opacity=".85"/>
+    <ellipse cx="42" cy="36" rx="5" ry="2" fill="#006600" opacity=".9"/>
+    ${Array.from({length:3},(_,i)=>`<ellipse cx="42" cy="${40+i*5}" rx="1.8" ry="1.8" fill="#00ff44" opacity=".4"/>`).join('')}
+    <!-- Microscopi -->
+    <rect x="60" y="42" width="8" height="22" rx="2" fill="#1a1a1a" stroke="#666" stroke-width=".5"/>
+    <rect x="58" y="40" width="12" height="4" rx="1" fill="#222" stroke="#555" stroke-width=".5"/>
+    <circle cx="64" cy="46" r="4" fill="#111" stroke="#888" stroke-width=".5"/>
+    <!-- Rellotge de paret amb agulla a les 10 -->
+    <circle cx="78" cy="22" r="8" fill="#0a0a0a" stroke="#444" stroke-width=".8"/>
+    <circle cx="78" cy="22" r="6" fill="#111" stroke="#333" stroke-width=".4"/>
+    <line x1="78" y1="22" x2="75" y2="17" stroke="white" stroke-width=".8"/>
+    <line x1="78" y1="22" x2="78" y2="16" stroke="white" stroke-width=".6"/>
+    <!-- Prestatgeries -->
+    <rect x="5" y="5" width="28" height="30" fill="none" stroke="#1a3a1a" stroke-width=".5"/>
+    <rect x="5" y="15" width="28" height=".5" fill="#1a3a1a"/>
+    <rect x="7" y="7" width="5" height="7" rx="1" fill="#002200" stroke="#00aa44" stroke-width=".5"/>
+    <rect x="14" y="6" width="4" height="8" rx="1" fill="#220000" stroke="#aa2200" stroke-width=".5"/>
+    <rect x="20" y="7" width="6" height="7" rx="1" fill="#000022" stroke="#2244aa" stroke-width=".5"/>
+    <rect x="7" y="17" width="7" height="16" rx="1" fill="#001a0a" stroke="#006622" stroke-width=".5"/>
+    <rect x="16" y="18" width="5" height="15" rx="1" fill="#001a0a" stroke="#006622" stroke-width=".5"/>
+    <rect x="23" y="17" width="6" height="16" rx="1" fill="#001a0a" stroke="#006622" stroke-width=".5"/>
+    <!-- Planta -->
+    <rect x="12" y="65" width="6" height="8" rx="1" fill="#3a2000"/>
+    <ellipse cx="15" cy="58" rx="5" ry="6" fill="#003300" stroke="#006600" stroke-width=".5"/>
+    <ellipse cx="12" cy="61" rx="3" ry="4" fill="#004400"/>
+    <ellipse cx="18" cy="60" rx="3" ry="4" fill="#004400"/>
+    <!-- Calaix TANCAT a versió A -->
+    <rect x="40" y="68" width="20" height="10" fill="#0d1a0d" stroke="#1a3a1a" stroke-width=".5"/>
+    <circle cx="50" cy="73" r="1.5" fill="#444"/>`;
   }
 
-  // Zones clicables a la imatge B — cada diferència té una zona
-  function getZones(){
-    return t.diffs.map((diff,i)=>({
-      x: diff.pos[0], y: diff.pos[1], id: i,
-      found: found.includes(i)
-    }));
+  function buildLabB(){
+    return `
+    <rect width="100" height="100" fill="#001a0a"/>
+    <rect x="0" y="82" width="100" height="18" fill="#0a0500"/>
+    ${Array.from({length:5},(_,i)=>Array.from({length:8},(_,j)=>`<rect x="${j*13}" y="${i*16}" width="12" height="15" fill="none" stroke="#00200a" stroke-width=".3"/>`).join('')).join('')}
+    <rect x="0" y="65" width="100" height="5" fill="#0d1a0d" stroke="#00ff8830" stroke-width=".5"/>
+    <!-- DIFERÈNCIA 0: Recipient VERMELL en comptes de blau -->
+    <ellipse cx="22" cy="55" rx="6" ry="12" fill="#990000" stroke="#ff2200" stroke-width=".8" opacity=".85"/>
+    <ellipse cx="22" cy="43" rx="6" ry="2" fill="#cc0000" opacity=".9"/>
+    <ellipse cx="22" cy="50" rx="2.5" ry="2.5" fill="#ff6644" opacity=".6"/>
+    <!-- Recipient 2 igual -->
+    <ellipse cx="42" cy="50" rx="5" ry="14" fill="#004400" stroke="#00ff44" stroke-width=".8" opacity=".85"/>
+    <ellipse cx="42" cy="36" rx="5" ry="2" fill="#006600" opacity=".9"/>
+    <!-- DIFERÈNCIA 1: Bombolla extra -->
+    ${Array.from({length:3},(_,i)=>`<ellipse cx="42" cy="${40+i*5}" rx="1.8" ry="1.8" fill="#00ff44" opacity=".4"/>`).join('')}
+    <ellipse cx="38" cy="44" rx="2" ry="2" fill="#00ff44" opacity=".5"/>
+    <!-- Microscopi igual -->
+    <rect x="60" y="42" width="8" height="22" rx="2" fill="#1a1a1a" stroke="#666" stroke-width=".5"/>
+    <rect x="58" y="40" width="12" height="4" rx="1" fill="#222" stroke="#555" stroke-width=".5"/>
+    <circle cx="64" cy="46" r="4" fill="#111" stroke="#888" stroke-width=".5"/>
+    <!-- DIFERÈNCIA 2: Agulla rellotge a les 3 en punt -->
+    <circle cx="78" cy="22" r="8" fill="#0a0a0a" stroke="#444" stroke-width=".8"/>
+    <circle cx="78" cy="22" r="6" fill="#111" stroke="#333" stroke-width=".4"/>
+    <line x1="78" y1="22" x2="84" y2="22" stroke="white" stroke-width=".8"/>
+    <line x1="78" y1="22" x2="78" y2="16" stroke="white" stroke-width=".6"/>
+    <!-- Prestatgeries -->
+    <rect x="5" y="5" width="28" height="30" fill="none" stroke="#1a3a1a" stroke-width=".5"/>
+    <rect x="5" y="15" width="28" height=".5" fill="#1a3a1a"/>
+    <rect x="7" y="7" width="5" height="7" rx="1" fill="#002200" stroke="#00aa44" stroke-width=".5"/>
+    <rect x="14" y="6" width="4" height="8" rx="1" fill="#220000" stroke="#aa2200" stroke-width=".5"/>
+    <rect x="20" y="7" width="6" height="7" rx="1" fill="#000022" stroke="#2244aa" stroke-width=".5"/>
+    <!-- DIFERÈNCIA 3: Taca a la paret (requadre fosc a la paret dreta) -->
+    <rect x="78" y="52" width="8" height="10" rx="1" fill="#002200" opacity=".7"/>
+    <rect x="7" y="17" width="7" height="16" rx="1" fill="#001a0a" stroke="#006622" stroke-width=".5"/>
+    <rect x="16" y="18" width="5" height="15" rx="1" fill="#001a0a" stroke="#006622" stroke-width=".5"/>
+    <rect x="23" y="17" width="6" height="16" rx="1" fill="#001a0a" stroke="#006622" stroke-width=".5"/>
+    <!-- DIFERÈNCIA 4: Planta MORTA (marró) -->
+    <rect x="12" y="65" width="6" height="8" rx="1" fill="#3a2000"/>
+    <ellipse cx="15" cy="58" rx="5" ry="6" fill="#331a00" stroke="#664400" stroke-width=".5"/>
+    <ellipse cx="12" cy="61" rx="3" ry="4" fill="#442200"/>
+    <ellipse cx="18" cy="60" rx="3" ry="4" fill="#442200"/>
+    <!-- DIFERÈNCIA 5: Calaix OBERT -->
+    <rect x="40" y="68" width="20" height="10" fill="#0d1a0d" stroke="#1a3a1a" stroke-width=".5"/>
+    <rect x="40" y="66" width="20" height="3" fill="#152a15" stroke="#1a3a1a" stroke-width=".4"/>
+    <circle cx="50" cy="73" r="1.5" fill="#444"/>
+    <!-- DIFERÈNCIA 6 (IMPOSSIBLE): Ombra tènue al sostre — quasi invisible -->
+    <ellipse cx="40" cy="8" rx="8" ry="2" fill="#003300" opacity=".06"/>`;
   }
 
   function render(){
-    const zones = getZones();
+    const foundLabels=found.map(id=>DIFFS[id].label);
     c.innerHTML=`
-    <div style="font-size:.62rem;color:rgba(255,255,255,.45);text-align:center;margin-bottom:6px">
-      Diferències trobades: <strong style="color:var(--gn)">${found.length}/${totalDiffs}</strong> · Toca a la imatge DRETA
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;padding:0 2px">
+      <div style="font-size:.6rem;color:rgba(255,255,255,.5)">Trobades: <strong style="color:var(--gn)">${found.length}/${TOTAL}</strong></div>
+      ${found.length>0?`<div style="font-size:.52rem;color:var(--gn);max-width:60%">${foundLabels[foundLabels.length-1]} ✓</div>`:''}
     </div>
-    <div style="display:flex;gap:6px;width:100%">
-      <div style="flex:1">
-        <div style="font-size:.5rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:3px">ORIGINAL</div>
-        <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.15)">
+    <div style="display:flex;gap:5px;width:100%">
+      <div style="flex:1;position:relative">
+        <div style="font-size:.45rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:2px">ORIGINAL</div>
+        <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.12)">
           <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">
-            ${buildSVG(false)}
+            ${buildLabA()}
           </svg>
         </div>
       </div>
-      <div style="flex:1">
-        <div style="font-size:.5rem;color:var(--ac);text-align:center;margin-bottom:3px">TROBA LES DIFERÈNCIES ▼</div>
-        <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(255,107,0,.3);cursor:crosshair" id="diffB">
-          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block" onclick="diffClick(event)">
-            ${buildSVG(true)}
-            ${zones.map(z=>z.found?`<circle cx="${z.x}" cy="${z.y}" r="8" fill="none" stroke="var(--gn)" stroke-width="2" opacity="0.9"/>`:
-              '').join('')}
+      <div style="flex:1;position:relative">
+        <div style="font-size:.45rem;color:var(--ac);text-align:center;margin-bottom:2px">TROBA LES 7 ▼</div>
+        <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(255,107,0,.3);cursor:crosshair">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block" id="diffSvg" onclick="diffTap(event)">
+            ${buildLabB()}
+            <!-- Cercles de diferències trobades -->
+            ${found.map(id=>`<circle cx="${DIFFS[id].cx}" cy="${DIFFS[id].cy}" r="7" fill="none" stroke="var(--gn)" stroke-width="2" opacity=".9">
+              <animate attributeName="r" values="5;8;5" dur="2s" repeatCount="indefinite"/>
+            </circle>`).join('')}
           </svg>
         </div>
       </div>
     </div>
-    <div id="diffFb" style="min-height:18px;text-align:center;font-size:.75rem;margin-top:5px;padding:4px"></div>`;
+    <div id="diffMsg" style="text-align:center;font-size:.68rem;min-height:20px;margin-top:5px;padding:3px"></div>
+    <!-- Indicadors de progrés -->
+    <div style="display:flex;gap:3px;justify-content:center;margin-top:5px">
+      ${Array.from({length:TOTAL},(_,i)=>`<div style="width:18px;height:4px;border-radius:2px;background:${found.includes(i)?'var(--gn)':i===6?'rgba(255,50,50,.3)':'rgba(255,255,255,.1)'}" title="${DIFFS[i].label}"></div>`).join('')}
+    </div>`;
 
-    window.diffClick=(e)=>{
-      const svg = e.currentTarget;
-      const rect = svg.getBoundingClientRect();
-      const px = ((e.clientX - rect.left) / rect.width) * 100;
-      const py = ((e.clientY - rect.top) / rect.height) * 100;
-      // Cerca si hem tocat prop d'una diferència no trobada
-      const RADIUS = 12;
-      const hit = t.diffs.find((diff,i)=>
-        !found.includes(i) &&
-        Math.hypot(px - diff.pos[0], py - diff.pos[1]) < RADIUS
+    window.diffTap=(e)=>{
+      const svg=document.getElementById('diffSvg');
+      if(!svg)return;
+      const rect=svg.getBoundingClientRect();
+      const px=((e.clientX-rect.left)/rect.width)*100;
+      const py=((e.clientY-rect.top)/rect.height)*100;
+      const RADIUS=10;
+      const msg=document.getElementById('diffMsg');
+
+      // Cercar la diferència més propera NO trobada
+      const hit=DIFFS.find(diff=>
+        !found.includes(diff.id)&&
+        diff.visible&&
+        Math.hypot(px-diff.cx, py-diff.cy)<RADIUS
       );
-      const fb = document.getElementById('diffFb');
+
       if(hit){
-        const idx = t.diffs.indexOf(hit);
-        found.push(idx);
+        found.push(hit.id);
         snd('ok');
-        if(navigator.vibrate) navigator.vibrate([30,20,30]);
-        if(fb) fb.innerHTML = `<span style="color:var(--gn)">✅ ${hit.label} trobada! (${found.length}/${totalDiffs})</span>`;
+        if(navigator.vibrate)navigator.vibrate([30,20,30]);
+        if(msg)msg.innerHTML=`<span style="color:var(--gn)">✅ ${hit.label}!</span>`;
         render();
-        if(found.length >= totalDiffs){
-          setTimeout(()=>doSend(d.answer||'DIFFS'),700);
-        }
+        if(found.length>=TOTAL){setTimeout(()=>doSend(d.answer||'DIFFS'),600);}
       } else {
-        snd('ko');
-        if(fb) fb.innerHTML = `<span style="color:rgba(255,255,255,.3)">❌ Res aquí... continua buscant</span>`;
-        setTimeout(()=>{ if(document.getElementById('diffFb')) document.getElementById('diffFb').innerHTML=''; }, 1200);
+        // Comprovar si han tocat on hauria de ser la 7a (impossible)
+        const imp=DIFFS[6];
+        if(Math.hypot(px-imp.cx, py-imp.cy)<RADIUS*1.5){
+          if(msg)msg.innerHTML=`<span style="color:rgba(255,200,0,.7)">🔍 Sembla que hi ha alguna cosa aquí... però no la veus clarament</span>`;
+        } else {
+          snd('ko');
+          if(msg)msg.innerHTML=`<span style="color:rgba(255,255,255,.3)">Res aquí...</span>`;
+          setTimeout(()=>{const m=document.getElementById('diffMsg');if(m)m.innerHTML='';},1000);
+        }
       }
     };
   }
   render();
 }
-
 // ── PAINTBALL (disparar coordenades al projector) ──
 function buildPaintballChallenge(c,d){
   const GRID_W = d.pbCols || 5;
@@ -2021,51 +2299,127 @@ function buildPaintballChallenge(c,d){
   render();
 }
 
-// ── ROMPECABEZAS COL·LECTIU (cada equip rep fragments) ──
+// ── ROMPECABEZAS COL·LECTIU amb Firebase en temps real ──
 function buildCollectivePuzzleChallenge(c,d){
-  // Cada equip veu el seu fragment del puzzle
-  // Han de comunicar-se verbalment per assemblar l'ordre
-  const totalPieces = d.puzzlePieces || 9;
-  const myPieces = d.myPieces || [0,3,6]; // quins fragments té aquest equip
-  const solution = d.puzzleSolution || [0,1,2,3,4,5,6,7,8];
-  const EMOJIS = d.puzzleItems || ['🔥','⭐','💎','🌙','🔮','⚡','🗡️','🛡️','🏆'];
-  const COLS = Math.ceil(Math.sqrt(totalPieces));
+  // Cada equip veu el taulell complet. Les peces es mouen en temps real via Firebase.
+  // Cada equip pot arrossegar les seves peces assignades.
+  const N=d.puzzleSize||3; // 3x3
+  const ITEMS=d.puzzleItems||['🔥','⭐','💎','🌙','🔮','⚡','🗡️','🛡️','🏆'];
+  const roomCode=myRoom;
+  const puzzleRef=db.ref(`rooms/${roomCode}/puzzle`);
+  
+  // Solució correcta: índex 0..N²-1 en ordre
+  const SOLUTION=Array.from({length:N*N},(_,i)=>i);
+  
+  // Estat local del taulell (posicions actuals de cada peça)
+  // board[posició_al_taulell] = id_de_peça (o null si buida)
+  let board=Array(N*N).fill(null);
+  let selectedPiece=null; // peça seleccionada per moure
+  let myPieceIds=[]; // IDs de les peces que pertanyen a aquest equip
+  let initialized=false;
+  let solved=false;
 
-  let myOrder = [...myPieces]; // l'equip pot reordenar les seves peces
-  let submitted_p = false;
+  // Inicialitzar puzzle a Firebase si no existeix
+  puzzleRef.once('value',snap=>{
+    const data=snap.val();
+    if(!data||!data.board){
+      // Barrejar peces i inicialitzar
+      const shuffled=[...SOLUTION].sort(()=>Math.random()-.5);
+      const initBoard={};
+      shuffled.forEach((piece,pos)=>initBoard[pos]=piece);
+      puzzleRef.set({board:initBoard, solved:false, ts:Date.now()});
+    }
+    initialized=true;
+  });
 
-  function render(){
-    c.innerHTML = `
-    <div style="padding:10px;background:rgba(255,107,0,.06);border:1px solid rgba(255,107,0,.2);border-radius:12px;margin-bottom:10px">
-      <div style="font-family:'Orbitron';font-size:.58rem;color:var(--ac);margin-bottom:6px">🧩 LES TEVES PECES (${myPieces.length}/${totalPieces})</div>
-      <div style="font-size:.72rem;color:rgba(255,255,255,.6);line-height:1.4">Comuniqueu verbalment amb els altres equips la posició de cada peça. Cada peça té un número de posició al puzzle final.</div>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px;flex-wrap:wrap">
-      ${myPieces.map((pieceIdx,i)=>`
-        <div style="text-align:center">
-          <div style="font-size:2rem;padding:10px 14px;background:rgba(255,255,255,.07);border-radius:12px;border:2px solid rgba(255,255,255,.2);position:relative">
-            ${EMOJIS[pieceIdx]||'❓'}
-            <div style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;background:var(--ac);border-radius:50%;font-family:'Orbitron';font-size:.6rem;font-weight:900;display:flex;align-items:center;justify-content:center;color:#000">${solution.indexOf(pieceIdx)+1}</div>
-          </div>
-          <div style="font-size:.55rem;color:rgba(255,255,255,.4);margin-top:3px">Posició ${solution.indexOf(pieceIdx)+1}</div>
-        </div>
-      `).join('')}
-    </div>
-    <div style="padding:10px;background:rgba(0,245,255,.05);border:1px solid rgba(0,245,255,.2);border-radius:10px;margin-bottom:8px;font-size:.75rem;color:rgba(255,255,255,.65);line-height:1.5">
-      <strong style="color:var(--bl)">Com jugar:</strong> Digueu en veu alta quines peces teniu i a quina posició van. Coordina't amb els altres equips per assemblar el puzzle complet!
-    </div>
-    <div style="font-family:'Orbitron';font-size:.6rem;color:rgba(255,255,255,.35);text-align:center;margin-bottom:8px">
-      Ordre del puzzle (${COLS}×${COLS}): ${solution.map((p,i)=>`${i+1}:${EMOJIS[p]}`).join(' ')}</div>
-    <button onclick="cpSubmit()" class="bx" style="padding:11px;font-size:.75rem">✅ JA HEM ASSEMBLA EL PUZZLE!</button>`;
+  // Escoltar canvis en temps real
+  puzzleRef.on('value',snap=>{
+    const data=snap.val();
+    if(!data||!data.board) return;
+    board=Array.from({length:N*N},(_,i)=>data.board[i]??null);
+    if(data.solved&&!solved){
+      solved=true;
+      setTimeout(()=>doSend(d.answer||'PUZZLE'),500);
+    }
+    renderBoard();
+  });
 
-    window.cpSubmit = ()=>{
-      if(submitted_p) return;
-      submitted_p = true;
-      snd('ok');
-      doSend(d.answer||'PUZZLE');
+  // Assignar peces a aquest equip (per torn)
+  // Usem myId per determinar quines peces controla aquest equip
+  const totalPieces=N*N;
+  // Simplement: l'equip pot moure QUALSEVOL peça (col·laboratiu total)
+  // Però per a més immersió: cada equip controla un terç
+
+  function checkSolved(){
+    return board.every((piece,pos)=>piece===SOLUTION[pos]);
+  }
+
+  function renderBoard(){
+    if(!c.isConnected) return; // component desmuntat
+    c.innerHTML=`
+    <div style="font-family:'Orbitron',sans-serif;font-size:.55rem;color:var(--bl);text-align:center;margin-bottom:6px;letter-spacing:1px">
+      🧩 PUZZLE EN TEMPS REAL · Toca una peça, després toca on la vols posar
+    </div>
+    ${selectedPiece!==null?`<div style="font-size:.6rem;color:var(--ac);text-align:center;margin-bottom:4px;animation:fadeUp .3s ease">Peça ${ITEMS[board[selectedPiece]]||'?'} seleccionada → Toca destí</div>`:''}
+    <div style="display:grid;grid-template-columns:repeat(${N},1fr);gap:5px;max-width:${N*70}px;margin:0 auto">
+      ${board.map((pieceId,pos)=>{
+        const isEmpty=pieceId===null;
+        const isSelected=selectedPiece===pos;
+        const isCorrect=!isEmpty&&pieceId===SOLUTION[pos];
+        return `<div onclick="cpTap(${pos})" style="
+          aspect-ratio:1;border-radius:10px;
+          background:${isSelected?'rgba(255,107,0,.35)':isCorrect?'rgba(0,255,136,.15)':isEmpty?'rgba(0,0,0,.3)':'rgba(255,255,255,.06)'};
+          border:2px solid ${isSelected?'var(--ac)':isCorrect?'var(--gn)':isEmpty?'rgba(255,255,255,.06)':'rgba(255,255,255,.14)'};
+          display:flex;align-items:center;justify-content:center;
+          font-size:1.5rem;cursor:pointer;
+          transition:all .2s;-webkit-user-select:none;
+          box-shadow:${isSelected?'0 0 15px rgba(255,107,0,.5)':'none'};
+          position:relative">
+          ${isEmpty?'':`<span style="font-size:1.4rem">${ITEMS[pieceId]||pieceId}</span>`}
+          ${isCorrect&&!isEmpty?'<div style="position:absolute;top:2px;right:2px;font-size:.6rem">✓</div>':''}
+          <div style="position:absolute;bottom:1px;right:3px;font-size:.4rem;color:rgba(255,255,255,.25)">${pos+1}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="margin-top:8px;display:flex;justify-content:center;gap:6px">
+      <div style="font-size:.55rem;color:rgba(255,255,255,.3);text-align:center">
+        ✓ En posició correcta: <strong style="color:var(--gn)">${board.filter((p,i)=>p===SOLUTION[i]&&p!==null).length}/${N*N}</strong>
+      </div>
+    </div>`;
+
+    window.cpTap=(pos)=>{
+      if(solved) return;
+      if(selectedPiece===null){
+        // Seleccionar peça (no buida)
+        if(board[pos]===null) return;
+        selectedPiece=pos;
+        snd('click');
+        renderBoard();
+      } else {
+        if(pos===selectedPiece){selectedPiece=null;renderBoard();return;}
+        // Moure a destí: intercanviar les dues posicions
+        const newBoard=[...board];
+        [newBoard[selectedPiece],newBoard[pos]]=[newBoard[pos],newBoard[selectedPiece]];
+        selectedPiece=null;
+        snd('click');
+        if(navigator.vibrate)navigator.vibrate(20);
+        // Escriure a Firebase
+        const fbData={};
+        newBoard.forEach((piece,i)=>fbData[i]=piece===null?null:piece);
+        puzzleRef.update({board:fbData,ts:Date.now()});
+        // Comprovar si s'ha resolt
+        if(newBoard.every((piece,i)=>piece===SOLUTION[i])){
+          snd('ok');
+          puzzleRef.update({solved:true});
+        }
+      }
     };
   }
-  render();
+
+  renderBoard();
+
+  // Cleanup quan el component es desmunta
+  // (Firebase listener es manté actiu — és el comportament desitjat)
 }
 
 </script>
