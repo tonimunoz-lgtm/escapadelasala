@@ -117,6 +117,21 @@ canvas#stars{position:absolute;inset:0;pointer-events:none;z-index:0}
   background:rgba(0,0,0,.3);border-radius:20px;
   padding:1px 7px;font-size:.7rem;font-weight:900;
 }
+
+/* ── LIVES HEARTS ── */
+.life-heart{font-size:1.3rem;transition:all .4s;display:inline-block}
+.life-heart.lost{filter:grayscale(1) opacity(.3);transform:scale(.7)}
+.life-heart.pulse{animation:heartPulse .4s ease}
+@keyframes heartPulse{0%{transform:scale(1)}50%{transform:scale(1.4)}100%{transform:scale(1)}}
+.lives-bar{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+
+/* ── VISUAL PANEL PROJ ── */
+.visual-panel{margin-bottom:18px;background:rgba(255,255,255,.03);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.08)}
+.visual-label{font-family:'Orbitron',sans-serif;font-size:.62rem;letter-spacing:3px;color:var(--accent2);margin-bottom:10px;text-transform:uppercase}
+.visual-inner{display:flex;justify-content:center;align-items:center}
+.visual-panel.anim-in{animation:visualIn .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes visualIn{from{opacity:0;transform:scale(.95) translateY(8px)}to{opacity:1;transform:none}}
+
 .sc.hidden{display:none}
 .sc{transition:transform .4s cubic-bezier(.34,1.56,.64,1),border-color .3s,box-shadow .3s,opacity .3s}
 
@@ -639,8 +654,10 @@ setLang('ca');
 
 // ── WEB AUDIO ENGINE ──
 function getAudioCtx(){
-  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-  if(audioCtx.state==='suspended') audioCtx.resume();
+  if(!audioCtx){
+    try{ audioCtx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){return null;}
+  }
+  if(audioCtx&&audioCtx.state==='suspended') audioCtx.resume();
   return audioCtx;
 }
 
@@ -655,6 +672,7 @@ function startAmbient(storyId){
   if(!soundEnabled) return;
   stopAmbient();
   const ctx=getAudioCtx();
+  if(!ctx) return; // Cal gest d'usuari primer
   bgGainNode=ctx.createGain(); bgGainNode.gain.value=0;
   bgGainNode.connect(ctx.destination);
 
@@ -685,7 +703,7 @@ function startAmbient(storyId){
 }
 
 function stopAmbient(){
-  if(bgSource){ bgSource.forEach(o=>{try{o.osc.stop();o.lfo.stop()}catch(e){}})  ; bgSource=null;}
+  try{ if(bgSource){ bgSource.forEach(o=>{try{o.osc.stop();o.lfo.stop()}catch(e){}}) ; bgSource=null;} }catch(e){}
   if(bgGainNode){bgGainNode.disconnect();bgGainNode=null;}
 }
 
@@ -693,6 +711,7 @@ function stopAmbient(){
 function playFx(type){
   if(!soundEnabled) return;
   const ctx=getAudioCtx();
+  if(!ctx) return;
   const g=ctx.createGain(); g.connect(ctx.destination);
 
   if(type==='correct'){
@@ -766,13 +785,21 @@ function playFx(type){
 // ── VOICE NARRATION ──
 function speak(text){
   if(!('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang=lang==='ca'?'ca-ES':'es-ES';
-  u.rate=0.88; u.pitch=0.82; u.volume=1;
-  u.onstart=()=>{isSpeaking=true;document.getElementById('voiceBtn').classList.add('spk')};
-  u.onend=()=>{isSpeaking=false;document.getElementById('voiceBtn').classList.remove('spk')};
-  speechSynthesis.speak(u);
+  window.speechSynthesis.cancel();
+  setTimeout(()=>{
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang=lang==='ca'?'ca-ES':'es-ES';
+    u.rate=0.68; u.pitch=0.45; u.volume=1;
+    // Buscar veu masculina greu
+    const voices=window.speechSynthesis.getVoices();
+    const male=voices.find(v=>(v.lang.startsWith('ca')||v.lang.startsWith('es'))&&
+      (v.name.toLowerCase().includes('male')||v.name.toLowerCase().includes('jorge')||
+       v.name.toLowerCase().includes('carlos')||v.name.toLowerCase().includes('diego')));
+    if(male) u.voice=male;
+    u.onstart=()=>{isSpeaking=true;document.getElementById('voiceBtn').classList.add('spk')};
+    u.onend=()=>{isSpeaking=false;document.getElementById('voiceBtn').classList.remove('spk')};
+    window.speechSynthesis.speak(u);
+  },150);
 }
 function toggleVoice(){
   if(isSpeaking){speechSynthesis.cancel();isSpeaking=false;document.getElementById('voiceBtn').classList.remove('spk');return;}
@@ -954,6 +981,10 @@ function renderGamePhase(){
       starPattern:  { ca: '✨ PATRÓ ESTEL·LAR', es: '✨ PATRÓN ESTELAR' },
       controlPanel: { ca: '🎛️ PANELL DE CONTROL', es: '🎛️ PANEL DE CONTROL' },
       dnaHelix:     { ca: '🧬 SEQÜÈNCIA ADN', es: '🧬 SECUENCIA ADN' },
+      stockMarket:  { ca: '📈 MERCAT DE VALORS', es: '📈 MERCADO DE VALORES' },
+      sevenDiffs:   { ca: '🔍 7 DIFERÈNCIES', es: '🔍 7 DIFERENCIAS' },
+      hangmanDisplay:{ ca: '🎯 L'AHORCADO', es: '🎯 EL AHORCADO' },
+      memoryGrid:   { ca: '🧠 MEMORY GRID', es: '🧠 MEMORY GRID' },
     };
     try {
       const svg = window.MINIGAMES[type] ? window.MINIGAMES[type](config) : '';
@@ -1013,7 +1044,35 @@ function broadcastPhase(ph){
     lives: currentStory.lives || 3,
     isFinal:!!ph.isFinal,
     roomCode,
-    ts:Date.now()
+    ts:Date.now(),
+    // Dades extres per a minijocs nous
+    shift: ph.shift || null,
+    simonLevel: ph.simonLevel || null,
+    sequence: ph.sequence || null,
+    board: ph.board || null,
+    rapLines: ph.rapLines || null,
+    navGrid: ph.navGrid || null,
+    roomObjects: ph.roomObjects || null,
+    roomSvg: ph.roomSvg || null,
+    mapLocations: ph.mapLocations || null,
+    mapPaths: ph.mapPaths || null,
+    choices: ph.choices || null,
+    correctIdx: ph.correctIdx !== undefined ? ph.correctIdx : null,
+    explanation: ph.explanation || null,
+    post: ph.post || null,
+    // Nous minijocs
+    memoryTheme: ph.memoryTheme || null,
+    memoryPairs: ph.memoryPairs || null,
+    letters: ph.letters || null,
+    wordTime: ph.wordTime || null,
+    impostorRole: ph.impostorRole || null,
+    tasks: ph.tasks || null,
+    stockCompanies: ph.stockCompanies || null,
+    startCredits: ph.startCredits || null,
+    stockRounds: ph.stockRounds || null,
+    encodedText: ph.encodedText || null,
+    puzzleSize: ph.puzzleSize || null,
+    puzzleEmojis: ph.puzzleEmojis || null
   };
   db.ref(`rooms/${roomCode}/phase`).set(data);
   db.ref(`rooms/${roomCode}/answers`).remove();
