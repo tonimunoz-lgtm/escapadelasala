@@ -1957,6 +1957,84 @@ const STORIES = [
     ]
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  //  NEW 4. LA FESTA DELS JOCS — Sampler tots els nous minijocs
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: "games_party", emoji: "🎮", lives: 5, totalPhases: 6,
+    color: "#ff6b00", bg: "radial-gradient(ellipse at 50% 40%,#1a0800,#060606)",
+    font: "'Orbitron',sans-serif", level: "medio",
+    diff: { ca: "Mitjà", es: "Medio" },
+    dur: { ca: "50 min", es: "50 min" },
+    ageLabel: { ca: "12-15 anys", es: "12-15 años" },
+    title: { ca: "La Festa dels Jocs", es: "La Fiesta de los Juegos" },
+    desc: { ca: "Tots els jocs · Paintball · 7 Diferències · Puzzle col·lectiu · Marcianitos", es: "Todos los juegos · Paintball · 7 Diferencias · Puzzle colectivo · Marcianitos" },
+    synopsis: {
+      ca: "Una aventura que combina tots els minijocs nous. La prova definitiva per als alumnes!",
+      es: "Una aventura que combina todos los minijuegos nuevos. ¡La prueba definitiva para los alumnos!"
+    },
+    phases: [
+      {
+        name: { ca: "FASE 1: 7 DIFERÈNCIES", es: "FASE 1: 7 DIFERENCIAS" },
+        narrativeTitle: { ca: "L'escena del crim", es: "La escena del crimen" },
+        narrativeText: { ca: "Dues imatges. Una diferent. Teniu els ulls de detectiu? Trobeu les 7 diferències!", es: "Dos imágenes. Una diferente. ¿Tenéis ojos de detective? ¡Encontrad las 7 diferencias!" },
+        minigame: "sevenDiffs",
+        diffTheme: "space",
+        enigma: { ca: "Toca a la imatge de la dreta on veus diferències respecte a la de l'esquerra. 7 en total.", es: "Toca en la imagen de la derecha donde ves diferencias respecto a la de la izquierda. 7 en total." },
+        answer: "DIFFS", points: 150
+      },
+      {
+        name: { ca: "FASE 2: PAINTBALL", es: "FASE 2: PAINTBALL" },
+        narrativeTitle: { ca: "Camp de batalla", es: "Campo de batalla" },
+        narrativeText: { ca: "El camp de batalla té objectius amagats. Cada equip ha de disparar i eliminar tots els blancs!", es: "¡El campo de batalla tiene objetivos ocultos. Cada equipo tiene que disparar y eliminar todos los blancos!" },
+        minigame: "paintball",
+        pbCols: 5, pbRows: 4, pbCount: 6,
+        enigma: { ca: "Toca les caselles per disparar. Elimina tots els objectius (💥) per guanyar la ronda.", es: "Toca las casillas para disparar. Elimina todos los objetivos (💥) para ganar la ronda." },
+        answer: "PAINTBALL", points: 150
+      },
+      {
+        name: { ca: "FASE 3: MEMORY", es: "FASE 3: MEMORY" },
+        narrativeTitle: { ca: "Arxiu secret", es: "Archivo secreto" },
+        narrativeText: { ca: "Memoria de ferro! Recorda la posició de cada parell d'icones.", es: "¡Memoria de hierro! Recuerda la posición de cada pareja de iconos." },
+        minigame: "memory",
+        memoryTheme: "fantasy",
+        memoryPairs: 6,
+        enigma: { ca: "Toca dues cartes seguides. Si fan parella, queden obertes. Troba totes les parelles!", es: "Toca dos cartas seguidas. Si forman pareja, quedan abiertas. ¡Encuentra todas las parejas!" },
+        answer: "MEMORY", points: 150
+      },
+      {
+        name: { ca: "FASE 4: PUZZLE COL·LECTIU", es: "FASE 4: PUZZLE COLECTIVO" },
+        narrativeTitle: { ca: "Trencaclosques entre tots", es: "Rompecabezas entre todos" },
+        narrativeText: { ca: "Cada equip té fragments del puzzle. Heu de comunicar-vos per assemblar-lo!", es: "¡Cada equipo tiene fragmentos del puzzle. ¡Tenéis que comunicaros para ensamblarlo!" },
+        minigame: "collectivePuzzle",
+        puzzlePieces: 9,
+        myPieces: [0,3,6],
+        puzzleSolution: [0,1,2,3,4,5,6,7,8],
+        puzzleItems: ["🔥","⭐","💎","🌙","🔮","⚡","🗡️","🛡️","🏆"],
+        enigma: { ca: "Coordineu-vos verbalment amb els altres equips. Un cop l'ordre estigui clar, confirmeu!", es: "¡Coordinaros verbalmente con los otros equipos. ¡Una vez el orden esté claro, confirmad!" },
+        answer: "PUZZLE", points: 200
+      },
+      {
+        name: { ca: "FASE 5: MARCIANITOS", es: "FASE 5: MARCIANITOS" },
+        narrativeTitle: { ca: "Invasió final", es: "Invasión final" },
+        narrativeText: { ca: "L'última ona d'alienígenes! Elimineu-los tots per completar la defensa planetària!", es: "¡La última oleada de alienígenas! ¡Eliminadlos todos para completar la defensa planetaria!" },
+        minigame: "aliens",
+        enigma: { ca: "Toca els alienígenes o prem el botó de dispar per eliminar-los tots.", es: "Toca los alienígenas o pulsa el botón de disparo para eliminarlos a todos." },
+        answer: "DESTROY", points: 200
+      },
+      {
+        name: { ca: "FASE 6: XIFRES I LLETRES", es: "FASE 6: CIFRAS Y LETRAS" },
+        narrativeTitle: { ca: "Paraula final", es: "Palabra final" },
+        narrativeText: { ca: "El repte final! 90 segons per formar la paraula més llarga possible.", es: "¡El reto final! 90 segundos para formar la palabra más larga posible." },
+        minigame: "wordGame",
+        letters: ["J","O","C","A","R","E","S","T","I","V"],
+        wordTime: 90,
+        enigma: { ca: "Forma la paraula més llarga amb: J O C A R E S T I V (90 seg)", es: "Forma la palabra más larga con: J O C A R E S T I V (90 seg)" },
+        answer: "VARIABLE", hint: { ca: "JOCARESTIV... ESTIVACIÓ? CREATIVOS?", es: "CREATIVOS, ESTIVAR, COSTARVI..." }, points: 250, isFinal: true
+      }
+    ]
+  }
+
 ];
 
 // Exportació compatible amb navegadors i Node.js
