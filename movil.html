@@ -1302,7 +1302,7 @@ function buildSimonChallenge(c,d){
           lvl++;
           document.getElementById('sLvl').textContent=lvl;
           const sv2=document.getElementById('seqVis');if(sv2)sv2.innerHTML='';
-          upS('⭐ Nivell '+lvl+'! Prepara't...');
+          upS('⭐ Nivell '+lvl+'! Prepareu-vos...');
           setTimeout(add,1200);
         }
       }
@@ -1646,12 +1646,12 @@ function buildImpostorChallenge(c,d){
   c.innerHTML=`
   <div class="imp-role ${isImpostor?'imp':'crew'}">
     <div style="font-family:'Orbitron';font-size:.75rem;font-weight:900;letter-spacing:2px;color:${isImpostor?'var(--rd)':'var(--bl)'}">
-      ${isImpostor?'🔴 SOU L'IMPOSTOR':'🟢 SOU TRIPULANT'}
+      ${isImpostor?"🔴 SOU L\'IMPOSTOR":"🟢 SOU TRIPULANT"}
     </div>
     <div style="font-size:.75rem;margin-top:5px;color:rgba(255,255,255,.7)">
       ${isImpostor?
-        (lang==='ca'?'Sabotegeu tasques sense ser descoberts!':'¡Saboteéis tareas sin ser descubiertos!'):
-        (lang==='ca'?'Completeu les tasques. Voteu l'impostor!':'¡Completad las tareas. ¡Votad al impostor!')}
+        (lang==='ca'?"Sabotegeu tasques sense ser descoberts!":"¡Saboteéis tareas sin ser descubiertos!"):
+        (lang==='ca'?'Completeu les tasques. Voteu l\'impostor!':'¡Completad las tareas. ¡Votad al impostor!')}
     </div>
   </div>
   <div class="task-list" id="taskList">
