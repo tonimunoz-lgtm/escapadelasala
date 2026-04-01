@@ -1728,9 +1728,9 @@ const STORIES = [
           es: "Última prueba: selecciona la respuesta correcta para enviar el informe y completar la misión."
         },
         answer: "2", hint: { ca: "Mark Zuckerberg és el CEO d'aquesta empresa", es: "Mark Zuckerberg es el CEO de esta empresa" }, points: 250, isFinal: true
-      },
+      }
     ]
-  }
+  },
 
   // ═══════════════════════════════════════════════════════════════
   //  NEW 1. L'ESTACIÓ ORBITAL — Impostors + Jocs nous
@@ -1955,7 +1955,7 @@ const STORIES = [
         answer: "VARIABLE", hint: { ca: "ROBATORIS té 9 lletres!", es: "ROBATORIOS tiene 9 letras." }, points: 250, isFinal: true
       }
     ]
-  }
+  },
 
   // ═══════════════════════════════════════════════════════════════
   //  NEW 4. LA FESTA DELS JOCS — Sampler tots els nous minijocs
