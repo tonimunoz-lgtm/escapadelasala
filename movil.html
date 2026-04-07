@@ -777,26 +777,115 @@ function buildSpyScene(W,H,col,ph){
 }
 
 function buildSpaceScene(W,H,col,ph){
-  return`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-    <defs><radialGradient id="planet" cx="30%" cy="30%"><stop offset="0%" stop-color="${col}" stop-opacity=".5"/><stop offset="100%" stop-color="#000520"/></radialGradient></defs>
-    <rect width="${W}" height="${H}" fill="#000005"/>
-    ${Array.from({length:60},(_,i)=>`<circle cx="${Math.sin(i*31)*W/2+W/2}" cy="${Math.cos(i*37)*H*.45+H*.45}" r="${.3+Math.random()*1.8}" fill="white" opacity="${.2+Math.random()*.7}"/>`).join('')}
-    <!-- Nebula -->
-    <ellipse cx="${W*.6}" cy="${H*.25}" rx="${W*.3}" ry="${H*.18}" fill="rgba(100,0,255,.08)"/>
-    <ellipse cx="${W*.3}" cy="${H*.4}" rx="${W*.25}" ry="${H*.15}" fill="rgba(0,100,255,.06)"/>
-    <!-- Planet -->
-    <circle cx="${W*.25}" cy="${H*.3}" r="${W*.12}" fill="url(#planet)"/>
-    <ellipse cx="${W*.25}" cy="${H*.3}" rx="${W*.18}" ry="${W*.04}" fill="none" stroke="${col}" stroke-width="1.5" opacity=".4"/>
-    <!-- Spaceship -->
-    <path d="M${W*.5},${H*.55} L${W*.42},${H*.7} L${W*.58},${H*.7} Z" fill="#1a1a2e" stroke="${col}" stroke-width="1.5" opacity=".8"/>
-    <path d="M${W*.5},${H*.62} L${W*.44},${H*.7} L${W*.56},${H*.7}" fill="${col}" opacity=".3"/>
-    <ellipse cx="${W*.5}" cy="${H*.62}" rx="6" ry="4" fill="${col}" opacity=".5"/>
-    <!-- Engine glow -->
-    <ellipse cx="${W*.46}" cy="${H*.7}" rx="4" ry="8" fill="${col}" opacity=".2"/>
-    <ellipse cx="${W*.54}" cy="${H*.7}" rx="4" ry="8" fill="${col}" opacity=".2"/>
-    <!-- Asteroid belt -->
-    ${Array.from({length:8},(_,i)=>`<ellipse cx="${W*(.08+i*.12)}" cy="${H*(.78+Math.sin(i)*.04)}" rx="${3+Math.random()*5}" ry="${2+Math.random()*3}" fill="rgba(100,80,60,.6)"/>`).join('')}
-  </svg>`;
+  // Phase-progressive cinematic space scenes for Aurora-7
+  const phaseScenes = [
+    // Ph 0: Emergency alert — red alarms, blinking lights
+    `<rect width="${W}" height="${H}" fill="#050002"/>
+    ${Array.from({length:50},(_,i)=>`<circle cx="${(i*37.3)%W}" cy="${(i*19.7)%H*.5}" r="${.4+Math.random()*1.5}" fill="white" opacity="${.1+Math.random()*.5}"><animate attributeName="opacity" values="0.1;0.7;0.1" dur="${2+Math.random()*4}s" repeatCount="indefinite"/></circle>`).join('')}
+    <ellipse cx="${W*.5}" cy="${H*.4}" rx="${W*.35}" ry="${H*.2}" fill="rgba(255,0,0,.06)"><animate attributeName="rx" values="${W*.3};${W*.4};${W*.3}" dur="2s" repeatCount="indefinite"/></ellipse>
+    <!-- Alert stripes -->
+    ${Array.from({length:5},(_,i)=>`<rect x="0" y="${i*H*.2}" width="${W}" height="3" fill="rgba(255,50,50,.15)"><animate attributeName="opacity" values="0.8;0;0.8" dur="${0.8+i*.1}s" repeatCount="indefinite"/></rect>`).join('')}
+    <!-- Ship corridor -->
+    <rect x="${W*.15}" y="${H*.3}" width="${W*.7}" height="${H*.45}" rx="10" fill="rgba(0,10,30,.7)" stroke="${col}" stroke-width="1" opacity=".5"/>
+    <line x1="${W*.5}" y1="${H*.3}" x2="${W*.5}" y2="${H*.75}" stroke="${col}" stroke-width=".5" opacity=".3"/>
+    ${Array.from({length:6},(_,i)=>`<rect x="${W*(.2+i*.1)}" y="${H*.32}" width="4" height="10" rx="1" fill="${i%2===0?'#ff4444':'#004488'}" opacity=".7"><animate attributeName="opacity" values="1;0.2;1" dur="${0.5+i*.15}s" repeatCount="indefinite"/></rect>`).join('')}
+    <text x="${W*.5}" y="${H*.88}" font-size="${W*.032}" fill="#ff4444" text-anchor="middle" font-family="monospace" opacity=".8">⚠ FALLADA REACTOR — SECTOR 0</text>`,
+
+    // Ph 1: Oxygen chamber — green gas cloud
+    `<rect width="${W}" height="${H}" fill="#001008"/>
+    ${Array.from({length:40},(_,i)=>`<circle cx="${(i*41.7)%W}" cy="${(i*23.1)%H*.4}" r="${.3+Math.random()}" fill="white" opacity="${.1+Math.random()*.4}"/>`).join('')}
+    <!-- Gas cloud -->
+    ${Array.from({length:8},(_,i)=>`<ellipse cx="${W*(.1+Math.random()*.8)}" cy="${H*(.3+Math.random()*.4)}" rx="${W*(.05+Math.random()*.12)}" ry="${H*(.04+Math.random()*.08)}" fill="rgba(0,200,100,.07)"><animate attributeName="cx" values="${W*(.1+Math.random()*.8)};${W*(.1+Math.random()*.8)};${W*(.1+Math.random()*.8)}" dur="${4+Math.random()*6}s" repeatCount="indefinite"/></ellipse>`).join('')}
+    <!-- O2 molecule display -->
+    <circle cx="${W*.35}" cy="${H*.45}" r="${W*.08}" fill="rgba(0,245,255,.2)" stroke="${col}" stroke-width="1.5" opacity=".6"><animate attributeName="r" values="${W*.07};${W*.1};${W*.07}" dur="1.5s" repeatCount="indefinite"/></circle>
+    <circle cx="${W*.65}" cy="${H*.45}" r="${W*.08}" fill="rgba(0,245,255,.2)" stroke="${col}" stroke-width="1.5" opacity=".6"><animate attributeName="r" values="${W*.1};${W*.07};${W*.1}" dur="1.5s" repeatCount="indefinite"/></circle>
+    <line x1="${W*.43}" y1="${H*.45}" x2="${W*.57}" y2="${H*.45}" stroke="${col}" stroke-width="2" opacity=".8"/>
+    <text x="${W*.35}" y="${H*.48}" font-size="${W*.05}" fill="${col}" text-anchor="middle" font-weight="bold">O</text>
+    <text x="${W*.65}" y="${H*.48}" font-size="${W*.05}" fill="${col}" text-anchor="middle" font-weight="bold">O</text>
+    <!-- Pressure gauge -->
+    <rect x="${W*.15}" y="${H*.72}" width="${W*.7}" height="10" rx="5" fill="rgba(255,255,255,.06)"/>
+    <rect x="${W*.15}" y="${H*.72}" width="${W*.12}" height="10" rx="5" fill="#ff4444"><animate attributeName="width" values="${W*.1};${W*.15};${W*.1}" dur="1s" repeatCount="indefinite"/></rect>
+    <text x="${W*.5}" y="${H*.87}" font-size="${W*.03}" fill="#ff4444" text-anchor="middle" font-family="monospace">PRESSIÓ CRÍTICA — 15%</text>`,
+
+    // Ph 2: Investigation board — red strings, suspects
+    `<rect width="${W}" height="${H}" fill="#080002"/>
+    <!-- Cork board texture -->
+    ${Array.from({length:20},(_,i)=>`<rect x="${Math.random()*W}" y="${Math.random()*H}" width="${4+Math.random()*8}" height="${3+Math.random()*5}" fill="rgba(150,100,50,.04)" rx="1"/>`).join('')}
+    <!-- Suspect cards -->
+    ${['VEGA','KAI','SORA','REX'].map((name,i)=>{
+      const x=W*(.05+i*.24), y=H*.2;
+      const isSora = name==='SORA';
+      return `<rect x="${x}" y="${y}" width="${W*.2}" height="${H*.3}" rx="3" fill="${isSora?'rgba(255,0,0,.15)':'rgba(255,255,255,.04)'}" stroke="${isSora?'#ff4444':'rgba(255,255,255,.15)'}" stroke-width="${isSora?1.5:.5}"/>
+      <text x="${x+W*.1}" y="${y+H*.12}" font-size="14" text-anchor="middle">${['👩‍✈️','👨‍🔧','👩‍⚕️','🕵️'][i]}</text>
+      <text x="${x+W*.1}" y="${y+H*.22}" font-size="6" fill="${isSora?'#ff8888':'rgba(255,255,255,.6)'}" text-anchor="middle" font-family="monospace">${name}</text>`;
+    }).join('')}
+    <!-- Red string connections -->
+    <line x1="${W*.15}" y1="${H*.35}" x2="${W*.61}" y2="${H*.35}" stroke="rgba(255,50,50,.4)" stroke-width="1" stroke-dasharray="3,2"/>
+    <line x1="${W*.39}" y1="${H*.35}" x2="${W*.61}" y2="${H*.35}" stroke="rgba(255,50,50,.5)" stroke-width="1.5"/>
+    <!-- NEMESIS label -->
+    <rect x="${W*.3}" y="${H*.72}" width="${W*.4}" height="16" rx="4" fill="rgba(255,0,0,.15)" stroke="#ff4444" stroke-width="1"/>
+    <text x="${W*.5}" y="${H*.72+10}" font-size="8" fill="#ff4444" text-anchor="middle" font-family="monospace" font-weight="bold">NEMESIS</text>`,
+
+    // Ph 3: Radio room — waveforms, morse signals
+    `<rect width="${W}" height="${H}" fill="#000a05"/>
+    ${Array.from({length:35},(_,i)=>`<circle cx="${(i*43)%W}" cy="${(i*29)%H*.35}" r="${.3+Math.random()}" fill="white" opacity="${.1+Math.random()*.5}"/>`).join('')}
+    <!-- Radio equipment -->
+    <rect x="${W*.08}" y="${H*.25}" width="${W*.84}" height="${H*.45}" rx="8" fill="rgba(0,20,10,.8)" stroke="${col}" stroke-width=".8" opacity=".6"/>
+    <!-- Waveform display -->
+    <rect x="${W*.12}" y="${H*.3}" width="${W*.76}" height="${H*.2}" rx="4" fill="rgba(0,0,0,.6)" stroke="${col}30" stroke-width=".5"/>
+    ${Array.from({length:38},(_,i)=>{
+      const h=H*(.05+Math.random()*.12);
+      return `<rect x="${W*(.13+i*.02)}" y="${H*.4-h/2}" width="${W*.015}" height="${h}" fill="${col}" opacity="${.3+Math.random()*.5}"><animate attributeName="height" values="${h};${H*(.02+Math.random()*.1)};${h}" dur="${.3+Math.random()*.3}s" repeatCount="indefinite"/></rect>`;
+    }).join('')}
+    <!-- Morse dots/dashes -->
+    <text x="${W*.5}" y="${H*.6}" font-size="8" fill="${col}" text-anchor="middle" font-family="monospace" opacity=".8">... .- .-.. ...- .- .-.</text>
+    <text x="${W*.5}" y="${H*.68}" font-size="7" fill="${col}80" text-anchor="middle" font-family="monospace">.-.. .-   -. .- ...</text>
+    <!-- Frequency display -->
+    <text x="${W*.5}" y="${H*.84}" font-size="9" fill="${col}" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">418.7 MHz</text>`,
+
+    // Ph 4: DNA biometric scanner
+    `<rect width="${W}" height="${H}" fill="#000810"/>
+    ${Array.from({length:45},(_,i)=>`<circle cx="${(i*37.3)%W}" cy="${(i*19.7)%H*.3}" r="${.3+Math.random()*1.2}" fill="white" opacity="${.1+Math.random()*.5}"/>`).join('')}
+    <!-- DNA helix -->
+    ${Array.from({length:12},(_,i)=>{
+      const y=H*(.18+i*.055), wave=Math.sin(i*.7)*W*.12;
+      return `<line x1="${W*.5+wave}" y1="${y}" x2="${W*.5-wave}" y2="${y}" stroke="rgba(255,255,255,.12)" stroke-width=".8"/>
+      <circle cx="${W*.5+wave}" cy="${y}" r="4" fill="${col}" opacity="${.4+i*.03}"><animate attributeName="opacity" values=".4;.9;.4" dur="${.8+i*.1}s" repeatCount="indefinite"/></circle>
+      <circle cx="${W*.5-wave}" cy="${y}" r="4" fill="#a855f7" opacity="${.4+i*.03}"><animate attributeName="opacity" values=".9;.4;.9" dur="${.8+i*.1}s" repeatCount="indefinite"/></circle>`;
+    }).join('')}
+    <!-- Scan line -->
+    <line x1="${W*.1}" y1="${H*.5}" x2="${W*.9}" y2="${H*.5}" stroke="${col}" stroke-width="1.5" opacity=".6"><animate attributeName="y1" values="${H*.18};${H*.8};${H*.18}" dur="2s" repeatCount="indefinite"/><animate attributeName="y2" values="${H*.18};${H*.8};${H*.18}" dur="2s" repeatCount="indefinite"/></line>
+    <text x="${W*.5}" y="${H*.87}" font-size="8" fill="${col}" text-anchor="middle" font-family="Orbitron,monospace">VERIFICACIÓ NEURAL ACTIVA</text>`,
+
+    // Ph 5: UV lab — dark room, UV glow
+    `<rect width="${W}" height="${H}" fill="#030008"/>
+    <!-- UV glow -->
+    <ellipse cx="${W*.5}" cy="${H*.4}" rx="${W*.3}" ry="${H*.2}" fill="rgba(168,85,247,.12)"><animate attributeName="rx" values="${W*.25};${W*.35};${W*.25}" dur="2s" repeatCount="indefinite"/></ellipse>
+    <!-- Flashlight beam -->
+    <path d="M${W*.5},${H*.2} L${W*.25},${H*.65} L${W*.75},${H*.65} Z" fill="rgba(168,85,247,.08)"/>
+    <!-- Document on table -->
+    <rect x="${W*.25}" y="${H*.55}" width="${W*.5}" height="${H*.28}" rx="4" fill="rgba(255,255,255,.06)" stroke="rgba(168,85,247,.3)" stroke-width="1"/>
+    <!-- UV revealed text -->
+    ${Array.from({length:4},(_,i)=>`<rect x="${W*(.28+i*.02)}" y="${H*(.6+i*.045)}" width="${W*(.15+Math.random()*.2)}" height="4" rx="2" fill="rgba(168,85,247,.25)" opacity=".8"><animate attributeName="opacity" values="0.3;0.9;0.3" dur="${1.5+Math.random()}s" repeatCount="indefinite"/></rect>`).join('')}
+    <text x="${W*.5}" y="${H*.87}" font-size="9" fill="#cc99ff" text-anchor="middle" font-family="monospace">🔦 DOCUMENT SECRET</text>`,
+
+    // Ph 6: Reactor countdown — red emergency, explosions
+    `<rect width="${W}" height="${H}" fill="#080000"/>
+    <!-- Emergency flashing -->
+    <rect width="${W}" height="${H}" fill="rgba(255,0,0,.05)"><animate attributeName="opacity" values="0;.3;0" dur="0.8s" repeatCount="indefinite"/></rect>
+    ${Array.from({length:30},(_,i)=>`<circle cx="${(i*43)%W}" cy="${(i*31)%H*.4}" r="${.3+Math.random()}" fill="#ff6644" opacity="${.2+Math.random()*.6}"><animate attributeName="opacity" values="0.1;0.8;0.1" dur="${1+Math.random()*2}s" repeatCount="indefinite"/></circle>`).join('')}
+    <!-- Reactor core -->
+    <circle cx="${W*.5}" cy="${H*.42}" r="${W*.18}" fill="none" stroke="#ff4444" stroke-width="2" opacity=".5"/>
+    <circle cx="${W*.5}" cy="${H*.42}" r="${W*.12}" fill="none" stroke="#ff6600" stroke-width="1.5" opacity=".6"/>
+    <circle cx="${W*.5}" cy="${H*.42}" r="${W*.06}" fill="#ff0000" opacity=".4"><animate attributeName="r" values="${W*.05};${W*.09};${W*.05}" dur="0.7s" repeatCount="indefinite"/></circle>
+    <text x="${W*.5}" y="${H*.46}" font-size="20" text-anchor="middle">☢️</text>
+    <!-- Explosion sparks -->
+    ${Array.from({length:6},(_,i)=>`<line x1="${W*.5}" y1="${H*.42}" x2="${W*(.5+Math.cos(i*60*Math.PI/180)*.25)}" y2="${H*(.42+Math.sin(i*60*Math.PI/180)*.15)}" stroke="#ff6600" stroke-width="1.5" opacity=".7"><animate attributeName="opacity" values="0;1;0" dur="${.6+i*.1}s" begin="${i*.1}s" repeatCount="indefinite"/></line>`).join('')}
+    <text x="${W*.5}" y="${H*.82}" font-size="9" fill="#ff4444" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">⚠ AUTODESTRUCCIÓ ⚠</text>`
+  ];
+
+  const scene = phaseScenes[Math.min(ph, phaseScenes.length - 1)] || phaseScenes[0];
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">${scene}</svg>`;
 }
 
 function buildLabScene(W,H,col,ph){
@@ -1066,6 +1155,8 @@ function buildChallenge(d){
   else if(type==='sevenDiffs'||type==='diferencies') buildSevenDiffsChallenge(c,d);
   else if(type==='paintball')               buildPaintballChallenge(c,d);
   else if(type==='collectivePuzzle'||type==='rompecabezas') buildCollectivePuzzleChallenge(c,d);
+  else if(type==='nemesisDeduction')        buildNemesisChallenge(c,d);
+  else if(type==='finalCountdown')          buildFinalCountdownChallenge(c,d);
   else                                      buildDefaultChallenge(c,d);
 }
 
@@ -2420,6 +2511,122 @@ function buildCollectivePuzzleChallenge(c,d){
 
   // Cleanup quan el component es desmunta
   // (Firebase listener es manté actiu — és el comportament desitjat)
+}
+
+// ════════════════════════════════════════════════════════════════
+//  AURORA-7 — MINIJOC: DEDUCCIÓ NEMESIS
+//  Cada equip veu una pista exclusiva. Han de parlar i deduir.
+// ════════════════════════════════════════════════════════════════
+function buildNemesisChallenge(c, d) {
+  const suspects = d.suspects || ['VEGA','KAI','SORA','REX'];
+  const clues = d.clues || [];
+  const lang2 = (typeof lang !== 'undefined') ? lang : 'ca';
+
+  // Each team sees a different clue based on their team index (mod 4)
+  // We use myId hash to pick a clue
+  const teamHash = (typeof myId !== 'undefined' && myId) ? myId.charCodeAt(0) % clues.length : 0;
+  const myClue = clues[teamHash]?.[lang2] || clues[0]?.[lang2] || '';
+
+  let voted = false;
+
+  c.innerHTML = `
+  <div style="background:linear-gradient(135deg,rgba(255,0,0,.08),rgba(0,0,0,.3));border:1.5px solid rgba(255,51,51,.3);border-radius:14px;padding:12px;margin-bottom:10px">
+    <div style="font-family:'Orbitron',sans-serif;font-size:.55rem;color:#ff4444;letter-spacing:2px;margin-bottom:6px">🔴 LA TEVA PISTA EXCLUSIVA</div>
+    <div style="font-size:.88rem;color:#ffaaaa;line-height:1.5;font-style:italic">"${myClue}"</div>
+  </div>
+  <div style="background:rgba(0,245,255,.06);border:1px solid rgba(0,245,255,.2);border-radius:12px;padding:10px;margin-bottom:10px">
+    <div style="font-size:.65rem;color:var(--bl);font-family:'Orbitron',sans-serif;letter-spacing:1.5px;margin-bottom:6px">💬 PARLEU AMB ELS ALTRES EQUIPS</div>
+    <div style="font-size:.78rem;color:rgba(255,255,255,.6);line-height:1.4">Cada equip té una pista diferent. Compartiu-les verbalment. Qui és l'agent NEMESIS?</div>
+  </div>
+  <div style="font-size:.7rem;color:rgba(255,255,255,.4);text-align:center;margin-bottom:8px">Selecciona el teu sospitós:</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="suspGrid">
+    ${suspects.map((s,i) => `
+      <div onclick="nemVote('${s}')" style="
+        padding:14px 8px;border-radius:12px;border:2px solid rgba(255,255,255,.1);
+        background:rgba(255,255,255,.04);cursor:pointer;text-align:center;transition:all .2s;
+        -webkit-user-select:none" id="sv_${s}">
+        <div style="font-size:1.4rem;margin-bottom:4px">🕵️</div>
+        <div style="font-family:'Orbitron',sans-serif;font-size:.65rem;color:#fff;letter-spacing:1px">${s}</div>
+      </div>`).join('')}
+  </div>
+  <div id="nemFb" style="margin-top:8px;font-size:.78rem;text-align:center;display:none"></div>`;
+
+  window.nemVote = (name) => {
+    if (voted) return;
+    voted = true;
+    // Highlight selection
+    suspects.forEach(s => {
+      const el = document.getElementById('sv_' + s);
+      if (!el) return;
+      if (s === name) {
+        el.style.border = '2px solid var(--rd)';
+        el.style.background = 'rgba(255,51,51,.15)';
+      } else {
+        el.style.opacity = '0.3';
+        el.style.pointerEvents = 'none';
+      }
+    });
+    const fb = document.getElementById('nemFb');
+    if (fb) {
+      fb.style.display = 'block';
+      fb.style.color = 'rgba(255,255,255,.5)';
+      fb.textContent = `Heu votat: ${name}. Envieu la resposta per confirmar.`;
+    }
+    // Pre-fill the answer input
+    const inp = document.getElementById('ansInp');
+    if (inp) { inp.value = name; }
+  };
+}
+
+// ════════════════════════════════════════════════════════════════
+//  AURORA-7 — MINIJOC: COMPTE ENRERE FINAL SINCRONITZAT
+//  Tots els equips han d'enviar la resposta al mateix temps
+// ════════════════════════════════════════════════════════════════
+function buildFinalCountdownChallenge(c, d) {
+  const lang2 = (typeof lang !== 'undefined') ? lang : 'ca';
+  const enigma = d.enigma?.[lang2] || d.enigma?.ca || '';
+  let cntDown = 60;
+  let launched = false;
+  let syncTimer = null;
+
+  c.innerHTML = `
+  <div style="text-align:center;margin-bottom:10px">
+    <div style="font-size:3.5rem;animation:pulse 0.8s infinite alternate">☢️</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:.7rem;color:#ff4444;letter-spacing:3px;margin-top:4px">AUTODESTRUCCIÓ</div>
+    <div id="cdTimer" style="font-family:'Orbitron',sans-serif;font-size:2.8rem;font-weight:900;color:#ff4444;text-shadow:0 0 20px #ff4444;margin:8px 0;animation:blink .8s infinite">60</div>
+    <div style="font-size:.65rem;color:rgba(255,255,255,.4)">SEGONS PER DESACTIVAR</div>
+  </div>
+  <div style="background:rgba(255,51,51,.07);border:1px solid rgba(255,51,51,.25);border-radius:12px;padding:10px;margin-bottom:10px">
+    <div style="font-size:.82rem;color:#ffaaaa;line-height:1.5;text-align:center">${enigma}</div>
+  </div>
+  <div style="background:rgba(0,245,255,.08);border:1.5px solid rgba(0,245,255,.3);border-radius:12px;padding:12px;margin-bottom:8px">
+    <div style="font-family:'Orbitron',sans-serif;font-size:.6rem;color:var(--bl);letter-spacing:2px;margin-bottom:6px;text-align:center">⚡ PROTOCOL DE SINCRONITZACIÓ</div>
+    <div style="font-size:.78rem;color:rgba(255,255,255,.65);line-height:1.5;text-align:center">Coordineu-vos verbalment.<br>Compteu: <strong style="color:#fff">3... 2... 1... ENVIEU!</strong><br>Tots els equips al mateix temps.</div>
+  </div>
+  <div id="cdReady" style="display:none;background:rgba(0,255,136,.1);border:1.5px solid var(--gn);border-radius:12px;padding:10px;text-align:center;font-size:.85rem;color:var(--gn);font-weight:700;margin-bottom:8px">
+    ✅ Preparat! Escriu NEMESIS i prem ENVIAR
+  </div>`;
+
+  // Start countdown
+  syncTimer = setInterval(() => {
+    cntDown--;
+    const el = document.getElementById('cdTimer');
+    if (el) {
+      el.textContent = cntDown;
+      if (cntDown <= 10) el.style.color = '#ff0000';
+      if (cntDown <= 0) {
+        clearInterval(syncTimer);
+        el.textContent = '💥';
+      }
+    }
+    if (cntDown <= 5 && !launched) {
+      launched = true;
+      const ready = document.getElementById('cdReady');
+      if (ready) ready.style.display = 'block';
+      const inp = document.getElementById('ansInp');
+      if (inp) inp.value = 'NEMESIS';
+    }
+  }, 1000);
 }
 
 </script>
