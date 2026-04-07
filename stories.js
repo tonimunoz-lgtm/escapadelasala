@@ -326,80 +326,178 @@ const STORIES = [
   },
 
   // ═══════════════════════════════════════════════════════════════
-  //  6. NAU ESPACIAL AURORA-7 (Sci-fi - 7 fases)
+  //  6. NAU ESPACIAL AURORA-7 — MISSIÓ NEMESIS (Redisseny Complet)
+  //  Una experiència cinematogràfica de supervivència espacial
+  //  amb proves físiques, minijocs immersives i narrativa dramàtica
   // ═══════════════════════════════════════════════════════════════
   {
-    id: "space", emoji: "🚀", lives: 4, totalPhases: 7,
-    color: "#00f5ff", bg: "radial-gradient(ellipse at 30% 50%,#001a3a,#000010)",
+    id: "space", emoji: "🚀", lives: 5, totalPhases: 7,
+    color: "#00f5ff",
+    bg: "radial-gradient(ellipse at 20% 80%,#001833,#000810 50%,#000000)",
     font: "'Orbitron',sans-serif", level: "dificil",
     diff: { ca: "Difícil", es: "Difícil" },
-    dur: { ca: "60 min", es: "60 min" },
-    ageLabel: { ca: "15+ anys", es: "15+ años" },
-    title: { ca: "Aurora-7: Missió Crítica", es: "Aurora-7: Misión Crítica" },
-    desc: { ca: "Sci-fi · Sabotatge · Supervivència", es: "Sci-fi · Sabotaje · Supervivencia" },
-    synopsis: { 
-      ca: "Autodestrucció iniciada. 60 minuts per salvar la nau i descobrir el traidor. 7 proves extremes.", 
-      es: "Autodestrucción iniciada. 60 minutos para salvar la nave y descubrir al traidor. 7 pruebas extremas." 
+    dur: { ca: "55 min", es: "55 min" },
+    ageLabel: { ca: "14+ anys", es: "14+ años" },
+    title: { ca: "Aurora-7: Operació NEMESIS", es: "Aurora-7: Operación NEMESIS" },
+    desc: { ca: "Sci-fi · Traïdor · Proves físiques · Morse · UV", es: "Sci-fi · Traidor · Pruebas físicas · Morse · UV" },
+    synopsis: {
+      ca: "ANY 2157. La nau Aurora-7 ha estat sabotejada des de dins. Els sistemes fallen. L'IA de bord ARIA detecta anomalies en 7 sectors crítics. Teniu 55 minuts per reparar-los tots i descobrir qui entre vosaltres és l'agent NEMESIS. Un equip fallarà. No tots sobreviuran.",
+      es: "AÑO 2157. La nave Aurora-7 ha sido saboteada desde dentro. Los sistemas fallan. La IA de a bordo ARIA detecta anomalías en 7 sectores críticos. Tenéis 55 minutos para repararlos todos y descubrir quién entre vosotros es el agente NEMESIS. Un equipo fallará. No todos sobrevivirán."
     },
+
     phases: [
+
+      // ── FASE 1: DESPERTAR D'EMERGÈNCIA ──────────────────────────
       {
-        name: { ca: "DESPERTAR BRUSC", es: "DESPERTAR BRUSCO" },
-        narrativeTitle: { ca: "Pont de comandament", es: "Puente de mando" },
-        narrativeText: { ca: "Sistema de vida crític. Segueix el circuit!", es: "¡Sistema de vida crítico. ¡Sigue el circuito!" },
-        visual: { type: "circuitPuzzle", config: { nodes: 8, color: "#00f5ff", solution: [0,2,5,7] } },
-        enigma: { ca: "Suma digits de 1986 (any MIR) × 4 tripulants", es: "Suma dígitos de 1986 (año MIR) × 4 tripulantes" },
-        answer: "96", hint: { ca: "(1+9+8+6) × 4 = 24×4", es: "(1+9+8+6) × 4 = 24×4" }, points: 100
+        name: { ca: "SECTOR 0 — DESPERTAR", es: "SECTOR 0 — DESPERTAR" },
+        narrativeTitle: { ca: "⚡ ARIA: ALERTA MÀXIMA", es: "⚡ ARIA: ALERTA MÁXIMA" },
+        narrativeText: {
+          ca: "Heu despertat d'hivernació forçada. Les llums d'emergència bategen en vermell. ARIA, la intel·ligència artificial de la nau, us parla amb veu trencada: 'Tripulació... el reactor principal ha estat sabotejat. Tinc 7 sectors en fallada crítica. Necessito els vostres codis d'accés per iniciar els protocols de reparació. Primer: verifiqueu que tots els membres del vostre equip estiguin conscients. Un d'ells pot ser l'agent NEMESIS.'",
+          es: "Habéis despertado de hibernación forzada. Las luces de emergencia parpadean en rojo. ARIA, la inteligencia artificial de la nave, os habla con voz entrecortada: 'Tripulación... el reactor principal ha sido saboteado. Tengo 7 sectores en fallo crítico. Necesito vuestros códigos de acceso para iniciar los protocolos de reparación. Primero: verificad que todos los miembros de vuestro equipo estén conscientes. Uno de ellos puede ser el agente NEMESIS.'"
+        },
+        visual: { type: "spaceAlert", config: { color: "#00f5ff", sector: 0, threat: "REACTOR" } },
+        enigma: {
+          ca: "ARIA mostra el primer codi de diagnòstic al panell. Observeu la pantalla: els 4 números que parpadegen en VERMELL formen el codi de verificació del sector 0.",
+          es: "ARIA muestra el primer código de diagnóstico en el panel. Observad la pantalla: los 4 números que parpadean en ROJO forman el código de verificación del sector 0."
+        },
+        answer: "7749",
+        hint: { ca: "Els números en VERMELL surten en ordre d'esquerra a dreta.", es: "Los números en ROJO salen en orden de izquierda a derecha." },
+        points: 100
       },
+
+      // ── FASE 2: OXIGEN CRÍTIC — PROVA FÍSICA ────────────────────
       {
-        name: { ca: "OXIGEN CRÍTIC", es: "OXÍGENO CRÍTICO" },
-        narrativeTitle: { ca: "Sala de màquines", es: "Sala de máquinas" },
-        narrativeText: { ca: "Repeteix la seqüència de calibració!", es: "¡Repite la secuencia de calibración!" },
-        minigame: "sequence",
-        sequence: [2,0,3,1],
-        enigma: { ca: "Seqüència d'oxigen: Aire → Filtre → Bomba → Sortida", es: "Secuencia de oxígeno: Aire → Filtro → Bomba → Salida" },
-        answer: "SEQUENCE", points: 150
+        name: { ca: "SECTOR 1 — OXIGEN", es: "SECTOR 1 — OXÍGENO" },
+        narrativeTitle: { ca: "💨 FUGA DE GAS TÒXIC", es: "💨 FUGA DE GAS TÓXICO" },
+        narrativeText: {
+          ca: "ARIA: 'Sector 1 — Sistema d'oxigen compromès. Detectada fuga de gas neurotòxic. Protocols de contenció actius. Per pressuritzar manualment la càmera, tots els membres de l'equip han de bufar ALHORA durant 5 segons al detector de pressió. Si no coordineu la respiració, el sistema no ho reconeixerà. Prepareu-vos: en 3... 2... 1...'",
+          es: "ARIA: 'Sector 1 — Sistema de oxígeno comprometido. Detectada fuga de gas neurotóxico. Protocolos de contención activos. Para presurizar manualmente la cámara, todos los miembros del equipo deben soplar A LA VEZ durante 5 segundos al detector de presión. Si no coordinais la respiración, el sistema no lo reconocerá. Preparaos: en 3... 2... 1...'"
+        },
+        visual: { type: "oxygenBar", config: { color: "#00f5ff" } },
+        enigma: {
+          ca: "🫁 PROVA FÍSICA: Tot l'equip ha de bufar alhora durant 5 segons cap a la càmera del mòbil (o cap a un punt central). El professor/a cronometra. Quan acabeu, escriviu el codi que apareix a la pantalla del projector un cop completada la prova.",
+          es: "🫁 PRUEBA FÍSICA: Todo el equipo debe soplar a la vez durante 5 segundos hacia la cámara del móvil (o hacia un punto central). El profesor/a cronometra. Cuando acabéis, escribid el código que aparece en la pantalla del proyector una vez completada la prueba."
+        },
+        answer: "OXIGEN",
+        hint: { ca: "La resposta és el nom del sistema que acabeu de reparar.", es: "La respuesta es el nombre del sistema que acabáis de reparar." },
+        points: 150,
+        mission: {
+          ca: "🫁 PROVA FÍSICA REAL: El professor activa el temporitzador. Tot l'equip ha de bufar alhora durant 5 segons. Si ho fan tots coordinadament, el professor diu 'OXIGEN PRESSURITZAT' i poden enviar la resposta.",
+          es: "🫁 PRUEBA FÍSICA REAL: El profesor activa el temporizador. Todo el equipo debe soplar a la vez durante 5 segundos. Si lo hacen todos coordinadamente, el profesor dice 'OXÍGENO PRESURIZADO' y pueden enviar la respuesta."
+        },
+        missionIcon: "💨"
       },
+
+      // ── FASE 3: EL TRAÏDOR — DEDUCCIÓ ENTRE EQUIPS ──────────────
       {
-        name: { ca: "CÒDIGE CESAR", es: "CÓDIGO CÉSAR" },
-        narrativeTitle: { ca: "Diari del capità", es: "Diario del capitán" },
-        narrativeText: { ca: "Desxifra el missatge del capità!", es: "¡Descifra el mensaje del capitán!" },
-        minigame: "cipher",
-        shift: 3,
-        enigma: { ca: "R QH FHQWUDO → Cèsar -3", es: "R QH FHQWUDO → César -3" },
-        answer: "CENTRAL", points: 150
+        name: { ca: "SECTOR 2 — INFILTRAT", es: "SECTOR 2 — INFILTRADO" },
+        narrativeTitle: { ca: "🔴 AGENT NEMESIS DETECTAT", es: "🔴 AGENTE NEMESIS DETECTADO" },
+        narrativeText: {
+          ca: "ARIA: 'Alerta de seguretat. He analitzat els registres de moviment i he identificat 4 sospitosos. Cada equip té accés a informació diferent sobre cada sospitós. Heu de compartir verbalment la vostra informació amb els altres equips i deduir qui és l'agent NEMESIS. Compte: NEMESIS sap que el busqueu i intentarà confondre-us.'",
+          es: "ARIA: 'Alerta de seguridad. He analizado los registros de movimiento y he identificado 4 sospechosos. Cada equipo tiene acceso a información diferente sobre cada sospechoso. Debéis compartir verbalmente vuestra información con los otros equipos y deducir quién es el agente NEMESIS. Cuidado: NEMESIS sabe que lo buscáis e intentará confundiros.'"
+        },
+        visual: { type: "suspectBoard", config: { color: "#00f5ff" } },
+        enigma: {
+          ca: "Els 4 sospitosos: VEGA (pilot), KAI (enginyer), SORA (metgessa), REX (seguretat). Cada mòbil mostra pistes exclusives. Parleu entre equips i decidiu: qui és NEMESIS? Envieu el nom.",
+          es: "Los 4 sospechosos: VEGA (piloto), KAI (ingeniero), SORA (médica), REX (seguridad). Cada móvil muestra pistas exclusivas. Hablad entre equipos y decidid: ¿quién es NEMESIS? Enviad el nombre."
+        },
+        minigame: "nemesisDeduction",
+        suspects: ["VEGA","KAI","SORA","REX"],
+        clues: [
+          { ca: "La teva pista: VEGA estava a la sala de control quan va fallar el reactor.", es: "Tu pista: VEGA estaba en la sala de control cuando falló el reactor." },
+          { ca: "La teva pista: KAI té accés als codis del reactor però el seu registre mostra que estava dormint.", es: "Tu pista: KAI tiene acceso a los códigos del reactor pero su registro muestra que estaba durmiendo." },
+          { ca: "La teva pista: SORA va administrar sedants a dos membres de la tripulació 1 hora abans del sabotatge.", es: "Tu pista: SORA administró sedantes a dos miembros de la tripulación 1 hora antes del sabotaje." },
+          { ca: "La teva pista: REX, el cap de seguretat, és l'únic que NO apareix als registres de la nau durant 30 minuts clau.", es: "Tu pista: REX, el jefe de seguridad, es el único que NO aparece en los registros de la nave durante 30 minutos clave." }
+        ],
+        answer: "SORA",
+        hint: { ca: "Qui tenia motiu I oportunitat? Compartiu totes les pistes.", es: "¿Quién tenía motivo Y oportunidad? Compartid todas las pistas." },
+        points: 200
       },
+
+      // ── FASE 4: CODI MORSE — MISSIÓ FÍSICA AULA ─────────────────
       {
-        name: { ca: "EL TRAIDOR", es: "EL TRAIDOR" },
-        narrativeTitle: { ca: "Interrogatori", es: "Interrogatorio" },
-        narrativeText: { ca: "A diu: B és el traidor. B diu: C menteix. C diu: A diu la veritat. Només un menteix.", es: "A dice: B es el traidor. B dice: C miente. C dice: A dice la verdad. Solo uno miente." },
-        enigma: { ca: "Qui és el traidor? (A, B o C)", es: "¿Quién es el traidor? (A, B o C)" },
-        answer: "B", points: 200
+        name: { ca: "SECTOR 3 — COMUNICACIONS", es: "SECTOR 3 — COMUNICACIONES" },
+        narrativeTitle: { ca: "📡 SENYAL INTERCEPTAT", es: "📡 SEÑAL INTERCEPTADO" },
+        narrativeText: {
+          ca: "ARIA: 'He interceptat una transmissió d'NEMESIS dirigida a la base enemiga. Està xifrada en codi Morse. Les antenes de la nau estan avariades, però he aconseguit guardar l'àudio. Heu de descodificar el missatge per saber el pla d'NEMESIS i desactivar el protocol de destrucció. La transmissió s'emetia des d'un dels panells amagats de la nau. Busqueu el sobre amagat a l'aula: porta el full de traducció Morse.'",
+          es: "ARIA: 'He interceptado una transmisión de NEMESIS dirigida a la base enemiga. Está cifrada en código Morse. Las antenas de la nave están averiadas, pero he conseguido guardar el audio. Debéis descodificar el mensaje para saber el plan de NEMESIS y desactivar el protocolo de destrucción. La transmisión se emitía desde uno de los paneles ocultos de la nave. Buscad el sobre escondido en el aula: lleva la hoja de traducción Morse.'"
+        },
+        visual: { type: "morseDisplay", config: { color: "#00f5ff", message: "... .- .-.. ...- .- .-. .-.. .- / -. .- ...", decoded: "SALVARLA NAU" } },
+        enigma: {
+          ca: "📡 El projector mostra el missatge Morse: '... .- .-.. ...- .- .-. / .-.. .- / -. .- ...' — Useu la taula Morse que el professor té preparada (o cerceu-la) i descodifiqueu el missatge. Quin és l'objectiu d'NEMESIS?",
+          es: "📡 El proyector muestra el mensaje Morse: '... .- .-.. ...- .- .-. / .-.. .- / -. .- ...' — Usad la tabla Morse que el profesor tiene preparada (o buscadla) y descodificad el mensaje. ¿Cuál es el objetivo de NEMESIS?"
+        },
+        answer: "SALVAR LA NAU",
+        hint: { ca: "... = S, .- = A, .-.. = L, ...- = V, .- = A, .-. = R", es: "... = S, .- = A, .-.. = L, ...- = V, .- = A, .-. = R" },
+        points: 200,
+        mission: {
+          ca: "🔍 MISSIÓ FÍSICA: Un membre de cada equip ha d'anar a buscar el 'SOBRE AURORA' amagat per l'aula (el professor sap on és). Conté la taula de codi Morse per descodificar la transmissió.",
+          es: "🔍 MISIÓN FÍSICA: Un miembro de cada equipo debe buscar el 'SOBRE AURORA' escondido por el aula (el profesor sabe dónde está). Contiene la tabla de código Morse para descodificar la transmisión."
+        },
+        missionIcon: "📡"
       },
+
+      // ── FASE 5: PANELL BIOMETRIC — SIMON ESPACIAL ───────────────
       {
-        name: { ca: "PROTOCOL SIMON", es: "PROTOCOLO SIMON" },
-        narrativeTitle: { ca: "Autenticació biomètrica", es: "Autenticación biométrica" },
-        narrativeText: { ca: "Repeteix el patró de seguretat!", es: "¡Repite el patrón de seguridad!" },
+        name: { ca: "SECTOR 4 — BIOMETRIA", es: "SECTOR 4 — BIOMETRÍA" },
+        narrativeTitle: { ca: "🧬 VERIFICACIÓ D'ADN", es: "🧬 VERIFICACIÓN DE ADN" },
+        narrativeText: {
+          ca: "ARIA: 'Sector 4 — Sistema de seguretat biomètric. Per accedir al reactor, necessito verificar les empremtes neuronals de cada membre de la tripulació. El sistema emitirà una seqüència de llums de colors. Heu de reproduir-la exactament. NEMESIS ha intentat reprogramar el sistema amb una seqüència falsa: qualsevol error activarà el bloqueig permanent. Concentreu-vos. La vostra vida en depèn.'",
+          es: "ARIA: 'Sector 4 — Sistema de seguridad biométrico. Para acceder al reactor, necesito verificar las huellas neuronales de cada miembro de la tripulación. El sistema emitirá una secuencia de luces de colores. Debéis reproducirla exactamente. NEMESIS ha intentado reprogramar el sistema con una secuencia falsa: cualquier error activará el bloqueo permanente. Concentraos. Vuestra vida depende de ello.'"
+        },
+        visual: { type: "dnaVerification", config: { color: "#00f5ff" } },
         minigame: "simon",
-        enigma: { ca: "Patró de 5 colors de seguretat.", es: "Patrón de 5 colores de seguridad." },
-        answer: "SIMON", points: 200
+        enigma: {
+          ca: "🧬 Autenticació biomètrica en curs. El sistema Aurora-7 mostrarà una seqüència de 5 colors. Reproduïu-la en l'ordre exacte. Un sol error i el sistema es bloquejarà.",
+          es: "🧬 Autenticación biométrica en curso. El sistema Aurora-7 mostrará una secuencia de 5 colores. Reproducidla en el orden exacto. Un solo error y el sistema se bloqueará."
+        },
+        answer: "SIMON",
+        points: 175
       },
+
+      // ── FASE 6: PANTALLA UV SECRET — PROVA FÍSICA ───────────────
       {
-        name: { ca: "COORDENADES", es: "COORDENADAS" },
-        narrativeTitle: { ca: "Navegació estelar", es: "Navegación estelar" },
-        narrativeText: { ca: "Calcula les coordenades de l'agujer de cuc!", es: "¡Calcula las coordenadas del agujero de gusano!" },
-        visual: { type: "treasureMap", config: { paths: 3, finalX: [75, 45], color: "#00f5ff", seed: 42 } },
-        enigma: { ca: "X = 45+(12×3), Y = 30+(5×3). Suma X+Y.", es: "X = 45+(12×3), Y = 30+(5×3). Suma X+Y." },
-        answer: "126", hint: { ca: "81 + 45", es: "81 + 45" }, points: 150,
-        mission: { ca: "Ves a la biblioteca i busca el llibre AURORA.", es: "Ve a la biblioteca y busca el libro AURORA." }, missionIcon: "📚"
+        name: { ca: "SECTOR 5 — MISSATGE OCULT", es: "SECTOR 5 — MENSAJE OCULTO" },
+        narrativeTitle: { ca: "🔦 TINTA INVISIBLE", es: "🔦 TINTA INVISIBLE" },
+        narrativeText: {
+          ca: "ARIA: 'He localitzat el diari secret d'NEMESIS. Però el codi d'autodestrcció final està escrit amb tinta invisible. Necessiteu una llum UV per revelar-lo. Al laboratori de la nau (l'aula) hi ha una làmpada UV d'emergència. Porteu-la al document que el professor té preparat. Sota la llum UV, veureu el codi de desactivació del reactor. Aneu de pressa, queden menys de 15 minuts.'",
+          es: "ARIA: 'He localizado el diario secreto de NEMESIS. Pero el código de autodestrucción final está escrito con tinta invisible. Necesitáis una luz UV para revelarlo. En el laboratorio de la nave (el aula) hay una lámpara UV de emergencia. Llevadla al documento que el profesor tiene preparado. Bajo la luz UV, veréis el código de desactivación del reactor. Daos prisa, quedan menos de 15 minutos.'"
+        },
+        visual: { type: "uvReveal", config: { color: "#00f5ff", hiddenCode: "AURORA" } },
+        enigma: {
+          ca: "🔦 PROVA FÍSICA: El professor té un document amb tinta invisible (o el codi escrit en un lloc on cal una acció per trobar-lo). Heu de trobar el codi secret. Alternativa sense material UV: el professor amaga el codi en un lloc de l'aula i l'equip més ràpid guanya punts extra.",
+          es: "🔦 PRUEBA FÍSICA: El profesor tiene un documento con tinta invisible (o el código escrito en un lugar donde hay que realizar una acción para encontrarlo). Debéis encontrar el código secreto. Alternativa sin material UV: el profesor esconde el código en un lugar del aula y el equipo más rápido gana puntos extra."
+        },
+        answer: "AURORA",
+        hint: { ca: "El codi és el nom de la nau. Però heu de trobar-lo físicament a l'aula.", es: "El código es el nombre de la nave. Pero debéis encontrarlo físicamente en el aula." },
+        points: 225,
+        mission: {
+          ca: "🔦 MISSIÓ UV: El professor té preparat un sobre/paper amb el codi amagat. Pot ser: (a) escrit amb retolador llum negra i cal una llum UV per veure'l, o (b) amagat sota una cadira/taula específica, o (c) en un sobre segellat que només es pot obrir ara. El codi és: AURORA",
+          es: "🔦 MISIÓN UV: El profesor tiene preparado un sobre/papel con el código escondido. Puede ser: (a) escrito con rotulador luz negra y se necesita una luz UV para verlo, o (b) escondido bajo una silla/mesa específica, o (c) en un sobre sellado que solo se puede abrir ahora. El código es: AURORA"
+        },
+        missionIcon: "🔦"
       },
+
+      // ── FASE 7: DESACTIVACIÓ FINAL — CONTA ENRERE ───────────────
       {
-        name: { ca: "DESACTIVACIÓ FINAL", es: "DESACTIVACIÓN FINAL" },
-        narrativeTitle: { ca: "El botó vermell", es: "El botón rojo" },
-        narrativeText: { ca: "Suma totes les respostes anteriors!", es: "¡Suma todas las respuestas anteriores!" },
-        visual: { type: "controlPanel", config: { switches: ["96","SEQ","CENT","B","SIM","126"], solution: [0,1,2,3,4,5], color: "#00f5ff", label: "REACTOR" } },
-        enigma: { ca: "96 + 150 + 150 + 200 + 200 + 126 = ?", es: "96 + 150 + 150 + 200 + 200 + 126 = ?" },
-        answer: "922", points: 300, isFinal: true
+        name: { ca: "SECTOR 6 — REACTOR FINAL", es: "SECTOR 6 — REACTOR FINAL" },
+        narrativeTitle: { ca: "💥 COMPTE ENRERE FINAL", es: "💥 CUENTA ATRÁS FINAL" },
+        narrativeText: {
+          ca: "ARIA: 'Tripulació... heu fet l'impossible. Heu reparat 6 sectors, descobert l'agent NEMESIS i recuperat els codis d'accés. Ara arriba el moment final. El reactor principal té un compte enrere d'autodestrucció. Per desactivar-lo, tots els equips han d'introduir el codi mestre AL MATEIX TEMPS. Un segon de diferència i tot fallarà. Coordineu-vos. Teniu 60 segons. El codi mestre és la suma dels punts de tots els sectors: els vostres mòbils us mostraran el compte enrere. Ara. JUNTS.'",
+          es: "ARIA: 'Tripulación... habéis hecho lo imposible. Habéis reparado 6 sectores, descubierto al agente NEMESIS y recuperado los códigos de acceso. Ahora llega el momento final. El reactor principal tiene una cuenta atrás de autodestrucción. Para desactivarlo, todos los equipos deben introducir el código maestro AL MISMO TIEMPO. Un segundo de diferencia y todo fallará. Coordinaros. Tenéis 60 segundos. El código maestro es el nombre de la misión: vuestros móviles os mostrarán la cuenta atrás. Ahora. JUNTOS.'"
+        },
+        visual: { type: "reactorCountdown", config: { color: "#00f5ff" } },
+        minigame: "finalCountdown",
+        enigma: {
+          ca: "⚡ DESACTIVACIÓ SINCRONITZADA: Tots els equips han d'enviar la resposta al MATEIX TEMPS. Coordineu-vos verbalment: compteu 3-2-1 i premeu ENVIAR tots junts. El codi és: NEMESIS",
+          es: "⚡ DESACTIVACIÓN SINCRONIZADA: Todos los equipos deben enviar la respuesta AL MISMO TIEMPO. Coordinaros verbalmente: contad 3-2-1 y pulsad ENVIAR todos juntos. El código es: NEMESIS"
+        },
+        answer: "NEMESIS",
+        hint: { ca: "El codi és el nom de la missió. Envieu-lo tots a la vegada!", es: "El código es el nombre de la misión. ¡Enviadlo todos a la vez!" },
+        points: 300,
+        isFinal: true
       }
+
     ]
   },
 
