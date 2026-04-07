@@ -945,6 +945,22 @@ function startGame(){
   document.getElementById('gEmoji').textContent=currentStory.emoji;
   document.getElementById('gTitle').textContent=currentStory.title[lang];
   document.getElementById('gTitle').style.fontFamily=currentStory.font;
+
+  // ── AURORA-7: Intro cinematogràfica especial ──
+  if(currentStory.id === 'space'){
+    showAuroraIntro(()=>{
+      renderGamePhase();
+      startTimer();
+      listenAnswers();
+      listenScores();
+      showScreen('s-game');
+      startAmbient('space');
+      playFx('phase');
+      setTimeout(()=>toggleVoice(),1200);
+    });
+    return;
+  }
+
   renderGamePhase();
   startTimer();
   listenAnswers();
@@ -953,6 +969,96 @@ function startGame(){
   playFx('phase');
   // Narrate after 1s
   setTimeout(()=>toggleVoice(),1200);
+}
+
+function showAuroraIntro(callback){
+  // Create full-screen cinematic intro overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'auroraIntro';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:99999;background:#000;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-family:'Orbitron',sans-serif;color:#fff;overflow:hidden;
+  `;
+
+  const lines = lang === 'ca' ? [
+    { t: 3500, html: `<div style="font-size:clamp(.7rem,1.5vw,1rem);letter-spacing:8px;color:#00f5ff;opacity:0;animation:aFadeIn 1s .5s forwards">CORPORACIÓ COSMOTECH — SECTOR 7</div>` },
+    { t: 6000, html: `<div style="font-size:clamp(2rem,6vw,4rem);font-weight:900;text-align:center;line-height:1.1;opacity:0;animation:aFadeIn 1.2s forwards;text-shadow:0 0 40px #00f5ff">NAU <span style="color:#00f5ff">AURORA-7</span></div>` },
+    { t: 9500, html: `<div style="font-size:clamp(.8rem,1.8vw,1.1rem);color:#ff4444;letter-spacing:4px;text-align:center;opacity:0;animation:aFadeIn 1s forwards">⚠ AUTODESTRUCCIÓ INICIADA ⚠</div><div style="font-size:clamp(1.5rem,4vw,2.5rem);font-weight:900;color:#ff4444;margin-top:8px;opacity:0;animation:aFadeIn 1s .3s forwards;text-shadow:0 0 30px #ff0000">55:00</div>` },
+    { t: 13000, html: `<div style="font-size:clamp(.7rem,1.5vw,.95rem);color:rgba(255,255,255,.7);text-align:center;line-height:2;opacity:0;animation:aFadeIn 1s forwards">Un traïdor entre vosaltres ha sabotejat el reactor.<br>7 sectors en fallada crítica.<br>Teniu 55 minuts per salvar la nau.</div>` },
+  ] : [
+    { t: 3500, html: `<div style="font-size:clamp(.7rem,1.5vw,1rem);letter-spacing:8px;color:#00f5ff;opacity:0;animation:aFadeIn 1s .5s forwards">CORPORACIÓN COSMOTECH — SECTOR 7</div>` },
+    { t: 6000, html: `<div style="font-size:clamp(2rem,6vw,4rem);font-weight:900;text-align:center;line-height:1.1;opacity:0;animation:aFadeIn 1.2s forwards;text-shadow:0 0 40px #00f5ff">NAVE <span style="color:#00f5ff">AURORA-7</span></div>` },
+    { t: 9500, html: `<div style="font-size:clamp(.8rem,1.8vw,1.1rem);color:#ff4444;letter-spacing:4px;text-align:center;opacity:0;animation:aFadeIn 1s forwards">⚠ AUTODESTRUCCIÓN INICIADA ⚠</div><div style="font-size:clamp(1.5rem,4vw,2.5rem);font-weight:900;color:#ff4444;margin-top:8px;opacity:0;animation:aFadeIn 1s .3s forwards;text-shadow:0 0 30px #ff0000">55:00</div>` },
+    { t: 13000, html: `<div style="font-size:clamp(.7rem,1.5vw,.95rem);color:rgba(255,255,255,.7);text-align:center;line-height:2;opacity:0;animation:aFadeIn 1s forwards">Un traidor entre vosotros ha saboteado el reactor.<br>7 sectores en fallo crítico.<br>Tenéis 55 minutos para salvar la nave.</div>` },
+  ];
+
+  overlay.innerHTML = `
+    <style>
+      @keyframes aFadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+      @keyframes aScan{0%,100%{opacity:.05}50%{opacity:.12}}
+      .aurora-scanlines{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,245,255,.04) 2px,rgba(0,245,255,.04) 4px);pointer-events:none;animation:aScan 3s infinite}
+      .aurora-stars{position:absolute;inset:0;pointer-events:none}
+    </style>
+    <div class="aurora-stars" id="aStars"></div>
+    <div class="aurora-scanlines"></div>
+    <div id="aContent" style="position:relative;z-index:2;text-align:center;padding:40px;display:flex;flex-direction:column;align-items:center;gap:24px;max-width:900px"></div>
+    <div style="position:absolute;bottom:30px;font-size:clamp(.6rem,1.2vw,.8rem);color:rgba(255,255,255,.2);letter-spacing:3px" id="aSkip">—</div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Animated stars
+  const starsEl = overlay.querySelector('#aStars');
+  starsEl.innerHTML = Array.from({length:120},(_,i)=>`<div style="position:absolute;left:${Math.random()*100}%;top:${Math.random()*100}%;width:${.5+Math.random()*2}px;height:${.5+Math.random()*2}px;background:white;border-radius:50%;opacity:${.1+Math.random()*.6};animation:aFadeIn ${1+Math.random()*3}s ${Math.random()*2}s forwards"></div>`).join('');
+
+  // Flash effect on start
+  playFx('phase');
+
+  const content = overlay.querySelector('#aContent');
+  const skip = overlay.querySelector('#aSkip');
+  let step = 0;
+  let lastTimeout;
+
+  function nextLine(){
+    if(step >= lines.length){
+      skip.innerHTML = lang==='ca' ? '[ TOCA PER INICIAR MISSIÓ ]' : '[ TOCA PARA INICIAR MISIÓN ]';
+      skip.style.color = '#00f5ff';
+      skip.style.cursor = 'pointer';
+      skip.style.animation = 'aFadeIn .5s forwards';
+      skip.onclick = done;
+      // Auto-start after 4s
+      lastTimeout = setTimeout(done, 4000);
+      return;
+    }
+    const line = lines[step];
+    const div = document.createElement('div');
+    div.innerHTML = line.html;
+    content.appendChild(div);
+    step++;
+    if(step === 1) playFx('tick');
+    if(step === 2) playFx('phase');
+    if(step === 3) { playFx('wrong'); }
+    lastTimeout = setTimeout(nextLine, line.t - (step > 1 ? lines[step-2].t : 0));
+  }
+
+  function done(){
+    clearTimeout(lastTimeout);
+    overlay.style.transition = 'opacity .8s';
+    overlay.style.opacity = '0';
+    setTimeout(()=>{ overlay.remove(); callback(); }, 800);
+  }
+
+  overlay.onclick = ()=>{ if(step >= lines.length) done(); };
+
+  // Stagger the lines
+  let delay = 0;
+  lines.forEach((line, i) => {
+    delay += i === 0 ? 500 : (lines[i-1].t - (i>1?lines[i-2].t:0));
+  });
+
+  // Start sequence
+  setTimeout(()=>nextLine(), 800);
 }
 
 function renderGamePhase(){
@@ -985,6 +1091,14 @@ function renderGamePhase(){
       sevenDiffs:   { ca: '🔍 7 DIFERÈNCIES', es: '🔍 7 DIFERENCIAS' },
       hangmanDisplay:{ ca: "🎯 L'AHORCADO", es: "🎯 EL AHORCADO" },
       memoryGrid:   { ca: '🧠 MEMORY GRID', es: '🧠 MEMORY GRID' },
+      // Aurora-7 nous visuals
+      spaceAlert:     { ca: '🚨 ALERTA SISTEMA', es: '🚨 ALERTA SISTEMA' },
+      oxygenBar:      { ca: '💨 SISTEMA D\'OXIGEN', es: '💨 SISTEMA DE OXÍGENO' },
+      suspectBoard:   { ca: '🔴 DOSSIER NEMESIS', es: '🔴 DOSSIER NEMESIS' },
+      morseDisplay:   { ca: '📡 TRANSMISSIÓ MORSE', es: '📡 TRANSMISIÓN MORSE' },
+      dnaVerification:{ ca: '🧬 VERIFICACIÓ NEURAL', es: '🧬 VERIFICACIÓN NEURAL' },
+      uvReveal:       { ca: '🔦 DOCUMENT SECRET UV', es: '🔦 DOCUMENTO SECRETO UV' },
+      reactorCountdown:{ ca: '☢️ COMPTE ENRERE REACTOR', es: '☢️ CUENTA ATRÁS REACTOR' },
     };
     try {
       const svg = window.MINIGAMES[type] ? window.MINIGAMES[type](config) : '';
@@ -1072,7 +1186,10 @@ function broadcastPhase(ph){
     stockRounds: ph.stockRounds || null,
     encodedText: ph.encodedText || null,
     puzzleSize: ph.puzzleSize || null,
-    puzzleEmojis: ph.puzzleEmojis || null
+    puzzleEmojis: ph.puzzleEmojis || null,
+    // Aurora-7 extras
+    clues: ph.clues || null,
+    suspects: ph.suspects || null,
   };
   db.ref(`rooms/${roomCode}/phase`).set(data);
   db.ref(`rooms/${roomCode}/answers`).remove();
