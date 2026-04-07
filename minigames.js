@@ -165,6 +165,284 @@ window.MINIGAMES = {
     </svg>`;
   },
 
+  // ══════════════════════════════════════════════════════════════
+  //  AURORA-7 VISUALS CINEMATOGRÀFICS
+  // ══════════════════════════════════════════════════════════════
+
+  spaceAlert: function(config = {}) {
+    const { color = '#00f5ff', sector = 0, threat = 'REACTOR' } = config;
+    // The 4 blinking red numbers that form code 7749
+    const redNums = ['7','7','4','9'];
+    const allNums = [];
+    // build a 5x4 grid of numbers, insert red ones at positions 3,7,10,15
+    const redPositions = [3,7,10,15];
+    let ri = 0;
+    for(let i = 0; i < 20; i++){
+      if(redPositions.includes(i)){
+        allNums.push({ v: redNums[ri++], red: true });
+      } else {
+        allNums.push({ v: Math.floor(Math.random()*10), red: false });
+      }
+    }
+    const cols = 5;
+    const cellW = 16, cellH = 10;
+    const gridSvg = allNums.map((n,i) => {
+      const cx = 10 + (i % cols) * cellW + cellW/2;
+      const cy = 48 + Math.floor(i / cols) * cellH + cellH/2;
+      return `<text x="${cx}" y="${cy}" font-size="5.5" fill="${n.red ? '#ff3333' : color+'40'}"
+        text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-weight="${n.red?'bold':'normal'}">
+        ${n.v}${n.red ? `<animate attributeName="opacity" values="1;0.1;1" dur="${0.6+Math.random()*0.4}s" repeatCount="indefinite"/>` : ''}
+      </text>`;
+    }).join('');
+
+    return `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:480px;background:#000810;border-radius:14px;border:2px solid ${color}60">
+      <defs>
+        <filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <!-- Starfield -->
+      ${Array.from({length:40},(_,i)=>`<circle cx="${(i*37.3)%100}" cy="${(i*19.7)%40}" r="${0.3+Math.random()*0.8}" fill="white" opacity="${0.1+Math.random()*0.5}"><animate attributeName="opacity" values="0.1;0.7;0.1" dur="${2+Math.random()*4}s" repeatCount="indefinite"/></circle>`).join('')}
+      <!-- ARIA header -->
+      <rect width="100" height="14" fill="${color}15"/>
+      <text x="50" y="9" font-size="5" fill="${color}" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold" letter-spacing="2">◈ ARIA — SISTEMA DE DIAGNÒSTIC ◈</text>
+      <!-- Alert bar -->
+      <rect y="15" width="100" height="7" fill="#ff000020"/>
+      <text x="50" y="20.5" font-size="4.5" fill="#ff4444" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">⚠ SECTOR ${sector} — ${threat} — FALLADA CRÍTICA ⚠</text>
+      <animate attributeName="opacity" values="1;0.5;1" dur="0.8s" repeatCount="indefinite"/>
+      <!-- Grid label -->
+      <text x="10" y="45" font-size="3.5" fill="${color}80" font-family="monospace" letter-spacing="1">PANELL DE DIAGNÒSTIC — CODI D'ACCÉS:</text>
+      <!-- Number grid -->
+      ${gridSvg}
+      <!-- Red numbers highlight -->
+      <rect x="8" y="44" width="${5*cellW+4}" height="${4*cellH+4}" rx="3" fill="none" stroke="${color}20" stroke-width="0.5"/>
+      <!-- Legend -->
+      <rect x="8" y="94" width="84" height="22" rx="4" fill="${color}08" stroke="${color}20" stroke-width="0.5"/>
+      <circle cx="16" cy="101" r="3" fill="#ff333380"/>
+      <text x="22" y="103.5" font-size="3.8" fill="#ff4444" font-family="monospace">Els números en VERMELL formen el codi</text>
+      <text x="22" y="110" font-size="3.5" fill="${color}60" font-family="monospace">Llegiu-los d'esquerra a dreta</text>
+      <!-- Pulse corner decorations -->
+      <rect x="0" y="0" width="8" height="8" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <rect x="92" y="0" width="8" height="8" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <rect x="0" y="112" width="8" height="8" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <rect x="92" y="112" width="8" height="8" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2"/>
+    </svg>`;
+  },
+
+  oxygenBar: function(config = {}) {
+    const { color = '#00f5ff' } = config;
+    return `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:480px;background:#000810;border-radius:14px;border:2px solid ${color}60">
+      <defs><filter id="og"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      <rect width="100" height="12" fill="#ff000015"/>
+      <text x="50" y="8.5" font-size="4.5" fill="#ff4444" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">⚠ SISTEMA D'OXIGEN — PRESSIÓ CRÍTICA ⚠</text>
+      <!-- Oxygen molecule -->
+      <circle cx="50" cy="35" r="12" fill="none" stroke="${color}30" stroke-width="1"/>
+      <circle cx="43" cy="33" r="5" fill="${color}20" stroke="${color}" stroke-width="1" filter="url(#og)">
+        <animate attributeName="r" values="5;6.5;5" dur="1.2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="57" cy="33" r="5" fill="${color}20" stroke="${color}" stroke-width="1" filter="url(#og)">
+        <animate attributeName="r" values="5;6.5;5" dur="1.2s" begin="0.6s" repeatCount="indefinite"/>
+      </circle>
+      <text x="43" y="35" font-size="5" fill="${color}" text-anchor="middle" font-weight="bold">O</text>
+      <text x="57" y="35" font-size="5" fill="${color}" text-anchor="middle" font-weight="bold">O</text>
+      <line x1="48" y1="33" x2="52" y2="33" stroke="${color}" stroke-width="1.5"/>
+      <!-- Pressure bar -->
+      <text x="10" y="54" font-size="3.5" fill="${color}80" font-family="monospace">PRESSIÓ CABINA:</text>
+      <rect x="10" y="57" width="80" height="6" rx="3" fill="rgba(255,255,255,0.07)"/>
+      <rect x="10" y="57" width="12" height="6" rx="3" fill="#ff4444">
+        <animate attributeName="width" values="12;15;12" dur="0.8s" repeatCount="indefinite"/>
+      </rect>
+      <text x="50" y="62.5" font-size="3" fill="rgba(255,255,255,0.5)" text-anchor="middle">15% — INSUFICIENT</text>
+      <!-- Instruction -->
+      <rect x="5" y="67" width="90" height="10" rx="4" fill="rgba(0,245,255,0.08)" stroke="${color}30" stroke-width="0.5"/>
+      <text x="50" y="73.5" font-size="3.5" fill="${color}" text-anchor="middle" font-family="monospace">💨 Bufeu TOTS junts durant 5 SEGONS</text>
+    </svg>`;
+  },
+
+  suspectBoard: function(config = {}) {
+    const { color = '#00f5ff' } = config;
+    const suspects = [
+      { name:'VEGA', role:'PILOT', icon:'👩‍✈️', sus: 72 },
+      { name:'KAI',  role:'ENGINYER', icon:'👨‍🔧', sus: 45 },
+      { name:'SORA', role:'METGESSA', icon:'👩‍⚕️', sus: 91 },
+      { name:'REX',  role:'SEGURETAT', icon:'🕵️', sus: 63 },
+    ];
+    return `<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:480px;background:#050010;border-radius:14px;border:2px solid #ff334480">
+      <rect width="100" height="12" fill="#ff000020"/>
+      <text x="50" y="8.5" font-size="4.5" fill="#ff4444" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">🔴 DOSSIER NEMESIS — ACCÉS RESTRINGIT</text>
+      ${suspects.map((s,i) => {
+        const x = 10 + (i % 2) * 50, y = 15 + Math.floor(i / 2) * 45;
+        const barW = s.sus * 0.32;
+        const barCol = s.sus > 80 ? '#ff4444' : s.sus > 60 ? '#ff8800' : '#00f5ff';
+        return `<rect x="${x}" y="${y}" width="40" height="40" rx="5" fill="rgba(255,255,255,0.03)" stroke="${barCol}40" stroke-width="0.8"/>
+        <text x="${x+7}" y="${y+13}" font-size="10">${s.icon}</text>
+        <text x="${x+22}" y="${y+10}" font-size="5" fill="#fff" font-weight="bold" font-family="monospace">${s.name}</text>
+        <text x="${x+22}" y="${y+17}" font-size="3" fill="rgba(255,255,255,0.4)" font-family="monospace">${s.role}</text>
+        <text x="${x+7}" y="${y+27}" font-size="3" fill="${barCol}90" font-family="monospace">SOSPITA:</text>
+        <rect x="${x+7}" y="${y+29}" width="30" height="4" rx="2" fill="rgba(255,255,255,0.07)"/>
+        <rect x="${x+7}" y="${y+29}" width="${barW}" height="4" rx="2" fill="${barCol}">
+          <animate attributeName="width" from="0" to="${barW}" dur="1.2s" fill="freeze"/>
+        </rect>
+        <text x="${x+38}" y="${y+33}" font-size="3.5" fill="${barCol}" text-anchor="end" font-family="monospace" font-weight="bold">${s.sus}%</text>`;
+      }).join('')}
+      <!-- Bottom instruction -->
+      <rect x="5" y="102" width="90" height="7" rx="3" fill="rgba(255,51,51,0.08)" stroke="#ff444430" stroke-width="0.5"/>
+      <text x="50" y="107" font-size="3.2" fill="#ff8888" text-anchor="middle" font-family="monospace">💬 Compartiu pistes verbalment entre equips</text>
+    </svg>`;
+  },
+
+  morseDisplay: function(config = {}) {
+    const { color = '#00f5ff', message = '... .- .-.. ...- .- .-. / .-.. .- / -. .- ...' } = config;
+    // Split into characters for animated display
+    const chars = message.split('');
+    return `<svg viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:480px;background:#000a05;border-radius:14px;border:2px solid ${color}60">
+      <defs><filter id="scan"><feColorMatrix type="matrix" values="0 0 0 0 0  0.2 0 0 0 0.8  0 0 0 0 0  0 0 0 1 0"/></filter></defs>
+      <!-- CRT scanlines effect -->
+      ${Array.from({length:18},(_,i)=>`<line x1="0" y1="${i*5}" x2="100" y2="${i*5}" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>`).join('')}
+      <rect width="100" height="12" fill="${color}15"/>
+      <text x="50" y="8.5" font-size="4.5" fill="${color}" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">📡 TRANSMISSIÓ INTERCEPTADA</text>
+      <!-- Antenna icon -->
+      <text x="8" y="25" font-size="8">📡</text>
+      <text x="20" y="21" font-size="3.5" fill="${color}80" font-family="monospace">FREQÜÈNCIA: 418.7 MHz</text>
+      <text x="20" y="27" font-size="3.5" fill="${color}60" font-family="monospace">ORIGEN: DESCONEGUT</text>
+      <!-- Waveform -->
+      <rect x="5" y="31" width="90" height="15" rx="3" fill="rgba(0,0,0,0.5)" stroke="${color}30" stroke-width="0.5"/>
+      ${Array.from({length:44},(_,i)=>{
+        const h = 2 + Math.random()*10;
+        return `<rect x="${6+i*2}" y="${38-h/2}" width="1.2" height="${h}" fill="${color}" opacity="${0.3+Math.random()*0.5}">
+          <animate attributeName="height" values="${h};${2+Math.random()*10};${h}" dur="${0.3+Math.random()*0.4}s" repeatCount="indefinite"/>
+        </rect>`;
+      }).join('')}
+      <!-- Morse code display -->
+      <text x="5" y="56" font-size="3.5" fill="${color}80" font-family="monospace" letter-spacing="1">MISSATGE MORSE DESCODIFICAT:</text>
+      <rect x="5" y="58" width="90" height="20" rx="4" fill="rgba(0,245,255,0.05)" stroke="${color}40" stroke-width="0.5"/>
+      <text x="50" y="66" font-size="3" fill="${color}" text-anchor="middle" font-family="monospace" letter-spacing="1">... .- .-.. ...- .- .-.</text>
+      <text x="50" y="73" font-size="3" fill="${color}" text-anchor="middle" font-family="monospace" letter-spacing="1">.-.. .-   -. .- ...</text>
+      <!-- Table hint -->
+      <rect x="5" y="81" width="90" height="7" rx="3" fill="rgba(255,215,0,0.07)" stroke="rgba(255,215,0,0.2)" stroke-width="0.5"/>
+      <text x="50" y="86" font-size="3.2" fill="#ffd700" text-anchor="middle" font-family="monospace">📋 Useu la taula Morse del sobre AURORA</text>
+    </svg>`;
+  },
+
+  dnaVerification: function(config = {}) {
+    const { color = '#00f5ff' } = config;
+    const levels = [
+      { col: '#ff3333', label: 'NEURAL', pct: 87 },
+      { col: '#00ff88', label: 'RETINAL', pct: 92 },
+      { col: '#a855f7', label: 'CORTICAL', pct: 78 },
+      { col: color, label: 'SINÀPTIC', pct: 95 },
+    ];
+    return `<svg viewBox="0 0 100 95" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:480px;background:#000810;border-radius:14px;border:2px solid ${color}60">
+      <rect width="100" height="12" fill="${color}15"/>
+      <text x="50" y="8.5" font-size="4.5" fill="${color}" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">🧬 VERIFICACIÓ D'EMPREMTA NEURAL</text>
+      <!-- DNA helix -->
+      ${Array.from({length:8},(_,i)=>{
+        const y = 16 + i*7, wave = Math.sin(i*0.8)*12;
+        return `<line x1="${50+wave}" y1="${y}" x2="${50-wave}" y2="${y}" stroke="rgba(255,255,255,0.15)" stroke-width="0.8"/>
+          <circle cx="${50+wave}" cy="${y}" r="2.5" fill="${color}" opacity="${0.4+i*0.04}">
+            <animate attributeName="opacity" values="0.4;0.9;0.4" dur="${0.8+i*0.1}s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="${50-wave}" cy="${y}" r="2.5" fill="#a855f7" opacity="${0.4+i*0.04}">
+            <animate attributeName="opacity" values="0.9;0.4;0.9" dur="${0.8+i*0.1}s" repeatCount="indefinite"/>
+          </circle>`;
+      }).join('')}
+      <!-- Biometric bars -->
+      ${levels.map((l,i) => {
+        const y = 78 + i * 0; // they go horizontally
+        const gy = 18 + i * 15;
+        return `<text x="5" y="${14+gy}" font-size="3" fill="${l.col}90" font-family="monospace">${l.label}</text>
+          <rect x="30" y="${10+gy}" width="60" height="4" rx="2" fill="rgba(255,255,255,0.07)"/>
+          <rect x="30" y="${10+gy}" width="${l.pct*0.6}" height="4" rx="2" fill="${l.col}">
+            <animate attributeName="width" from="0" to="${l.pct*0.6}" dur="${0.8+i*0.3}s" fill="freeze"/>
+          </rect>
+          <text x="93" y="${14+gy}" font-size="3" fill="${l.col}" text-anchor="end" font-family="monospace">${l.pct}%</text>`;
+      }).join('')}
+      <!-- Status -->
+      <rect x="5" y="87" width="90" height="7" rx="3" fill="rgba(0,245,255,0.08)" stroke="${color}30" stroke-width="0.5"/>
+      <text x="50" y="92" font-size="3.5" fill="${color}" text-anchor="middle" font-family="monospace">⚡ Esperant seqüència biomètrica...</text>
+    </svg>`;
+  },
+
+  uvReveal: function(config = {}) {
+    const { color = '#00f5ff', hiddenCode = 'AURORA' } = config;
+    return `<svg viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:480px;background:#050008;border-radius:14px;border:2px solid #a855f780">
+      <defs>
+        <radialGradient id="uvlight" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#a855f7" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="transparent"/>
+        </radialGradient>
+      </defs>
+      <rect width="100" height="12" fill="#a855f715"/>
+      <text x="50" y="8.5" font-size="4.5" fill="#a855f7" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">🔦 TINTA INVISIBLE — DOCUMENT SECRET</text>
+      <!-- Paper texture -->
+      <rect x="15" y="16" width="70" height="55" rx="4" fill="#f5f0e8" opacity="0.08" stroke="#a855f730" stroke-width="0.8"/>
+      <!-- UV light cone -->
+      <ellipse cx="50" cy="44" rx="28" ry="20" fill="url(#uvlight)">
+        <animate attributeName="rx" values="28;32;28" dur="2s" repeatCount="indefinite"/>
+      </ellipse>
+      <!-- Hidden text revealed under UV -->
+      <text x="50" y="38" font-size="5" fill="#a855f7" text-anchor="middle" font-family="monospace" font-weight="bold" opacity="0">
+        ${hiddenCode}
+        <animate attributeName="opacity" values="0;0.9;0" dur="3s" begin="1s" repeatCount="indefinite"/>
+      </text>
+      <text x="50" y="50" font-size="3.5" fill="#cc99ff" text-anchor="middle" font-family="monospace" opacity="0">
+        — CODI DE DESACTIVACIÓ —
+        <animate attributeName="opacity" values="0;0.7;0" dur="3s" begin="1.5s" repeatCount="indefinite"/>
+      </text>
+      <!-- Flashlight icon -->
+      <text x="50" y="30" font-size="16" text-anchor="middle">🔦</text>
+      <!-- Instructions -->
+      <rect x="5" y="75" width="90" height="13" rx="4" fill="rgba(168,85,247,0.08)" stroke="#a855f730" stroke-width="0.5"/>
+      <text x="50" y="81" font-size="3.5" fill="#cc99ff" text-anchor="middle" font-family="monospace">Apunteu la llum UV al document secret</text>
+      <text x="50" y="86" font-size="3.2" fill="#a855f780" text-anchor="middle" font-family="monospace">El professor té el document preparat</text>
+    </svg>`;
+  },
+
+  reactorCountdown: function(config = {}) {
+    const { color = '#00f5ff' } = config;
+    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;max-width:480px;background:#080000;border-radius:14px;border:2px solid #ff444480">
+      <defs>
+        <radialGradient id="reactorGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ff4444" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="transparent"/>
+        </radialGradient>
+      </defs>
+      <!-- Background glow -->
+      <ellipse cx="50" cy="50" rx="45" ry="45" fill="url(#reactorGlow)">
+        <animate attributeName="rx" values="40;50;40" dur="1s" repeatCount="indefinite"/>
+      </ellipse>
+      <rect width="100" height="12" fill="#ff000025"/>
+      <text x="50" y="8.5" font-size="4" fill="#ff4444" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">⚠ AUTODESTRUCCIÓ INICIADA ⚠</text>
+      <!-- Reactor core -->
+      <circle cx="50" cy="48" r="22" fill="none" stroke="#ff444440" stroke-width="2"/>
+      <circle cx="50" cy="48" r="16" fill="none" stroke="#ff444460" stroke-width="1.5"/>
+      <circle cx="50" cy="48" r="10" fill="#ff0000" opacity="0.2">
+        <animate attributeName="opacity" values="0.1;0.5;0.1" dur="0.8s" repeatCount="indefinite"/>
+        <animate attributeName="r" values="9;13;9" dur="0.8s" repeatCount="indefinite"/>
+      </circle>
+      <!-- Rotating danger arrows -->
+      ${Array.from({length:8},(_,i)=>{
+        const a = i*45*Math.PI/180;
+        const x1=50+16*Math.cos(a), y1=48+16*Math.sin(a);
+        const x2=50+20*Math.cos(a), y2=48+20*Math.sin(a);
+        return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#ff4444" stroke-width="1.5" opacity="0.6"/>`;
+      }).join('')}
+      <text x="50" y="52" font-size="14" text-anchor="middle">☢️</text>
+      <!-- Status -->
+      <rect x="5" y="73" width="90" height="8" rx="3" fill="#ff00002a" stroke="#ff444430" stroke-width="0.5"/>
+      <text x="50" y="79" font-size="4" fill="#ff4444" text-anchor="middle" font-family="Orbitron,monospace" font-weight="bold">TOTS ELS EQUIPS: ENVIEU JUNTS!</text>
+      <!-- Sync instruction -->
+      <rect x="5" y="84" width="90" height="14" rx="4" fill="rgba(0,245,255,0.06)" stroke="${color}30" stroke-width="0.5"/>
+      <text x="50" y="90" font-size="3.5" fill="${color}" text-anchor="middle" font-family="monospace">Compteu: 3... 2... 1... ENVIEU!</text>
+      <text x="50" y="96" font-size="3.2" fill="${color}80" text-anchor="middle" font-family="monospace">El codi és el nom de la missió</text>
+    </svg>`;
+  },
+
   stockMarket: function(config = {}) {
     const { companies = ['TECH','FOOD','BANK'], prices = [100,85,120], color = '#00ff88' } = config;
     const maxP=Math.max(...prices);
