@@ -1,0 +1,14 @@
+{
+  "name": "Fem Empresa",
+  "short_name": "Fem Empresa",
+  "lang": "ca",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e8f4fb",
+  "theme_color": "#0a3566",
+  "icons": [
+    { "src": "img/marca/icona-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/marca/icona-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "img/marca/icona-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
