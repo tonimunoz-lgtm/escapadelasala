@@ -9,7 +9,7 @@ export const DINERS_INICIALS = 12000;
 // Mapa: MIDA_MAPA x MIDA_MAPA parcel·les, agrupades en illes de BLOC x BLOC separades per carrers
 export const MIDA_MAPA = 6;
 export const BLOC = 2;
-export const AMPLE_CARRER = 0.5;         // amplada del carrer en parcel·les
+export const COST_CARRETERA = 250;      // construir un tros de carretera en una parcel·la pròpia
 export const PARCELES_OBERTES = [14, 15, 20, 21, 16, 22]; // illa central + 2 parcel·les de la illa del costat
 export const PARCELA_SEU = 21;           // on hi ha la seu central
 export const COST_PARCELA_BASE = 3000;   // la 1a parcel·la extra costa això, la 2a el doble...

@@ -27,7 +27,9 @@ En aquest punt el joc ja funciona en **mode de prova** (sense comptes, les dades
 6. A la pestanya **Regles** de Firestore, enganxa el contingut de `firestore.rules` i prem **Publica**.
 
 ## Què es pot fer al joc
-- **Ciutat amb illes i carrers**: 36 parcel·les en 9 illes. Comences a la illa central i pots comprar-ne més.
+- **Ciutat amb illes i carrers**: 36 parcel·les en 9 illes separades per carreteres (imatges `img/mapa/carretera-*.webp`).
+  Comences a la illa central i pots comprar més parcel·les o fer-hi carreteres noves, que s'uneixen soles amb les del costat.
+  Per fer la ciutat més gran, canvia `MIDA_MAPA` a `js/dades.js` (ha de ser múltiple de 2).
 - **Construir i produir** en cadena (aigua, electricitat, llavors, blat, farina, pa, vi, oli, maons…). Produir costa **sous**.
 - **Nivells**: cada edifici es pot millorar fins al nivell 10; cada nivell el fa treballar més ràpid.
 - **Botiga**: ven al públic al preu que tu triïs. Com més car, més lenta la venda (i més sous).

@@ -1,5 +1,5 @@
 import {
-  EDIFICIS, RECURSOS, MIDA_MAPA, BLOC, AMPLE_CARRER, NUM_LOGOS, MAX_PER_ORDRE, NIVELL_MAX,
+  EDIFICIS, RECURSOS, MIDA_MAPA, BLOC, COST_CARRETERA, NUM_LOGOS, MAX_PER_ORDRE, NIVELL_MAX,
   COMISSIO_BORSA, imgEdifici, imgRecurs, imgLogo, tempsConstruccio, preuReferencia,
 } from './dades.js';
 import * as joc from './joc.js';
@@ -162,85 +162,70 @@ async function accioRemota(fn, missatgeOk) {
 }
 
 // ---------- mapa isomètric amb illes i carrers ----------
-// Les imatges fan 256x256. El rombe superior de la parcel·la fa 236 px d'ample
-// i el seu centre queda a y=175 dins la imatge.
-const IMG = 256, W = 236, CENTRE_Y = 175, ALCADA_PARCELA = 14, GRUIX_LLOSA = 26;
-const G = AMPLE_CARRER;
+// El mapa és una quadrícula de caselles iguals. Cada BLOC x BLOC parcel·les hi ha una fila
+// i una columna de carretera (imatges img/mapa/carretera-*.webp).
+// Les imatges fan 256x256: el rombe superior fa 236 px d'ample i el seu centre és a y=175.
+const IMG = 256, W = 236, CENTRE_Y = 175;
+const PAS = BLOC + 1;                                // parcel·les d'una illa + 1 carretera
 const NUM_ILLES = MIDA_MAPA / BLOC;
-const EXTENSIO = MIDA_MAPA + (NUM_ILLES - 1) * G + 2 * G; // mida total de la ciutat
-const coord = (k) => k + Math.floor(k / BLOC) * G + G;     // on comença la parcel·la k (amb carrers)
+const CASELLES = NUM_ILLES * PAS + 1;                 // caselles per costat (amb carreteres)
+const EXTENSIO = CASELLES;
+const coord = (k) => k + Math.floor(k / BLOC) + 1;   // casella on va la parcel·la k
 const iso = (u, v) => ({ x: (u - v) * W / 2, y: (u + v) * W / 4 });
 const centreParcela = (i) => iso(coord(i % MIDA_MAPA) + 0.5, coord(Math.floor(i / MIDA_MAPA)) + 0.5);
 const zIndex = (u, v) => Math.round((u + v) * 4) + 10;
 
+const esCarreteraFixa = (R, C) => R % PAS === 0 || C % PAS === 0;
+const indexParcela = (R, C) => (R - Math.floor(R / PAS) - 1) * MIDA_MAPA + (C - Math.floor(C / PAS) - 1);
+function hiHaCarretera(R, C) {
+  if (R < 0 || C < 0 || R >= CASELLES || C >= CASELLES) return false;
+  if (esCarreteraFixa(R, C)) return true;
+  return estat.parceles[indexParcela(R, C)]?.estat === 'carretera';
+}
+// Tria la peça segons les carreteres veïnes
+function imatgeCarretera(R, C) {
+  const llarg = hiHaCarretera(R, C - 1) || hiHaCarretera(R, C + 1);
+  const ample = hiHaCarretera(R - 1, C) || hiHaCarretera(R + 1, C);
+  if (llarg && ample) return 'img/mapa/carretera-creuament.webp';
+  if (ample) return 'img/mapa/carretera-b.webp';
+  return 'img/mapa/carretera-a.webp';
+}
+
 let escala = 0.75;
 let despl = { x: 0, y: 0 };
 const caselles = [];
+const carreteresFixes = [];
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-function svg(tag, attrs) {
-  const el = document.createElementNS(SVG_NS, tag);
-  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-  return el;
-}
-const punts = (...ps) => ps.map((p) => `${p.x},${p.y}`).join(' ');
-
-// Dibuixa el terra de la ciutat: llosa d'asfalt, voreres de cada illa i línies dels carrers
-function dibuixarTerra() {
-  const T = EXTENSIO;
-  const amplada = T * W, alcada = T * W / 2 + GRUIX_LLOSA;
-  const ox = T * W / 2;
-  const P = (u, v, dy = 0) => { const p = iso(u, v); return { x: p.x + ox, y: p.y + dy }; };
-  const s = svg('svg', { class: 'terra', width: amplada, height: alcada, viewBox: `0 0 ${amplada} ${alcada}` });
-  s.style.left = `${-ox}px`;
-  s.style.top = `${ALCADA_PARCELA}px`;
-  const d = GRUIX_LLOSA;
-  s.append(
-    svg('polygon', { points: punts(P(0, T), P(T, T), P(T, T, d), P(0, T, d)), fill: '#4a525c' }),
-    svg('polygon', { points: punts(P(T, T), P(T, 0), P(T, 0, d), P(T, T, d)), fill: '#3a4049' }),
-    svg('polygon', { points: punts(P(0, 0), P(T, 0), P(T, T), P(0, T)), fill: '#646e7a' }),
-  );
-  // línies discontínues al mig de cada carrer
-  const centres = [G / 2, T - G / 2];
-  for (let k = 1; k < NUM_ILLES; k++) centres.push(coord(k * BLOC) - G / 2);
-  for (const c of centres) {
-    for (const [a, b] of [[P(c, 0), P(c, T)], [P(0, c), P(T, c)]]) {
-      s.append(svg('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: '#f3d35b', 'stroke-width': 3, 'stroke-dasharray': '16 14', opacity: '.9' }));
-    }
-  }
-  // passos de vianants a les cruïlles interiors
-  for (const cu of centres) for (const cv of centres) {
-    const m = 0.16;
-    s.append(svg('polygon', { points: punts(P(cu - m, cv - m), P(cu + m, cv - m), P(cu + m, cv + m), P(cu - m, cv + m)), fill: '#646e7a' }));
-  }
-  // voreres de cada illa
-  const v = 0.08;
-  for (let bi = 0; bi < NUM_ILLES; bi++) for (let bj = 0; bj < NUM_ILLES; bj++) {
-    const u0 = coord(bj * BLOC) - v, u1 = coord(bj * BLOC) + BLOC + v;
-    const v0 = coord(bi * BLOC) - v, v1 = coord(bi * BLOC) + BLOC + v;
-    s.append(svg('polygon', { points: punts(P(u0, v0), P(u1, v0), P(u1, v1), P(u0, v1)), fill: '#c4cbd3', stroke: '#9aa3ad', 'stroke-width': 2 }));
-  }
-  return s;
+function posarTile(mapa, R, C, src, classe) {
+  const { x, y } = iso(C + 0.5, R + 0.5);
+  const img = h('img', {
+    class: classe, src, alt: '', draggable: 'false',
+    style: `left:${x - IMG / 2}px;top:${y - CENTRE_Y}px;z-index:${zIndex(C + 0.5, R + 0.5)}`,
+  });
+  mapa.append(img);
+  return img;
 }
 
 function construirMapa() {
   const mapa = $('#mapa');
-  mapa.replaceChildren(dibuixarTerra());
+  mapa.replaceChildren();
   caselles.length = 0;
-  // Bosc al voltant de la ciutat
-  const T = EXTENSIO, fora = 0.75;
-  for (let t = 0.5; t < T; t += 1) {
-    for (const [u, v] of [[t, -fora], [-fora, t], [t, T + fora], [T + fora, t]]) {
-      if (Math.round(t * 7 + u) % 3 === 0) continue;
-      const { x, y } = iso(u, v);
-      mapa.append(h('img', {
-        class: 'decor', src: 'img/mapa/decor-arbres.webp', alt: '', draggable: 'false',
-        style: `left:${x - IMG / 2}px;top:${y - CENTRE_Y}px;z-index:${zIndex(u, v)}`,
-      }));
+  carreteresFixes.length = 0;
+  // Bosc al voltant, alineat amb la quadrícula
+  for (let k = -1; k <= CASELLES; k++) {
+    for (const [R, C] of [[-1, k], [CASELLES, k], [k, -1], [k, CASELLES]]) {
+      if ((R * 7 + C * 3) % 4 === 0) continue;
+      posarTile(mapa, R, C, 'img/mapa/decor-arbres.webp', 'decor');
     }
   }
+  // Carreteres fixes
+  for (let R = 0; R < CASELLES; R++) for (let C = 0; C < CASELLES; C++) {
+    if (esCarreteraFixa(R, C)) carreteresFixes.push({ R, C, img: posarTile(mapa, R, C, '', 'decor carretera') });
+  }
+  // Parcel·les
   for (let i = 0; i < MIDA_MAPA * MIDA_MAPA; i++) {
-    const u = coord(i % MIDA_MAPA) + 0.5, v = coord(Math.floor(i / MIDA_MAPA)) + 0.5;
+    const R = coord(Math.floor(i / MIDA_MAPA)), C = coord(i % MIDA_MAPA);
+    const u = C + 0.5, v = R + 0.5;
     const { x, y } = iso(u, v);
     const img = h('img', { class: 'casella-img', alt: '', draggable: 'false' });
     const casella = h('div', { class: 'casella', style: `left:${x - IMG / 2}px;top:${y - CENTRE_Y}px;z-index:${zIndex(u, v)}` }, img);
@@ -251,12 +236,13 @@ function construirMapa() {
     const etiqueta = h('div', { class: 'etiqueta', style: `left:${x}px;top:${y - 30}px` });
     const rotul = h('div', { class: 'rotul', style: `left:${x}px;top:${y + 26}px` });
     mapa.append(casella, zona, etiqueta, rotul);
-    caselles.push({ img, etiqueta, zona, casella, rotul });
+    caselles.push({ img, etiqueta, zona, casella, rotul, R, C });
   }
   aplicarTransformacio();
 }
 
-function imatgeParcela(p) {
+function imatgeParcela(p, i) {
+  if (p.estat === 'carretera') { const { R, C } = caselles[i]; return imatgeCarretera(R, C); }
   if (p.estat === 'bloquejada') return 'img/mapa/parcela-bloquejada.webp';
   if (p.estat === 'buida') return 'img/mapa/parcela-buida.webp';
   if (p.estat === 'obres') return 'img/mapa/parcela-obres.webp';
@@ -267,15 +253,20 @@ function imatgeParcela(p) {
 function nomParcela(p) {
   if (p.estat === 'bloquejada') return 'Parcel·la per comprar';
   if (p.estat === 'buida') return 'Parcel·la lliure';
+  if (p.estat === 'carretera') return 'Carretera';
   if (p.estat === 'obres') return `${EDIFICIS[p.tipus].nom} (en obres)`;
   return `${EDIFICIS[p.tipus].nom}, nivell ${p.nivell || 1}`;
 }
 
 function dibuixarMapa() {
   const ara = Date.now();
+  for (const c of carreteresFixes) {
+    const src = imatgeCarretera(c.R, c.C);
+    if (c.img.getAttribute('src') !== src) c.img.src = src;
+  }
   estat.parceles.forEach((p, i) => {
     const { img, etiqueta, zona, casella, rotul } = caselles[i];
-    const src = imatgeParcela(p);
+    const src = imatgeParcela(p, i);
     if (img.getAttribute('src') !== src) img.src = src;
     zona.setAttribute('aria-label', nomParcela(p));
     const feina = p.produccio || p.venda;
@@ -304,7 +295,9 @@ function dibuixarMapa() {
       const clau = `${nom}|${p.nivell}|${p.estat}`;
       if (rotul.dataset.clau !== clau) {
         rotul.dataset.clau = clau;
-        rotul.replaceChildren(h('span', {}, nom), p.estat === 'edifici' && p.tipus !== 'seu-central' ? h('b', {}, `Nv ${p.nivell || 1}`) : null);
+        const parts = [h('span', {}, nom)];
+        if (p.estat === 'edifici' && p.tipus !== 'seu-central') parts.push(h('b', {}, `Nv ${p.nivell || 1}`));
+        rotul.replaceChildren(...parts);
       }
     }
   });
@@ -418,6 +411,7 @@ function obrirParcela(i) {
   const info = { tipus: 'parcela', i, firma: firmaParcela(i) };
   if (p.estat === 'bloquejada') return obrirPanell('Parcel·la per comprar', panellBloquejada(i), info);
   if (p.estat === 'buida') return obrirPanell('Què hi vols construir?', panellConstruir(i), info);
+  if (p.estat === 'carretera') return obrirPanell('Carretera', panellCarretera(i), info);
   if (p.estat === 'obres') return obrirPanell(EDIFICIS[p.tipus].nom, panellObres(p), info);
   if (p.tipus === 'seu-central') return obrirPanell(estat.nom, panellSeu(), info);
   return obrirPanell(`${EDIFICIS[p.tipus].nom}`, panellEdifici(i), info);
@@ -451,6 +445,14 @@ function panellBloquejada(i) {
 
 function panellConstruir(i) {
   const llista = h('ul', { class: 'llista-edificis' });
+  llista.append(h('li', { class: 'fitxa-edifici' },
+    h('img', { src: 'img/mapa/carretera-a.webp', alt: '', width: 96, height: 96, class: 'fitxa-img' }),
+    h('div', { class: 'fitxa-info' }, h('strong', {}, 'Carretera'),
+      h('span', { class: 'nota' }, 'S\'uneix sola amb les carreteres del costat. Es fa a l\'instant.')),
+    h('button', {
+      class: 'btn btn-principal', disabled: estat.diners < COST_CARRETERA,
+      onclick: () => accio(() => { joc.construirCarretera(estat, i); tancarPanell(); }),
+    }, joc.diners(COST_CARRETERA))));
   const tipus = Object.entries(EDIFICIS).filter(([, d]) => !d.inicial);
   tipus.sort((a, b) => (Number(!!a[1].aviat) - Number(!!b[1].aviat)) || (a[1].cost - b[1].cost));
   for (const [id, def] of tipus) {
@@ -470,6 +472,13 @@ function panellConstruir(i) {
       }, joc.diners(def.cost))));
   }
   return llista;
+}
+
+function panellCarretera(i) {
+  return h('div', { class: 'bloc' },
+    h('img', { src: imatgeParcela(estat.parceles[i], i), alt: '', width: 160, height: 160, class: 'panell-img' }),
+    h('p', {}, 'Aquest tros de carretera és teu. Pots treure\'l per tornar a tenir la parcel·la lliure (no es recuperen els diners).'),
+    h('button', { class: 'btn', onclick: () => accio(() => { joc.treureCarretera(estat, i); tancarPanell(); }) }, 'Treu la carretera'));
 }
 
 function panellObres(p) {
@@ -499,7 +508,7 @@ function panellEdifici(i) {
   const nivell = p.nivell || 1;
   const cos = h('div', { class: 'bloc' },
     h('div', { class: 'cap-edifici' },
-      h('img', { src: imatgeParcela(p), alt: '', width: 140, height: 140, class: 'panell-img' }),
+      h('img', { src: imatgeParcela(p, i), alt: '', width: 140, height: 140, class: 'panell-img' }),
       h('span', { class: 'insignia-nivell' }, `Nivell ${nivell}`)));
 
   // Millorant

@@ -74,9 +74,17 @@ h1, h2 { font-family: var(--lletra-titol); font-weight: 800; line-height: 1.1; m
 /* ---------- pantalla d'inici ---------- */
 #pantalla-inici {
   position: fixed; inset: 0;
-  background: #7bbf4a url('../img/fons/fons-inici.webp') center 30% / cover no-repeat;
-  display: flex; align-items: flex-end; justify-content: center;
-  padding: 24px 16px calc(32px + env(safe-area-inset-bottom, 0px));
+  background: #7bbf4a url('../img/fons/fons-inici.webp') center / cover no-repeat;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 16px calc(32px + env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 1100px) {
+  #pantalla-inici { background-image: url('../img/fons/fons-inici-petit.webp'); }
+}
+.inici-titol { margin: 0; }
+.inici-titol img {
+  display: block; width: min(320px, 62vw); height: auto;
+  filter: drop-shadow(0 8px 18px rgb(10 53 102 / .45));
 }
 .inici-caixa {
   width: min(440px, 100%);
@@ -286,9 +294,10 @@ h1, h2 { font-family: var(--lletra-titol); font-weight: 800; line-height: 1.1; m
 .rotul span { background: rgb(255 255 255 / .94); color: var(--tinta); padding: 5px 8px 3px; }
 .rotul b { background: var(--tinta); color: #fff; padding: 5px 7px 3px; font-weight: 800; }
 .mapa.lluny .rotul span { display: none; }
+.mapa.lluny .rotul:not(:has(b)) { display: none; }
 .mapa.lluny .rotul { font-size: 20px; }
 .mapa.molt-lluny .rotul { display: none; }
-.casella.bloquejada { opacity: .72; }
+.casella.bloquejada { filter: saturate(.55) brightness(1.04); }
 
 /* ---------- panell: edificis, botiga i borsa ---------- */
 .cap-edifici { position: relative; display: grid; justify-items: center; }

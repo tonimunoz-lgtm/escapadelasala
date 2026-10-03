@@ -3,7 +3,7 @@
 import {
   EDIFICIS, RECURSOS, VELOCITAT, DINERS_INICIALS, MIDA_MAPA, PARCELES_OBERTES,
   PARCELA_SEU, COST_PARCELA_BASE, MAX_PER_ORDRE, NIVELL_MAX, SALARI_PER_SEGON,
-  tempsConstruccio, preuReferencia,
+  COST_CARRETERA, tempsConstruccio, preuReferencia,
 } from './dades.js';
 
 export function estatInicial(nom, logo) {
@@ -25,19 +25,18 @@ export function estatInicial(nom, logo) {
 }
 
 // Adapta empreses desades amb versions anteriors del joc
+// (també si el professorat canvia MIDA_MAPA a dades.js)
 export function migrar(e) {
-  if (!e.versio || e.versio < 2) {
-    const vellaMida = Math.round(Math.sqrt(e.parceles.length));
-    if (vellaMida !== MIDA_MAPA) {
-      const noves = Array.from({ length: MIDA_MAPA * MIDA_MAPA }, () => ({ estat: 'bloquejada' }));
-      e.parceles.forEach((p, i) => {
-        const r = Math.floor(i / vellaMida), c = i % vellaMida;
-        noves[r * MIDA_MAPA + c] = p;
-      });
-      e.parceles = noves;
-    }
-    e.versio = 2;
+  const vellaMida = Math.round(Math.sqrt(e.parceles.length));
+  if (vellaMida !== MIDA_MAPA) {
+    const noves = Array.from({ length: MIDA_MAPA * MIDA_MAPA }, () => ({ estat: 'bloquejada' }));
+    e.parceles.forEach((p, i) => {
+      const r = Math.floor(i / vellaMida), c = i % vellaMida;
+      if (r < MIDA_MAPA && c < MIDA_MAPA) noves[r * MIDA_MAPA + c] = p;
+    });
+    e.parceles = noves;
   }
+  e.versio = 2;
   for (const p of e.parceles) if (p.estat === 'edifici' && !p.nivell) p.nivell = 1;
   return e;
 }
@@ -80,6 +79,19 @@ export function construir(e, i, tipus, ara = Date.now()) {
   if (e.diners < def.cost) throw new Error(`Et falten ${diners(def.cost - e.diners)} per construir-lo.`);
   e.diners -= def.cost;
   e.parceles[i] = { estat: 'obres', tipus, fiObres: ara + tempsConstruccio(tipus) * 1000 };
+}
+
+// ---------- carreteres ----------
+export function construirCarretera(e, i) {
+  if (e.parceles[i].estat !== 'buida') throw new Error('Només pots fer carreteres en parcel·les teves i lliures.');
+  if (e.diners < COST_CARRETERA) throw new Error(`Necessites ${diners(COST_CARRETERA)}.`);
+  e.diners -= COST_CARRETERA;
+  e.parceles[i] = { estat: 'carretera' };
+}
+
+export function treureCarretera(e, i) {
+  if (e.parceles[i].estat !== 'carretera') throw new Error('Aquí no hi ha cap carretera teva.');
+  e.parceles[i] = { estat: 'buida' };
 }
 
 // ---------- millores de nivell ----------
