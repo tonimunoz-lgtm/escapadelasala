@@ -1,7 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cada alumne només pot escriure la seva empresa; tothom (amb sessió) pot llegir per a la classificació.
+
+    // Empreses: cadascú només escriu la seva; tothom amb sessió pot llegir (classificació).
     match /empreses/{uid} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null
@@ -10,6 +11,37 @@ service cloud.firestore {
         && request.resource.data.nom.size() <= 30
         && request.resource.data.diners is number;
       allow delete: if false;
+    }
+
+    // Borsa: ofertes de venda entre empreses.
+    match /mercat/{id} {
+      allow read: if request.auth != null;
+
+      // Publicar: només en nom propi, amb quantitat i preu enters positius.
+      allow create: if request.auth != null
+        && request.resource.data.venedor == request.auth.uid
+        && request.resource.data.quantitat is int && request.resource.data.quantitat > 0
+        && request.resource.data.preu is int && request.resource.data.preu > 0
+        && request.resource.data.pendent == 0;
+
+      // Retirar o esborrar una oferta esgotada: només el venedor.
+      allow delete: if request.auth != null && resource.data.venedor == request.auth.uid;
+
+      allow update: if request.auth != null && (
+        // El venedor cobra: només pot posar "pendent" a zero.
+        (resource.data.venedor == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pendent'])
+          && request.resource.data.pendent == 0)
+        ||
+        // Un comprador: treu unitats i afegeix exactament unitats x preu al "pendent".
+        (resource.data.venedor != request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantitat', 'pendent'])
+          && request.resource.data.quantitat is int
+          && request.resource.data.quantitat >= 0
+          && request.resource.data.quantitat < resource.data.quantitat
+          && request.resource.data.pendent == resource.data.pendent
+               + (resource.data.quantitat - request.resource.data.quantitat) * resource.data.preu)
+      );
     }
   }
 }

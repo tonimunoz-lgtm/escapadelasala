@@ -26,6 +26,20 @@ En aquest punt el joc ja funciona en **mode de prova** (sense comptes, les dades
 5. **Firestore Database > Crea una base de dades** en mode producció, ubicació `eur3 (europe-west)`.
 6. A la pestanya **Regles** de Firestore, enganxa el contingut de `firestore.rules` i prem **Publica**.
 
+## Què es pot fer al joc
+- **Ciutat amb illes i carrers**: 36 parcel·les en 9 illes. Comences a la illa central i pots comprar-ne més.
+- **Construir i produir** en cadena (aigua, electricitat, llavors, blat, farina, pa, vi, oli, maons…). Produir costa **sous**.
+- **Nivells**: cada edifici es pot millorar fins al nivell 10; cada nivell el fa treballar més ràpid.
+- **Botiga**: ven al públic al preu que tu triïs. Com més car, més lenta la venda (i més sous).
+- **Borsa entre alumnes**: publica ofertes des del Magatzem i compra les dels companys. La borsa cobra un 3% al venedor.
+  Els diners de les vendes es cobren sols quan el venedor té el joc obert.
+- **Mercat de l'escola**: compra qualsevol producte a preu fix (la sortida segura).
+- **Classificació** pel valor de l'empresa.
+
+## Si ja tenies una versió anterior publicada
+Torna a enganxar `firestore.rules` a Firestore > Regles i prem **Publica** (ara inclou les regles de la borsa).
+Les empreses ja creades s'adapten soles al mapa nou.
+
 ## Ajustar el joc
 Tota l'economia és a `js/dades.js`: diners inicials, preus, temps, costos i la constant `VELOCITAT`
 (posa 2 o 3 per a sessions curtes de classe).
@@ -40,4 +54,4 @@ Tota l'economia és a `js/dades.js`: diners inicials, preus, temps, costos i la 
 ## Limitacions conegudes
 - Les regles de Firestore només deixen que cadascú escrigui la seva empresa, però els càlculs es fan al navegador:
   un alumne amb coneixements podria fer trampa des de la consola. Es pot blindar més endavant amb funcions de Vercel.
-- El mercat compra a preu fix. El mercat entre alumnes és el següent pas.
+- En mode de prova la borsa té empreses fictícies, i les teves ofertes les "compra el poble" si el preu és raonable.

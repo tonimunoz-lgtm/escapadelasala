@@ -6,11 +6,17 @@
 export const VELOCITAT = 1;
 
 export const DINERS_INICIALS = 12000;
-export const MIDA_MAPA = 4;              // el mapa és de MIDA_MAPA x MIDA_MAPA parcel·les
-export const PARCELES_OBERTES = [0, 1, 2, 4, 5, 6]; // parcel·les disponibles al començar
-export const PARCELA_SEU = 5;            // on hi ha la seu central
+// Mapa: MIDA_MAPA x MIDA_MAPA parcel·les, agrupades en illes de BLOC x BLOC separades per carrers
+export const MIDA_MAPA = 6;
+export const BLOC = 2;
+export const AMPLE_CARRER = 0.5;         // amplada del carrer en parcel·les
+export const PARCELES_OBERTES = [14, 15, 20, 21, 16, 22]; // illa central + 2 parcel·les de la illa del costat
+export const PARCELA_SEU = 21;           // on hi ha la seu central
 export const COST_PARCELA_BASE = 3000;   // la 1a parcel·la extra costa això, la 2a el doble...
 export const MAX_PER_ORDRE = 100;        // unitats màximes per ordre de producció
+export const NIVELL_MAX = 10;
+export const SALARI_PER_SEGON = 0.1;     // € de sou per cada segon de producció (per unitat)
+export const COMISSIO_BORSA = 0.03;      // la borsa es queda un 3% de cada venda, com a Sim Companies
 
 // preu = el que paga el mercat de l'escola per cada unitat
 export const RECURSOS = {
@@ -66,7 +72,14 @@ export const EDIFICIS = {
     { recurs: 'maons', temps: 20, entrades: { pedra: 2, electricitat: 2 } } ] },
 
   // Edificis que encara no es poden construir (properes versions)
-  'botiga':      { nom: 'Botiga',      cost: 0, aviat: true, produeix: [] },
+  // La botiga ven al públic. tempsVenda = segons per unitat si el preu és el de referència.
+  // Com més car, més lenta la venda: temps x (preu / preuReferencia)^2
+  'botiga': { nom: 'Botiga', cost: 5000, produeix: [], ven: [
+    { recurs: 'pa',   tempsVenda: 8 },
+    { recurs: 'ous',  tempsVenda: 6 },
+    { recurs: 'llet', tempsVenda: 7 },
+    { recurs: 'vi',   tempsVenda: 10 },
+    { recurs: 'oli',  tempsVenda: 10 } ] },
   'magatzem':    { nom: 'Magatzem',    cost: 0, aviat: true, produeix: [] },
   'restaurant':  { nom: 'Restaurant',  cost: 0, aviat: true, produeix: [] },
   'laboratori':  { nom: 'Laboratori',  cost: 0, aviat: true, produeix: [] },
@@ -79,6 +92,9 @@ export const EDIFICIS = {
 // Segons que costa construir un edifici
 export const tempsConstruccio = (tipus) =>
   Math.max(20, Math.round(EDIFICIS[tipus].cost / 40)) / VELOCITAT;
+
+// Preu de referència a la botiga (el que paga el públic sense fer cua)
+export const preuReferencia = (recurs) => Math.round(RECURSOS[recurs].preu * 1.5);
 
 export const imgEdifici = (tipus) => `img/edificis/edifici-${tipus}.webp`;
 export const imgRecurs = (recurs) => `img/recursos/recurs-${recurs}.webp`;

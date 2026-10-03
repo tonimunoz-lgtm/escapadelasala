@@ -1,6 +1,7 @@
 // Capa de dades: Firebase (Auth + Firestore) o mode de prova amb el navegador.
 import config from './firebase-config.js';
 import { valorEmpresa } from './joc.js';
+import { COMISSIO_BORSA, RECURSOS } from './dades.js';
 
 export const modeProva = !config.apiKey;
 
@@ -75,4 +76,190 @@ export async function classificacio(uid, estat) {
   const q = fs.query(fs.collection(db, 'empreses'), fs.orderBy('valor', 'desc'), fs.limit(50));
   const snap = await fs.getDocs(q);
   return snap.docs.map((d) => ({ uid: d.id, nom: d.data().nom, logo: d.data().logo, valor: d.data().valor }));
+}
+
+// =============================================================
+//  BORSA ENTRE EMPRESES (col·lecció "mercat")
+//  Sense servidor: el comprador marca l'oferta com a venuda (camp "pendent")
+//  i el venedor cobra després des del seu navegador. Les regles de Firestore
+//  comproven que els números quadrin.
+// =============================================================
+
+const CLAU_MERCAT = 'fem-empresa-mercat';
+const net = (pendent) => Math.floor(pendent * (1 - COMISSIO_BORSA));
+const copia = (o) => JSON.parse(JSON.stringify(o));
+const ambValor = (e) => ({ ...e, valor: valorEmpresa(e), actualitzada: Date.now() });
+
+function treureInventari(e, recurs, q) {
+  if (!Number.isInteger(q) || q < 1) throw new Error('Tria una quantitat de 1 o més.');
+  if ((e.inventari[recurs] || 0) < q) throw new Error('No en tens tantes unitats al magatzem.');
+  e.inventari[recurs] -= q;
+  if (e.inventari[recurs] === 0) delete e.inventari[recurs];
+}
+const afegirInventari = (e, recurs, q) => { e.inventari[recurs] = (e.inventari[recurs] || 0) + q; };
+
+// --- mode de prova: un mercat simulat amb empreses fictícies ---
+function mercatProva() {
+  let m = null;
+  try { m = JSON.parse(localStorage.getItem(CLAU_MERCAT)); } catch { /* res */ }
+  if (!m) {
+    m = [];
+    const bots = [['Cooperativa del Poble', 8], ['Distribucions Vallès', 13], ['Can Pagès SL', 2]];
+    for (const r of Object.keys(RECURSOS)) {
+      bots.forEach(([nom, logo], k) => m.push({
+        id: `bot-${r}-${k}`, venedor: `bot${k}`, nomVenedor: nom, logo, recurs: r,
+        quantitat: 20 + 15 * k, preu: Math.max(1, Math.round(RECURSOS[r].preu * (1.1 + 0.15 * k))), pendent: 0, creada: 0,
+      }));
+    }
+  }
+  return m;
+}
+const desarMercatProva = (m) => localStorage.setItem(CLAU_MERCAT, JSON.stringify(m));
+
+export async function publicarOferta(uid, estat, recurs, quantitat, preu) {
+  quantitat = Math.floor(quantitat); preu = Math.round(preu);
+  if (!(preu >= 1)) throw new Error('El preu ha de ser d\'1 € o més.');
+  const nou = copia(estat);
+  treureInventari(nou, recurs, quantitat);
+  const oferta = { venedor: uid, nomVenedor: estat.nom, logo: estat.logo, recurs, quantitat, preu, pendent: 0, creada: Date.now() };
+  if (modeProva) {
+    const m = mercatProva();
+    m.push({ ...oferta, id: `meva-${Date.now()}` });
+    desarMercatProva(m);
+    localStorage.setItem(CLAU_PROVA, JSON.stringify(ambValor(nou)));
+  } else {
+    const { fs, db } = await carregarFirebase();
+    const lot = fs.writeBatch(db);
+    lot.set(fs.doc(fs.collection(db, 'mercat')), oferta);
+    lot.set(fs.doc(db, 'empreses', uid), ambValor(nou));
+    await lot.commit();
+  }
+  Object.assign(estat, nou);
+}
+
+export async function ofertes(recurs) {
+  let llista;
+  if (modeProva) llista = mercatProva().filter((o) => o.recurs === recurs);
+  else {
+    const { fs, db } = await carregarFirebase();
+    const snap = await fs.getDocs(fs.query(fs.collection(db, 'mercat'), fs.where('recurs', '==', recurs)));
+    llista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  return llista.filter((o) => o.quantitat > 0).sort((a, b) => a.preu - b.preu || a.creada - b.creada);
+}
+
+export async function mevesOfertes(uid) {
+  if (modeProva) return mercatProva().filter((o) => o.venedor === uid);
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDocs(fs.query(fs.collection(db, 'mercat'), fs.where('venedor', '==', uid)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function comprar(uid, estat, idOferta, quantitat) {
+  quantitat = Math.floor(quantitat);
+  if (!(quantitat >= 1)) throw new Error('Tria una quantitat de 1 o més.');
+  const aplicar = (o) => {
+    if (!o || o.quantitat < 1) throw new Error('Aquesta oferta ja s\'ha esgotat.');
+    if (o.venedor === uid) throw new Error('No pots comprar la teva pròpia oferta.');
+    if (quantitat > o.quantitat) throw new Error(`Només en queden ${o.quantitat}.`);
+    const cost = quantitat * o.preu;
+    const nou = copia(estat);
+    if (nou.diners < cost) throw new Error('No tens prou diners.');
+    nou.diners -= cost;
+    afegirInventari(nou, o.recurs, quantitat);
+    return { nou, quantitat: o.quantitat - quantitat, pendent: (o.pendent || 0) + cost, cost, recurs: o.recurs };
+  };
+  if (modeProva) {
+    const m = mercatProva();
+    const o = m.find((x) => x.id === idOferta);
+    const r = aplicar(o);
+    o.quantitat = r.quantitat;
+    if (o.venedor.startsWith('bot')) o.pendent = 0; else o.pendent = r.pendent;
+    desarMercatProva(m.filter((x) => x.quantitat > 0 || x.pendent > 0));
+    localStorage.setItem(CLAU_PROVA, JSON.stringify(ambValor(r.nou)));
+    Object.assign(estat, r.nou);
+    return r;
+  }
+  const { fs, db } = await carregarFirebase();
+  const ref = fs.doc(db, 'mercat', idOferta);
+  const r = await fs.runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const res = aplicar(snap.exists() ? snap.data() : null);
+    tx.update(ref, { quantitat: res.quantitat, pendent: res.pendent });
+    tx.set(fs.doc(db, 'empreses', uid), ambValor(res.nou));
+    return res;
+  });
+  Object.assign(estat, r.nou);
+  return r;
+}
+
+// Cobra el que han comprat els altres de les teves ofertes. Retorna els euros nets cobrats.
+export async function cobrarVendes(uid, estat) {
+  if (modeProva) {
+    // Simulació: el poble compra les teves ofertes si el preu és raonable i porten 30 s publicades
+    const m = mercatProva();
+    let total = 0;
+    for (const o of m) {
+      if (o.venedor !== uid) continue;
+      if (o.quantitat > 0 && Date.now() - o.creada > 30000 && o.preu <= RECURSOS[o.recurs].preu * 1.4) {
+        o.pendent += o.quantitat * o.preu; o.quantitat = 0;
+      }
+      if (o.pendent > 0) { total += net(o.pendent); o.pendent = 0; }
+    }
+    if (!total) { desarMercatProva(m); return 0; }
+    desarMercatProva(m.filter((x) => x.quantitat > 0 || x.pendent > 0));
+    estat.diners += total;
+    localStorage.setItem(CLAU_PROVA, JSON.stringify(ambValor(estat)));
+    return total;
+  }
+  const meves = (await mevesOfertes(uid)).filter((o) => o.pendent > 0 || o.quantitat === 0);
+  if (!meves.length) return 0;
+  const { fs, db } = await carregarFirebase();
+  const r = await fs.runTransaction(db, async (tx) => {
+    const refs = meves.map((o) => fs.doc(db, 'mercat', o.id));
+    const snaps = await Promise.all(refs.map((ref) => tx.get(ref)));
+    const nou = copia(estat);
+    let total = 0;
+    snaps.forEach((s, k) => {
+      if (!s.exists()) return;
+      const o = s.data();
+      total += net(o.pendent || 0);
+      if (o.quantitat === 0) tx.delete(refs[k]);
+      else if (o.pendent > 0) tx.update(refs[k], { pendent: 0 });
+    });
+    nou.diners += total;
+    if (total) tx.set(fs.doc(db, 'empreses', uid), ambValor(nou));
+    return { nou, total };
+  });
+  if (r.total) Object.assign(estat, r.nou);
+  return r.total;
+}
+
+// Retira una oferta: el que no s'ha venut torna al magatzem i es cobra el que s'havia venut
+export async function retirarOferta(uid, estat, idOferta) {
+  const aplicar = (o) => {
+    if (!o || o.venedor !== uid) throw new Error('Aquesta oferta no és teva.');
+    const nou = copia(estat);
+    if (o.quantitat > 0) afegirInventari(nou, o.recurs, o.quantitat);
+    nou.diners += net(o.pendent || 0);
+    return nou;
+  };
+  if (modeProva) {
+    const m = mercatProva();
+    const nou = aplicar(m.find((x) => x.id === idOferta));
+    desarMercatProva(m.filter((x) => x.id !== idOferta));
+    localStorage.setItem(CLAU_PROVA, JSON.stringify(ambValor(nou)));
+    Object.assign(estat, nou);
+    return;
+  }
+  const { fs, db } = await carregarFirebase();
+  const ref = fs.doc(db, 'mercat', idOferta);
+  const nou = await fs.runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const n = aplicar(snap.exists() ? snap.data() : null);
+    tx.delete(ref);
+    tx.set(fs.doc(db, 'empreses', uid), ambValor(n));
+    return n;
+  });
+  Object.assign(estat, nou);
 }
