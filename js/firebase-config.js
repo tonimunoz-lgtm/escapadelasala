@@ -8,10 +8,10 @@
 //  Aquestes dades no són secretes: la seguretat la donen les regles de Firestore.
 // =============================================================
 export default {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  storageBucket: '',
-  messagingSenderId: '',
-  appId: '',
+  apiKey: "AIzaSyCoeeSDxoeqFJqf9PZxtLGnh8J1J8TgvVQ",
+  authDomain: "chiacchiera.firebaseapp.com",
+  projectId: "chiacchiera",
+  storageBucket: "chiacchiera.firebasestorage.app",
+  messagingSenderId: "571984379080",
+  appId: "1:571984379080:web:fe8d11fb0e45e3f3e879fd"
 };
