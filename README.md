@@ -42,6 +42,10 @@ En aquest punt el joc ja funciona en **mode de prova** (sense comptes, les dades
 - **Magatzem** per categories amb el cost mitjà de cada producte i el valor total de l'estoc.
 - **Mercat** amb cinta de preus, categories, borsa i **contractes directes** entre empreses (sense comissió).
 - **Empresa**: gràfic del valor, posició a la classe, balanç (actius, passius, patrimoni net), **banc** amb préstecs i interessos.
+- **Recerca i qualitat** (nivell 4): el laboratori fa punts de recerca que pugen la qualitat (Q0 a Q5) de cada producte.
+  Més qualitat vol dir que l'escola paga més i que la botiga ven més cara.
+- **Directors** (nivell 4): operacions, màrqueting, tecnologia i finances. Cobren cada hora i milloren l'empresa.
+- **Cerca d'empreses**: troba qualsevol empresa de la classe, mira'n els edificis, la qualitat i compra-li les ofertes.
 - **Xat de la classe** amb avisos de missatges nous (es pot desactivar amb `XAT_ACTIU` a `js/dades.js`).
 - **Classificació** pel valor de l'empresa.
 

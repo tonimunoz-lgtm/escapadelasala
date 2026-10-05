@@ -4,6 +4,7 @@ import {
   EDIFICIS, RECURSOS, VELOCITAT, DINERS_INICIALS, MIDA_MAPA, PARCELES_OBERTES,
   PARCELA_SEU, COST_PARCELA_BASE, MAX_PER_ORDRE, NIVELL_MAX, SALARI_PER_SEGON,
   COST_CARRETERA, FASES, FASE_MINUTS, NIVELLS_EMPRESA, BANC, HISTORIAL_MINUTS, MISSIONS,
+  QUALITAT, DIRECTORS,
   tempsConstruccio, preuReferencia,
 } from './dades.js';
 
@@ -50,6 +51,9 @@ export function migrar(e) {
   e.historial ??= [];
   e.missio ??= 0;
   e.nivellMax ??= 1;
+  e.qualitat ??= {};
+  e.recerca ??= 0;
+  e.directors ??= {};
   for (const p of e.parceles) if (p.estat === 'edifici' && !p.nivell) p.nivell = 1;
   return e;
 }
@@ -89,6 +93,7 @@ export function construir(e, i, tipus, ara = Date.now()) {
   const def = EDIFICIS[tipus];
   if (!def || def.aviat || def.inicial) throw new Error('Aquest edifici encara no es pot construir.');
   if (e.parceles[i].estat !== 'buida') throw new Error('La parcel·la no està lliure.');
+  if (def.nivellMinim && nivellEmpresa(e) < def.nivellMinim) throw new Error(`Necessites el nivell ${def.nivellMinim} d'empresa.`);
   if (e.diners < def.cost) throw new Error(`Et falten ${diners(def.cost - e.diners)} per construir-lo.`);
   e.diners -= def.cost;
   e.parceles[i] = { estat: 'obres', tipus, fiObres: ara + tempsConstruccio(tipus) * 1000 };
@@ -138,8 +143,12 @@ export function maxProduible(e, opcio) {
 }
 
 export const souProduccio = (opcio, quantitat) => Math.ceil(opcio.temps * quantitat * SALARI_PER_SEGON);
-export const segonsProduccio = (opcio, quantitat, nivell = 1, fase = faseEconomica()) =>
-  (opcio.temps * quantitat) / VELOCITAT / nivell / fase.produccio;
+export const segonsProduccio = (opcio, quantitat, nivell = 1, fase = faseEconomica(), bonus = 1) =>
+  (opcio.temps * quantitat) / VELOCITAT / nivell / fase.produccio / bonus;
+// Amb els directors de l'empresa
+export const bonusProduccio = (e, recurs) => bonus(e, 'produccio') * (recurs === 'recerca' ? bonus(e, 'recerca') : 1);
+export const tempsProduccio = (e, opcio, quantitat, nivell) =>
+  segonsProduccio(opcio, quantitat, nivell, faseEconomica(), bonusProduccio(e, opcio.recurs));
 
 // Cost per unitat: materials (al seu cost mitjà) + sous
 export function costUnitariProduccio(e, opcio) {
@@ -163,7 +172,7 @@ export function iniciarProduccio(e, i, recurs, quantitat, ara = Date.now()) {
     if (e.inventari[r] === 0) delete e.inventari[r];
   }
   e.diners -= souProduccio(opcio, quantitat);
-  p.produccio = { recurs, quantitat, cost, inici: ara, fi: ara + segonsProduccio(opcio, quantitat, p.nivell) * 1000 };
+  p.produccio = { recurs, quantitat, cost, inici: ara, fi: ara + tempsProduccio(e, opcio, quantitat, p.nivell) * 1000 };
 }
 
 export function recollir(e, i, ara = Date.now()) {
@@ -171,7 +180,8 @@ export function recollir(e, i, ara = Date.now()) {
   if (p.produccio) {
     if (p.produccio.fi > ara) throw new Error('La producció encara no ha acabat.');
     const { recurs, quantitat, cost } = p.produccio;
-    afegirAmbCost(e, recurs, quantitat, cost ?? RECURSOS[recurs].preu * 0.5);
+    if (RECURSOS[recurs].intern) e.recerca = (e.recerca || 0) + quantitat;
+    else afegirAmbCost(e, recurs, quantitat, cost ?? RECURSOS[recurs].preu * 0.5);
     sumaStat(e, `produit_${recurs}`, quantitat);
     delete p.produccio;
     return { tipus: 'produccio', recurs, quantitat };
@@ -190,10 +200,11 @@ export function recollir(e, i, ara = Date.now()) {
 }
 
 // ---------- botiga (venda al públic) ----------
-export function segonsVenda(opcio, quantitat, preu, nivell = 1, fase = faseEconomica()) {
-  const ref = preuReferencia(opcio.recurs);
-  return (opcio.tempsVenda * quantitat * (preu / ref) ** 2) / VELOCITAT / nivell / fase.vendes;
+export function segonsVenda(opcio, quantitat, preu, nivell = 1, fase = faseEconomica(), bonusV = 1, ref = preuReferencia(opcio.recurs)) {
+  return (opcio.tempsVenda * quantitat * (preu / ref) ** 2) / VELOCITAT / nivell / fase.vendes / bonusV;
 }
+export const tempsVenda = (e, opcio, quantitat, preu, nivell) =>
+  segonsVenda(opcio, quantitat, preu, nivell, faseEconomica(), bonus(e, 'vendes'), preuReferenciaQ(e, opcio.recurs));
 // Sous de la botiga: proporcionals al temps de venda (si poses un preu alt, pagues més hores)
 export const souVenda = (opcio, quantitat, preu) =>
   Math.ceil(segonsVenda(opcio, quantitat, preu, 1, FASES.normal) * VELOCITAT * SALARI_PER_SEGON * 0.5);
@@ -214,7 +225,7 @@ export function iniciarVenda(e, i, recurs, quantitat, preu, ara = Date.now()) {
   e.inventari[recurs] -= quantitat;
   if (e.inventari[recurs] === 0) delete e.inventari[recurs];
   e.diners -= sou;
-  p.venda = { recurs, quantitat, preu, inici: ara, fi: ara + segonsVenda(opcio, quantitat, preu, p.nivell) * 1000 };
+  p.venda = { recurs, quantitat, preu, inici: ara, fi: ara + tempsVenda(e, opcio, quantitat, preu, p.nivell) * 1000 };
 }
 
 // ---------- mercat de l'escola (preu fix) ----------
@@ -222,7 +233,7 @@ export function vendre(e, recurs, quantitat) {
   quantitat = Math.floor(quantitat);
   if (!(quantitat >= 1)) throw new Error('Tria una quantitat de 1 o més.');
   if (quantitat > quantitatA(e, recurs)) throw new Error('No en tens tantes unitats.');
-  const ingres = quantitat * RECURSOS[recurs].preu;
+  const ingres = quantitat * preuEscola(e, recurs);
   e.inventari[recurs] -= quantitat;
   if (e.inventari[recurs] === 0) delete e.inventari[recurs];
   e.diners += ingres;
@@ -267,8 +278,8 @@ export function faseEconomica(ara = Date.now()) {
 }
 
 // ---------- nivell d'empresa ----------
-export function nivellEmpresa(e) {
-  const v = valorEmpresa(e);
+export const nivellEmpresa = (e) => nivellDeValor(valorEmpresa(e));
+export function nivellDeValor(v) {
   let n = 1;
   NIVELLS_EMPRESA.forEach((llindar, k) => { if (v >= llindar) n = k + 1; });
   return n;
@@ -282,10 +293,11 @@ export function progresNivell(e) {
 }
 
 // ---------- banc ----------
+export const interesHora = (e) => BANC.interesHora * bonus(e, 'interes');
 export function aplicarInteressos(e, ara = Date.now()) {
   if (!e.deute) { e.deuteT = ara; return; }
   const hores = (ara - (e.deuteT || ara)) / 3600000;
-  e.deute = e.deute * (1 + BANC.interesHora) ** hores;
+  e.deute = e.deute * (1 + interesHora(e)) ** hores;
   e.deuteT = ara;
 }
 export const maxPrestec = (e) => Math.max(0, Math.floor((valorEmpresa(e) + (e.deute || 0)) * BANC.maxPercentValor - (e.deute || 0)));
@@ -327,6 +339,59 @@ export function registrarHistorial(e, ara = Date.now()) {
   e.historial.push({ t: ara, v: valorEmpresa(e) });
   if (e.historial.length > 60) e.historial.shift();
   return true;
+}
+
+// ---------- qualitat i recerca ----------
+export const qualitat = (e, r) => e.qualitat?.[r] || 0;
+export const preuEscola = (e, r) => Math.round(RECURSOS[r].preu * (1 + QUALITAT.bonusEscola * qualitat(e, r)));
+export const preuReferenciaQ = (e, r) => Math.round(preuReferencia(r) * (1 + QUALITAT.bonusBotiga * qualitat(e, r)));
+export function investigar(e, r) {
+  const q = qualitat(e, r);
+  if (RECURSOS[r]?.intern) throw new Error('Això no es pot investigar.');
+  if (q >= QUALITAT.max) throw new Error('Ja tens la qualitat màxima.');
+  const cost = QUALITAT.cost(q);
+  if ((e.recerca || 0) < cost) throw new Error(`Necessites ${cost} punts de recerca.`);
+  e.recerca -= cost;
+  e.qualitat ??= {};
+  e.qualitat[r] = q + 1;
+}
+
+// ---------- directors ----------
+export function bonus(e, clau) {
+  let b = 1;
+  for (const id of Object.keys(e.directors || {})) {
+    const d = DIRECTORS[id];
+    if (d && d[clau] != null) b *= d[clau];
+  }
+  return b;
+}
+export function contractarDirector(e, id, ara = Date.now()) {
+  const d = DIRECTORS[id];
+  if (!d) throw new Error('Aquest director no existeix.');
+  if (e.directors?.[id]) throw new Error('Ja el tens contractat.');
+  if (e.diners < d.fitxatge) throw new Error(`Necessites ${diners(d.fitxatge)} per contractar-lo.`);
+  aplicarDirectors(e, ara);
+  e.diners -= d.fitxatge;
+  e.directors ??= {};
+  e.directors[id] = { des: ara };
+}
+export function acomiadarDirector(e, id, ara = Date.now()) {
+  aplicarDirectors(e, ara);
+  delete e.directors[id];
+}
+export const souDirectorsHora = (e) => Object.keys(e.directors || {}).reduce((s, id) => s + (DIRECTORS[id]?.souHora || 0), 0);
+// Cobra els sous dels directors. Si no hi ha diners, se'n van. Retorna un missatge si passa.
+export function aplicarDirectors(e, ara = Date.now()) {
+  const sou = souDirectorsHora(e);
+  const abans = e.directorsT ?? ara;
+  e.directorsT = ara;
+  if (!sou) return null;
+  e.diners -= sou * (ara - abans) / 3600000;
+  if (e.diners < 0) {
+    e.directors = {};
+    return 'No podies pagar els sous: els directors han marxat.';
+  }
+  return null;
 }
 
 // ---------- missions ----------

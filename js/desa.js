@@ -124,7 +124,7 @@ export async function publicarOferta(uid, estat, recurs, quantitat, preu, perA =
   if (perA === uid) throw new Error('No et pots enviar un contracte a tu mateix.');
   const nou = copia(estat);
   treureInventari(nou, recurs, quantitat);
-  const oferta = { venedor: uid, nomVenedor: estat.nom, logo: estat.logo, recurs, quantitat, preu, pendent: 0, creada: Date.now() };
+  const oferta = { venedor: uid, nomVenedor: estat.nom, logo: estat.logo, recurs, quantitat, preu, pendent: 0, creada: Date.now(), qualitat: estat.qualitat?.[recurs] || 0 };
   if (perA) { oferta.perA = perA; oferta.nomPerA = nomPerA || ''; }
   if (modeProva) {
     const m = mercatProva();
@@ -335,4 +335,15 @@ export async function escoltarXat(cb) {
   const { fs, db } = await carregarFirebase();
   const q = fs.query(fs.collection(db, 'xat'), fs.orderBy('creada', 'desc'), fs.limit(30));
   return fs.onSnapshot(q, (snap) => cb(snap.docs.map((d) => d.data()).reverse()), (err) => console.error(err));
+}
+
+// Perfil complet d'una empresa (per al cercador)
+export async function perfilEmpresa(uid) {
+  if (modeProva) {
+    if (uid === 'prova') return JSON.parse(localStorage.getItem(CLAU_PROVA));
+    return null;
+  }
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDoc(fs.doc(db, 'empreses', uid));
+  return snap.exists() ? snap.data() : null;
 }

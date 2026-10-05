@@ -1,6 +1,6 @@
 import {
   EDIFICIS, RECURSOS, MIDA_MAPA, BLOC, COST_CARRETERA, NUM_LOGOS, MAX_PER_ORDRE, NIVELL_MAX,
-  COMISSIO_BORSA, CATEGORIES, DESBLOQUEIG, BANC, HISTORIAL_MINUTS, XAT_ACTIU,
+  COMISSIO_BORSA, CATEGORIES, DESBLOQUEIG, BANC, HISTORIAL_MINUTS, XAT_ACTIU, DIRECTORS, QUALITAT,
   imgEdifici, imgRecurs, imgLogo, tempsConstruccio, preuReferencia,
 } from './dades.js';
 import * as joc from './joc.js';
@@ -124,12 +124,15 @@ function iniciarJoc() {
   cobrarBorsa();
   iniciarXat();
   joc.aplicarInteressos(estat);
+  { const m = joc.aplicarDirectors(estat); if (m) setTimeout(() => avis(m, 'error'), 1500); }
   if (joc.registrarHistorial(estat)) desar();
   if (!estat.tutorialVist) obrirGuia();
 }
 
 function tic() {
   joc.aplicarInteressos(estat);
+  const marxen = joc.aplicarDirectors(estat);
+  if (marxen) { avis(marxen, 'error'); desar(); }
   if (joc.registrarHistorial(estat)) desar();
   dibuixarCapcalera();
   const missatge = joc.actualitzar(estat);
@@ -483,9 +486,10 @@ function panellConstruir(i) {
       h('div', { class: 'fitxa-info' },
         h('strong', {}, def.nom),
         def.aviat ? h('span', { class: 'nota' }, 'Properament') : fa,
-        def.aviat ? null : h('span', { class: 'nota' }, `Obres: ${joc.temps(tempsConstruccio(id))}`)),
+        def.aviat ? null : h('span', { class: 'nota' }, `Obres: ${joc.temps(tempsConstruccio(id))}`),
+        def.nivellMinim && joc.nivellEmpresa(estat) < def.nivellMinim ? h('span', { class: 'nota falta' }, `Cal el nivell ${def.nivellMinim} d'empresa`) : null),
       def.aviat ? null : h('button', {
-        class: 'btn btn-principal', disabled: !potPagar,
+        class: 'btn btn-principal', disabled: !potPagar || (def.nivellMinim && joc.nivellEmpresa(estat) < def.nivellMinim),
         onclick: () => accio(() => { joc.construir(estat, i, id); tancarPanell(); avis(`Comencen les obres: ${def.nom}`, 'ok'); }),
       }, joc.diners(def.cost))));
   }
@@ -575,13 +579,15 @@ function opcioProduccio(i, opcio, nivell) {
   const info = h('span', { class: 'nota' });
   const { input, cont } = selectorQuantitat(Math.min(10, Math.max(1, max)), max, () => {
     const q = Number(input.value) || 0;
-    info.textContent = `Temps: ${joc.temps(joc.segonsProduccio(opcio, q, nivell))}. Sous: ${joc.diners(joc.souProduccio(opcio, q))}. Cost per unitat: ${joc.dinersDec(joc.costUnitariProduccio(estat, opcio))}.`;
+    info.textContent = `Temps: ${joc.temps(joc.tempsProduccio(estat, opcio, q, nivell))}. Sous: ${joc.diners(joc.souProduccio(opcio, q))}. Cost per unitat: ${joc.dinersDec(joc.costUnitariProduccio(estat, opcio))}.`;
   });
   input.dispatchEvent(new Event('input'));
   return h('div', { class: 'opcio' },
     h('div', { class: 'opcio-cap' }, icona(opcio.recurs, 44),
       h('div', {}, h('strong', {}, RECURSOS[opcio.recurs].nom),
-        h('span', { class: 'nota' }, `L'escola en paga ${joc.diners(RECURSOS[opcio.recurs].preu)} la unitat`))),
+        h('span', { class: 'nota' }, RECURSOS[opcio.recurs].intern
+          ? `Tens ${joc.nombre(estat.recerca || 0)} punts. Es fan servir a Empresa > Recerca.`
+          : `L'escola en paga ${joc.diners(joc.preuEscola(estat, opcio.recurs))} la unitat (Q${joc.qualitat(estat, opcio.recurs)})`))),
     entrades.length
       ? h('p', { class: 'necessita' }, 'Per unitat cal: ', ...entrades.map(([r, q]) =>
         h('span', { class: `ingredient${joc.quantitatA(estat, r) < q ? ' falta' : ''}` }, icona(r, 22), `${q} (tens ${joc.nombre(joc.quantitatA(estat, r))})`)))
@@ -597,14 +603,14 @@ function opcioProduccio(i, opcio, nivell) {
 
 function opcioVenda(i, opcio, nivell) {
   const estoc = joc.quantitatA(estat, opcio.recurs);
-  const ref = preuReferencia(opcio.recurs);
+  const ref = joc.preuReferenciaQ(estat, opcio.recurs);
   const info = h('span', { class: 'nota' });
   const preu = h('input', { type: 'number', min: 1, value: ref, inputmode: 'numeric', 'aria-label': 'Preu per unitat', class: 'input-preu' });
   const { input, cont } = selectorQuantitat(Math.max(1, Math.min(estoc, 20)), estoc, () => calcula());
   function calcula() {
     const q = Number(input.value) || 0, pr = Number(preu.value) || 0;
     if (!q || !pr) { info.textContent = ''; return; }
-    info.textContent = `Temps: ${joc.temps(joc.segonsVenda(opcio, q, pr, nivell))}. Ingressos: ${joc.diners(q * pr)}. Sous: ${joc.diners(joc.souVenda(opcio, q, pr))}.`;
+    info.textContent = `Temps: ${joc.temps(joc.tempsVenda(estat, opcio, q, pr, nivell))}. Ingressos: ${joc.diners(q * pr)}. Sous: ${joc.diners(joc.souVenda(opcio, q, pr))}.`;
   }
   preu.addEventListener('input', calcula);
   calcula();
@@ -646,6 +652,7 @@ const SECCIONS = {
   mercat: () => obrirMercat(),
   empresa: () => obrirEmpresa(),
   xat: () => obrirXat(),
+  cerca: () => obrirCerca(),
 };
 for (const b of document.querySelectorAll('.navegacio button')) {
   b.addEventListener('click', () => SECCIONS[b.dataset.seccio]());
@@ -693,7 +700,7 @@ $('#barra-nivell').addEventListener('click', () => obrirEmpresa('resum'));
 // ---------- magatzem (estil Sim Companies) ----------
 function obrirMagatzem() {
   marcarNav('magatzem');
-  const items = Object.entries(estat.inventari).filter(([, q]) => q > 0);
+  const items = Object.entries(estat.inventari).filter(([r, q]) => q > 0 && RECURSOS[r] && !RECURSOS[r].intern);
   const cos = h('div', { class: 'bloc' });
   if (!items.length) {
     cos.append(h('img', { src: 'img/personatges/guia-pensa.webp', alt: '', width: 160, height: 160, class: 'panell-img' }),
@@ -709,11 +716,13 @@ function obrirMagatzem() {
         graella.append(h('button', { class: 'carta-estoc', onclick: () => obrirProducte(r) },
           h('span', { class: 'carta-preu' }, joc.dinersDec(joc.costMitja(estat, r))),
           h('span', { class: 'carta-q' }, joc.nombre(q)),
+          h('span', { class: 'carta-qual' }, `Q${joc.qualitat(estat, r)}`),
           icona(r, 52),
           h('span', { class: 'carta-nom' }, RECURSOS[r].nom)));
       }
       cos.append(h('h3', { class: 'subtitol' }, nomCat), graella);
     }
+    if (estat.recerca) cos.prepend(h('div', { class: 'total-estoc' }, h('span', {}, icona('recerca', 28), ' Punts de recerca'), h('strong', {}, joc.nombre(estat.recerca))));
     cos.prepend(h('div', { class: 'total-estoc' }, h('span', {}, 'Valor de l\'estoc (a cost)'), h('strong', {}, joc.diners(total))));
     cos.append(h('p', { class: 'nota' }, 'El preu petit de cada carta és el que t\'ha costat cada unitat de mitjana. Toca un producte per vendre\'l.'));
   }
@@ -745,7 +754,7 @@ function obrirProducte(r) {
 
     h('div', { class: 'opcio' },
       h('strong', {}, 'Mercat de l\'escola'),
-      h('p', { class: 'nota' }, `Paga ${joc.diners(RECURSOS[r].preu)} per unitat, sempre i a l'instant.`),
+      h('p', { class: 'nota' }, `Paga ${joc.diners(joc.preuEscola(estat, r))} per unitat (qualitat Q${joc.qualitat(estat, r)}), sempre i a l'instant.`),
       h('button', {
         class: 'btn btn-principal',
         onclick: () => accio(() => { const ing = joc.vendre(estat, r, Number(quant.value)); avis(`Venut per ${joc.diners(ing)}`, 'ok'); obrirProducte(r); }),
@@ -847,16 +856,63 @@ function obrirEmpresa(pestanya = 'resum') {
     ['resum', 'Resum', () => obrirEmpresa('resum')],
     ['banc', 'Banc', () => obrirEmpresa('banc'), n < DESBLOQUEIG.banc],
     ['classificacio', 'Classificació', () => obrirEmpresa('classificacio')],
-    ['recerca', 'Recerca', () => obrirEmpresa('recerca'), true],
+    ['recerca', 'Recerca', () => obrirEmpresa('recerca'), n < DESBLOQUEIG.recerca],
+    ['directors', 'Directors', () => obrirEmpresa('directors'), n < DESBLOQUEIG.directors],
   ]);
   const cos = h('div', { class: 'bloc' }, tabs);
   if (pestanya === 'resum') cos.append(...seccioResum());
   if (pestanya === 'banc') cos.append(...seccioBanc(n));
   if (pestanya === 'classificacio') cos.append(seccioClassificacio());
-  if (pestanya === 'recerca') cos.append(h('div', { class: 'avis-bloqueig' },
-    h('strong', {}, 'La recerca arribarà aviat'),
-    h('p', {}, `Amb el laboratori podràs millorar la qualitat dels productes i vendre'ls més cars. Es desbloquejarà al nivell ${DESBLOQUEIG.recerca}.`)));
+  if (pestanya === 'recerca') cos.append(...seccioRecerca(n));
+  if (pestanya === 'directors') cos.append(...seccioDirectors(n));
   obrirPanell(estat.nom, cos, { tipus: 'empresa', pestanya, ample: true });
+}
+
+function seccioRecerca(n) {
+  if (n < DESBLOQUEIG.recerca) {
+    return [h('div', { class: 'avis-bloqueig' }, h('strong', {}, 'La teva empresa encara és massa petita per investigar'),
+      h('p', {}, `Al nivell ${DESBLOQUEIG.recerca} podràs construir un laboratori. Els punts de recerca milloren la qualitat (Q) dels teus productes: l'escola te'ls paga més i a la botiga es venen més cars.`))];
+  }
+  const graella = h('div', { class: 'graella-recerca' });
+  for (const r of Object.keys(RECURSOS).filter((x) => !RECURSOS[x].intern)) {
+    const q = joc.qualitat(estat, r);
+    const cost = QUALITAT.cost(q);
+    graella.append(h('div', { class: 'fila-recerca' },
+      icona(r, 36),
+      h('span', { class: 'of-info' }, h('strong', {}, `${RECURSOS[r].nom} Q${q}`),
+        h('span', { class: 'nota' }, `Escola: ${joc.diners(joc.preuEscola(estat, r))}`)),
+      q >= QUALITAT.max ? h('span', { class: 'nota' }, 'Màxim') : h('button', {
+        class: 'btn', disabled: (estat.recerca || 0) < cost,
+        onclick: () => accio(() => { joc.investigar(estat, r); avis(`${RECURSOS[r].nom} ara és Q${q + 1}`, 'ok'); obrirEmpresa('recerca'); }),
+      }, `Q${q + 1} per ${cost} punts`)));
+  }
+  return [
+    h('div', { class: 'total-estoc' }, h('span', {}, icona('recerca', 28), ' Punts de recerca'), h('strong', {}, joc.nombre(estat.recerca || 0))),
+    h('p', { class: 'nota' }, `Els punts els fa el laboratori. Cada nivell de qualitat fa que l'escola pagui un ${Math.round(QUALITAT.bonusEscola * 100)}% més i que a la botiga el preu habitual pugi un ${Math.round(QUALITAT.bonusBotiga * 100)}%.`),
+    graella,
+  ];
+}
+
+function seccioDirectors(n) {
+  if (n < DESBLOQUEIG.directors) {
+    return [h('div', { class: 'avis-bloqueig' }, h('strong', {}, 'Els directors estan disponibles a partir del nivell ' + DESBLOQUEIG.directors),
+      h('p', {}, 'Cada director cobra un sou cada hora, però fa que l\'empresa funcioni millor. Si un dia no els pots pagar, marxen.'))];
+  }
+  const sou = joc.souDirectorsHora(estat);
+  return [
+    h('div', { class: 'total-estoc' }, h('span', {}, 'Sous dels directors'), h('strong', {}, `${joc.diners(sou)} / hora`)),
+    ...Object.entries(DIRECTORS).map(([id, d]) => {
+      const te = !!estat.directors?.[id];
+      return h('div', { class: `fila-director${te ? ' contractat' : ''}` },
+        h('img', { src: imgLogo(d.logo), alt: '', width: 52, height: 52 }),
+        h('div', { class: 'of-info' }, h('strong', {}, d.nom), h('span', {}, d.efecte),
+          h('span', { class: 'nota' }, `Fitxatge ${joc.diners(d.fitxatge)}. Sou ${joc.diners(d.souHora)} cada hora.`)),
+        te
+          ? h('button', { class: 'btn', onclick: () => accio(() => { joc.acomiadarDirector(estat, id); avis(`${d.nom} ja no treballa per tu`); obrirEmpresa('directors'); }) }, 'Acomiada')
+          : h('button', { class: 'btn btn-principal', disabled: estat.diners < d.fitxatge, onclick: () => accio(() => { joc.contractarDirector(estat, id); avis(`Has contractat: ${d.nom}`, 'ok'); obrirEmpresa('directors'); }) }, 'Contracta'));
+    }),
+    h('p', { class: 'nota' }, 'Els sous es descompten sols mentre tens el joc obert i quan hi tornes a entrar.'),
+  ];
 }
 
 function seccioResum() {
@@ -927,7 +983,7 @@ function seccioBanc(n) {
   return [
     h('dl', { class: 'dades' },
       h('dt', {}, 'Deute actual'), h('dd', {}, joc.diners(deute)),
-      h('dt', {}, 'Interès'), h('dd', {}, `${(BANC.interesHora * 100).toFixed(0)}% cada hora`),
+      h('dt', {}, 'Interès'), h('dd', {}, `${(joc.interesHora(estat) * 100).toFixed(1).replace('.', ',')}% cada hora`),
       h('dt', {}, 'Encara et poden deixar'), h('dd', {}, joc.diners(max))),
     h('div', { class: 'opcio' }, h('strong', {}, 'Demana un préstec'),
       h('p', { class: 'nota' }, 'Els diners arriben a l\'instant. El deute creix cada hora fins que el tornis: compta que la inversió et doni més del que costa.'),
@@ -951,6 +1007,61 @@ function seccioClassificacio() {
     cont.replaceChildren(h('p', { class: 'nota' }, 'Ordenat pel valor de l\'empresa: diners, estoc i edificis, menys els préstecs.'), llista);
   }).catch(() => cont.replaceChildren(h('p', { class: 'nota falta' }, 'No s\'ha pogut carregar la classificació.')));
   return cont;
+}
+
+// ---------- cercador d'empreses ----------
+let empresesCerca = null;
+async function obrirCerca(text = '') {
+  marcarNav('cerca');
+  const entrada = h('input', { type: 'search', placeholder: 'Nom de l\'empresa…', value: text, 'aria-label': 'Cerca empreses', class: 'camp-cerca' });
+  const llista = h('div', { class: 'llista-ofertes' }, h('p', { class: 'nota' }, 'Carregant…'));
+  const pinta = () => {
+    const t = entrada.value.trim().toLowerCase();
+    const files = (empresesCerca || []).filter((f) => !t || (f.nom || '').toLowerCase().includes(t));
+    llista.replaceChildren(...(files.length ? files.map((f) => h('button', { class: 'fila-oferta fila-empresa', onclick: () => obrirPerfil(f.uid, entrada.value) },
+      h('img', { src: imgLogo(f.logo || 1), alt: '', width: 34, height: 34 }),
+      h('span', { class: 'of-info' }, h('strong', {}, f.nom), h('span', { class: 'nota' }, `Nivell ${joc.nivellDeValor(f.valor || 0)}. Valor ${joc.diners(f.valor || 0)}`)))) : [h('p', { class: 'nota' }, 'Cap empresa coincideix.')]));
+  };
+  entrada.addEventListener('input', pinta);
+  obrirPanell('Cerca empreses', h('div', { class: 'bloc' }, entrada, llista), { tipus: 'cerca', ample: true });
+  try { empresesCerca = await desa.classificacio(usuari.uid, estat); pinta(); }
+  catch (err) { console.error(err); llista.replaceChildren(h('p', { class: 'nota falta' }, 'No s\'han pogut carregar les empreses.')); }
+}
+
+async function obrirPerfil(uid, textCerca = '') {
+  const cos = h('div', { class: 'bloc' }, h('button', { class: 'btn-tornar', onclick: () => obrirCerca(textCerca) }, '← Cerca'), h('p', { class: 'nota' }, 'Carregant…'));
+  obrirPanell('Empresa', cos, { tipus: 'perfil', ample: true });
+  try {
+    const [e, ofertes] = await Promise.all([desa.perfilEmpresa(uid), desa.mevesOfertes(uid)]);
+    if (!e) { cos.lastChild.textContent = 'No s\'ha trobat aquesta empresa.'; return; }
+    const edificis = {};
+    for (const p of e.parceles || []) {
+      if (p.estat !== 'edifici' || !EDIFICIS[p.tipus] || EDIFICIS[p.tipus].inicial) continue;
+      edificis[p.tipus] ??= { n: 0, nivell: 0 };
+      edificis[p.tipus].n += 1;
+      edificis[p.tipus].nivell = Math.max(edificis[p.tipus].nivell, p.nivell || 1);
+    }
+    const qual = Object.entries(e.qualitat || {}).filter(([, q]) => q > 0);
+    const valor = e.valor ?? joc.valorEmpresa(e);
+    cos.lastChild.remove();
+    cos.append(
+      h('div', { class: 'cap-perfil' }, h('img', { src: imgLogo(e.logo || 1), alt: '', width: 72, height: 72 }),
+        h('div', {}, h('h3', { class: 'subtitol' }, e.nom), h('span', { class: 'nota' }, `Nivell ${joc.nivellDeValor(valor)}. Valor ${joc.diners(valor)}`))),
+      h('h3', { class: 'subtitol' }, 'Edificis'),
+      Object.keys(edificis).length
+        ? h('div', { class: 'graella-perfil' }, ...Object.entries(edificis).map(([t, d]) => h('div', { class: 'carta-estoc' },
+          h('img', { src: imgEdifici(t), alt: '', width: 64, height: 64 }),
+          h('span', { class: 'carta-q' }, `×${d.n}`),
+          h('span', { class: 'carta-nom' }, `${EDIFICIS[t].nom}`), h('span', { class: 'nota' }, `fins a Nv ${d.nivell}`))))
+        : h('p', { class: 'nota' }, 'Encara no té edificis.'),
+      qual.length ? h('p', {}, 'Qualitat: ', ...qual.map(([r, q]) => h('span', { class: 'ingredient' }, icona(r, 22), `Q${q} `))) : null,
+      h('h3', { class: 'subtitol' }, 'Ofertes a la borsa'),
+      ...(ofertes.filter((o) => !o.perA && o.quantitat > 0).map(filaOferta)),
+      ofertes.some((o) => !o.perA && o.quantitat > 0) ? null : h('p', { class: 'nota' }, 'No té cap oferta oberta.'));
+  } catch (err) {
+    console.error(err);
+    avis('No s\'ha pogut carregar l\'empresa.', 'error');
+  }
 }
 
 // ---------- xat de la classe ----------
@@ -1018,7 +1129,7 @@ async function obrirBorsa(recurs = recursBorsa) {
   recursBorsa = recurs;
   marcarNav('mercat');
   const selector = h('div', { class: 'selector-recursos', role: 'tablist' },
-    ...Object.keys(RECURSOS).map((r) => h('button', {
+    ...Object.keys(RECURSOS).filter((r) => !RECURSOS[r].intern).map((r) => h('button', {
       class: `btn-recurs${r === recurs ? ' actiu' : ''}`, role: 'tab', 'aria-selected': r === recurs ? 'true' : 'false',
       title: RECURSOS[r].nom, onclick: () => obrirBorsa(r),
     }, icona(r, 30))));
@@ -1057,7 +1168,7 @@ function filaOferta(o) {
   return h('div', { class: `fila-oferta${meva ? ' propia' : ''}` },
     h('img', { src: imgLogo(o.logo || 1), alt: '', width: 34, height: 34 }),
     h('span', { class: 'of-info' }, h('strong', {}, o.nomVenedor || 'Empresa'),
-      h('span', { class: 'nota' }, `${joc.nombre(o.quantitat)} unitats a ${joc.diners(o.preu)}`)),
+      h('span', { class: 'nota' }, `${joc.nombre(o.quantitat)} unitats a ${joc.diners(o.preu)}, qualitat Q${o.qualitat || 0}`)),
     meva ? h('span', { class: 'nota' }, 'La teva') : h('div', { class: 'of-compra' }, cont,
       h('button', {
         class: 'btn btn-principal',

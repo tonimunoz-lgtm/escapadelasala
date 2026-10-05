@@ -35,6 +35,8 @@ export const RECURSOS = {
   fusta:        { nom: 'Fusta',        preu: 14,  cat: 'construccio' },
   pedra:        { nom: 'Pedra',        preu: 16,  cat: 'construccio' },
   maons:        { nom: 'Maons',        preu: 55,  cat: 'construccio' },
+  // Punts de recerca: no es venen, es gasten a l'Empresa > Recerca
+  recerca:      { nom: 'Punts de recerca', preu: 0, cat: 'recerca', intern: true, img: 'img/edificis/edifici-laboratori.webp' },
 };
 
 export const CATEGORIES = {
@@ -89,7 +91,8 @@ export const EDIFICIS = {
     { recurs: 'oli',  tempsVenda: 10 } ] },
   'magatzem':    { nom: 'Magatzem',    cost: 0, aviat: true, produeix: [] },
   'restaurant':  { nom: 'Restaurant',  cost: 0, aviat: true, produeix: [] },
-  'laboratori':  { nom: 'Laboratori',  cost: 0, aviat: true, produeix: [] },
+  'laboratori': { nom: 'Laboratori', cost: 9000, nivellMinim: 4, produeix: [
+    { recurs: 'recerca', temps: 30, entrades: { electricitat: 2 } } ] },
   'port':        { nom: 'Port',        cost: 0, aviat: true, produeix: [] },
 
   // Edifici inicial (no es pot construir)
@@ -104,7 +107,7 @@ export const tempsConstruccio = (tipus) =>
 export const preuReferencia = (recurs) => Math.round(RECURSOS[recurs].preu * 1.5);
 
 export const imgEdifici = (tipus) => `img/edificis/edifici-${tipus}.webp`;
-export const imgRecurs = (recurs) => `img/recursos/recurs-${recurs}.webp`;
+export const imgRecurs = (recurs) => RECURSOS[recurs]?.img || `img/recursos/recurs-${recurs}.webp`;
 export const imgLogo = (n) => `img/avatars/logo-empresa-${String(n).padStart(2, '0')}.webp`;
 export const NUM_LOGOS = 20;
 
@@ -116,7 +119,32 @@ export const NIVELLS_EMPRESA = [0, 15000, 25000, 40000, 60000, 90000, 130000, 18
 export const DESBLOQUEIG = {
   contractes: 2,   // enviar contractes directes a una altra empresa
   banc: 3,         // demanar préstecs
-  recerca: 5,      // (properament)
+  recerca: 4,      // construir el laboratori i millorar la qualitat
+  directors: 4,    // contractar directors
+};
+
+// =============================================================
+//  QUALITAT (Q0 a Q5): es millora amb punts de recerca, per producte
+// =============================================================
+export const QUALITAT = {
+  max: 5,
+  cost: (q) => 10 * (q + 1) * (q + 1),  // punts per passar de Q a Q+1: 10, 40, 90, 160, 250
+  bonusEscola: 0.08,                    // l'escola paga un 8% més per cada nivell de qualitat
+  bonusBotiga: 0.15,                    // a la botiga, el preu habitual puja un 15% per nivell
+};
+
+// =============================================================
+//  DIRECTORS: cobren un sou cada hora real i milloren l'empresa
+// =============================================================
+export const DIRECTORS = {
+  operacions: { nom: 'Directora d\'operacions', logo: 14, fitxatge: 3000, souHora: 400,
+    efecte: 'Tots els edificis produeixen un 15% més ràpid.', produccio: 1.15 },
+  marqueting: { nom: 'Director de màrqueting', logo: 15, fitxatge: 3000, souHora: 350,
+    efecte: 'Les botigues venen un 20% més ràpid.', vendes: 1.2 },
+  tecnologia: { nom: 'Directora de tecnologia', logo: 17, fitxatge: 4000, souHora: 300,
+    efecte: 'El laboratori investiga un 30% més ràpid.', recerca: 1.3 },
+  financer:   { nom: 'Director financer', logo: 19, fitxatge: 2500, souHora: 250,
+    efecte: 'Els préstecs del banc paguen la meitat d\'interès.', interes: 0.5 },
 };
 
 // =============================================================
