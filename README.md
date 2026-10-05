@@ -36,10 +36,17 @@ En aquest punt el joc ja funciona en **mode de prova** (sense comptes, les dades
 - **Borsa entre alumnes**: publica ofertes des del Magatzem i compra les dels companys. La borsa cobra un 3% al venedor.
   Els diners de les vendes es cobren sols quan el venedor té el joc obert.
 - **Mercat de l'escola**: compra qualsevol producte a preu fix (la sortida segura).
+- **Missions** guiades amb premi (barra de dalt, com a Sim Companies).
+- **Nivell d'empresa** segons el valor: desbloqueja els contractes (nivell 2) i el banc (nivell 3).
+- **Fases econòmiques** (normalitat, expansió, recessió) que canvien cada 20 minuts i afecten la producció i les vendes.
+- **Magatzem** per categories amb el cost mitjà de cada producte i el valor total de l'estoc.
+- **Mercat** amb cinta de preus, categories, borsa i **contractes directes** entre empreses (sense comissió).
+- **Empresa**: gràfic del valor, posició a la classe, balanç (actius, passius, patrimoni net), **banc** amb préstecs i interessos.
+- **Xat de la classe** amb avisos de missatges nous (es pot desactivar amb `XAT_ACTIU` a `js/dades.js`).
 - **Classificació** pel valor de l'empresa.
 
 ## Si ja tenies una versió anterior publicada
-Torna a enganxar `firestore.rules` a Firestore > Regles i prem **Publica** (ara inclou les regles de la borsa).
+Torna a enganxar `firestore.rules` a Firestore > Regles i prem **Publica** cada cop que aquest fitxer canviï (borsa, contractes i xat).
 Les empreses ja creades s'adapten soles al mapa nou.
 
 ## Ajustar el joc

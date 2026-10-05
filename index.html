@@ -53,17 +53,23 @@
         <img id="barra-logo" alt="" width="40" height="40">
         <span id="barra-nom"></span>
       </div>
-      <div class="barra-diners" title="Diners">
-        <img src="img/recursos/recurs-diners.webp" alt="" width="28" height="28">
-        <span id="barra-diners"></span>
+      <div class="barra-dreta">
+        <div class="barra-diners" title="Diners">
+          <img src="img/recursos/recurs-diners.webp" alt="" width="28" height="28">
+          <span id="barra-diners"></span>
+        </div>
+        <button id="barra-nivell" class="barra-nivell" title="Nivell de l'empresa">
+          <span id="nivell-text"></span>
+          <span class="nivell-barra"><span id="nivell-ple"></span></span>
+        </button>
       </div>
-      <nav class="barra-accions">
-        <button id="btn-borsa" class="btn-barra"><img src="img/avatars/logo-empresa-15.webp" alt="" width="26" height="26"><span>Borsa</span></button>
-        <button id="btn-magatzem" class="btn-barra"><img src="img/recursos/recurs-productes.webp" alt="" width="26" height="26"><span>Magatzem</span></button>
-        <button id="btn-classificacio" class="btn-barra"><img src="img/interficie/boto-estadistiques.webp" alt="" width="26" height="26"><span>Classificació</span></button>
-        <button id="btn-sortir" class="btn-barra btn-sortir"><span>Sortir</span></button>
-      </nav>
     </header>
+
+    <button id="missio" class="missio" hidden>
+      <img src="img/personatges/guia-normal.webp" alt="" width="44" height="44">
+      <span id="missio-text"></span>
+      <span id="missio-premi" class="missio-premi"></span>
+    </button>
 
     <div id="visor" class="visor">
       <div id="mapa" class="mapa"></div>
@@ -73,6 +79,16 @@
       <button id="zoom-mes" aria-label="Apropa">+</button>
       <button id="zoom-menys" aria-label="Allunya">−</button>
     </div>
+
+    <nav class="navegacio" aria-label="Seccions">
+      <button data-seccio="mapa" class="actiu"><img src="img/mapa/parcela-buida.webp" alt=""><span>Mapa</span></button>
+      <button data-seccio="magatzem"><img src="img/recursos/recurs-productes.webp" alt=""><span>Magatzem</span></button>
+      <button data-seccio="mercat"><img src="img/avatars/logo-empresa-15.webp" alt=""><span>Mercat</span></button>
+      <button data-seccio="empresa"><img src="img/interficie/boto-estadistiques.webp" alt=""><span>Empresa</span></button>
+      <button data-seccio="xat" id="nav-xat"><img src="img/avatars/logo-empresa-20.webp" alt=""><span>Xat</span><b id="xat-nous" hidden></b></button>
+    </nav>
+
+    <div id="notificacions" class="notificacions" aria-live="polite"></div>
 
     <aside id="panell" class="panell" hidden aria-live="polite">
       <header class="panell-cap">

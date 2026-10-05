@@ -22,7 +22,9 @@ service cloud.firestore {
         && request.resource.data.venedor == request.auth.uid
         && request.resource.data.quantitat is int && request.resource.data.quantitat > 0
         && request.resource.data.preu is int && request.resource.data.preu > 0
-        && request.resource.data.pendent == 0;
+        && request.resource.data.pendent == 0
+        // contracte directe: perA és l'empresa que el pot acceptar
+        && (!('perA' in request.resource.data) || request.resource.data.perA is string);
 
       // Retirar o esborrar una oferta esgotada: només el venedor.
       allow delete: if request.auth != null && resource.data.venedor == request.auth.uid;
@@ -35,6 +37,7 @@ service cloud.firestore {
         ||
         // Un comprador: treu unitats i afegeix exactament unitats x preu al "pendent".
         (resource.data.venedor != request.auth.uid
+          && (!('perA' in resource.data) || resource.data.perA == request.auth.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantitat', 'pendent'])
           && request.resource.data.quantitat is int
           && request.resource.data.quantitat >= 0
@@ -42,6 +45,17 @@ service cloud.firestore {
           && request.resource.data.pendent == resource.data.pendent
                + (resource.data.quantitat - request.resource.data.quantitat) * resource.data.preu)
       );
+    }
+
+    // Xat de la classe: missatges curts, només en nom propi. El professorat els pot esborrar des de la consola.
+    match /xat/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.autor == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 200;
+      allow update, delete: if false;
     }
   }
 }

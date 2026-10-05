@@ -3,7 +3,8 @@
 import {
   EDIFICIS, RECURSOS, VELOCITAT, DINERS_INICIALS, MIDA_MAPA, PARCELES_OBERTES,
   PARCELA_SEU, COST_PARCELA_BASE, MAX_PER_ORDRE, NIVELL_MAX, SALARI_PER_SEGON,
-  COST_CARRETERA, tempsConstruccio, preuReferencia,
+  COST_CARRETERA, FASES, FASE_MINUTS, NIVELLS_EMPRESA, BANC, HISTORIAL_MINUTS, MISSIONS,
+  tempsConstruccio, preuReferencia,
 } from './dades.js';
 
 export function estatInicial(nom, logo) {
@@ -21,6 +22,12 @@ export function estatInicial(nom, logo) {
     tutorialVist: false,
     creada: Date.now(),
     versio: 2,
+    stats: {},
+    costos: {},
+    deute: 0,
+    historial: [],
+    missio: 0,
+    nivellMax: 1,
   };
 }
 
@@ -37,6 +44,12 @@ export function migrar(e) {
     e.parceles = noves;
   }
   e.versio = 2;
+  e.stats ??= {};
+  e.costos ??= {};
+  e.deute ??= 0;
+  e.historial ??= [];
+  e.missio ??= 0;
+  e.nivellMax ??= 1;
   for (const p of e.parceles) if (p.estat === 'edifici' && !p.nivell) p.nivell = 1;
   return e;
 }
@@ -125,7 +138,15 @@ export function maxProduible(e, opcio) {
 }
 
 export const souProduccio = (opcio, quantitat) => Math.ceil(opcio.temps * quantitat * SALARI_PER_SEGON);
-export const segonsProduccio = (opcio, quantitat, nivell = 1) => (opcio.temps * quantitat) / VELOCITAT / nivell;
+export const segonsProduccio = (opcio, quantitat, nivell = 1, fase = faseEconomica()) =>
+  (opcio.temps * quantitat) / VELOCITAT / nivell / fase.produccio;
+
+// Cost per unitat: materials (al seu cost mitjà) + sous
+export function costUnitariProduccio(e, opcio) {
+  let c = opcio.temps * SALARI_PER_SEGON;
+  for (const [r, q] of Object.entries(opcio.entrades)) c += q * costMitja(e, r);
+  return c;
+}
 
 export function iniciarProduccio(e, i, recurs, quantitat, ara = Date.now()) {
   const p = e.parceles[i];
@@ -136,20 +157,22 @@ export function iniciarProduccio(e, i, recurs, quantitat, ara = Date.now()) {
   quantitat = Math.floor(quantitat);
   if (!(quantitat >= 1)) throw new Error('Tria una quantitat de 1 o més.');
   if (quantitat > maxProduible(e, opcio)) throw new Error('No tens prou material o diners per als sous.');
+  const cost = costUnitariProduccio(e, opcio);
   for (const [r, q] of Object.entries(opcio.entrades)) {
     e.inventari[r] = quantitatA(e, r) - q * quantitat;
     if (e.inventari[r] === 0) delete e.inventari[r];
   }
   e.diners -= souProduccio(opcio, quantitat);
-  p.produccio = { recurs, quantitat, inici: ara, fi: ara + segonsProduccio(opcio, quantitat, p.nivell) * 1000 };
+  p.produccio = { recurs, quantitat, cost, inici: ara, fi: ara + segonsProduccio(opcio, quantitat, p.nivell) * 1000 };
 }
 
 export function recollir(e, i, ara = Date.now()) {
   const p = e.parceles[i];
   if (p.produccio) {
     if (p.produccio.fi > ara) throw new Error('La producció encara no ha acabat.');
-    const { recurs, quantitat } = p.produccio;
-    e.inventari[recurs] = quantitatA(e, recurs) + quantitat;
+    const { recurs, quantitat, cost } = p.produccio;
+    afegirAmbCost(e, recurs, quantitat, cost ?? RECURSOS[recurs].preu * 0.5);
+    sumaStat(e, `produit_${recurs}`, quantitat);
     delete p.produccio;
     return { tipus: 'produccio', recurs, quantitat };
   }
@@ -157,6 +180,8 @@ export function recollir(e, i, ara = Date.now()) {
     if (p.venda.fi > ara) throw new Error('La venda encara no ha acabat.');
     const ingres = p.venda.quantitat * p.venda.preu;
     e.diners += ingres;
+    sumaStat(e, 'vendesBotiga', 1);
+    sumaStat(e, 'ingressosBotiga', ingres);
     const r = { tipus: 'venda', recurs: p.venda.recurs, quantitat: p.venda.quantitat, ingres };
     delete p.venda;
     return r;
@@ -165,13 +190,13 @@ export function recollir(e, i, ara = Date.now()) {
 }
 
 // ---------- botiga (venda al públic) ----------
-export function segonsVenda(opcio, quantitat, preu, nivell = 1) {
+export function segonsVenda(opcio, quantitat, preu, nivell = 1, fase = faseEconomica()) {
   const ref = preuReferencia(opcio.recurs);
-  return (opcio.tempsVenda * quantitat * (preu / ref) ** 2) / VELOCITAT / nivell;
+  return (opcio.tempsVenda * quantitat * (preu / ref) ** 2) / VELOCITAT / nivell / fase.vendes;
 }
 // Sous de la botiga: proporcionals al temps de venda (si poses un preu alt, pagues més hores)
 export const souVenda = (opcio, quantitat, preu) =>
-  Math.ceil(segonsVenda(opcio, quantitat, preu, 1) * VELOCITAT * SALARI_PER_SEGON * 0.5);
+  Math.ceil(segonsVenda(opcio, quantitat, preu, 1, FASES.normal) * VELOCITAT * SALARI_PER_SEGON * 0.5);
 
 export function iniciarVenda(e, i, recurs, quantitat, preu, ara = Date.now()) {
   const p = e.parceles[i];
@@ -201,12 +226,13 @@ export function vendre(e, recurs, quantitat) {
   e.inventari[recurs] -= quantitat;
   if (e.inventari[recurs] === 0) delete e.inventari[recurs];
   e.diners += ingres;
+  sumaStat(e, 'vendesEscola', 1);
   return ingres;
 }
 
 // Valor total de l'empresa: diners + estoc + edificis (per a la classificació)
 export function valorEmpresa(e) {
-  let v = e.diners;
+  let v = e.diners - (e.deute || 0);
   for (const [r, q] of Object.entries(e.inventari)) v += q * (RECURSOS[r]?.preu || 0);
   for (const p of e.parceles) {
     if (!p.tipus) continue;
@@ -217,9 +243,107 @@ export function valorEmpresa(e) {
   return Math.round(v);
 }
 
+// ---------- estadístiques i cost mitjà de l'estoc ----------
+export function sumaStat(e, clau, n) {
+  e.stats ??= {};
+  e.stats[clau] = (e.stats[clau] || 0) + n;
+}
+export const costMitja = (e, recurs) => e.costos?.[recurs] ?? RECURSOS[recurs].preu * 0.5;
+export function afegirAmbCost(e, recurs, q, costUnitari) {
+  e.costos ??= {};
+  const abans = quantitatA(e, recurs);
+  const mitja = abans > 0 ? (abans * costMitja(e, recurs) + q * costUnitari) / (abans + q) : costUnitari;
+  e.costos[recurs] = Math.round(mitja * 100) / 100;
+  e.inventari[recurs] = abans + q;
+}
+
+// ---------- fase econòmica (igual per a tothom, depèn de l'hora) ----------
+export function faseEconomica(ara = Date.now()) {
+  const periode = FASE_MINUTS * 60000;
+  const n = Math.floor(ara / periode);
+  const h = ((n * 2654435761) >>> 0) % 10;
+  const clau = h < 5 ? 'normal' : h < 8 ? 'expansio' : 'recessio';
+  return { clau, ...FASES[clau], fi: (n + 1) * periode };
+}
+
+// ---------- nivell d'empresa ----------
+export function nivellEmpresa(e) {
+  const v = valorEmpresa(e);
+  let n = 1;
+  NIVELLS_EMPRESA.forEach((llindar, k) => { if (v >= llindar) n = k + 1; });
+  return n;
+}
+export function progresNivell(e) {
+  const n = nivellEmpresa(e);
+  const ara = NIVELLS_EMPRESA[n - 1], seguent = NIVELLS_EMPRESA[n];
+  if (seguent == null) return { nivell: n, fraccio: 1, falta: 0 };
+  const v = valorEmpresa(e);
+  return { nivell: n, fraccio: (v - ara) / (seguent - ara), falta: seguent - v };
+}
+
+// ---------- banc ----------
+export function aplicarInteressos(e, ara = Date.now()) {
+  if (!e.deute) { e.deuteT = ara; return; }
+  const hores = (ara - (e.deuteT || ara)) / 3600000;
+  e.deute = e.deute * (1 + BANC.interesHora) ** hores;
+  e.deuteT = ara;
+}
+export const maxPrestec = (e) => Math.max(0, Math.floor((valorEmpresa(e) + (e.deute || 0)) * BANC.maxPercentValor - (e.deute || 0)));
+export function demanarPrestec(e, q, ara = Date.now()) {
+  q = Math.floor(q);
+  if (!(q >= 1)) throw new Error('Tria una quantitat.');
+  aplicarInteressos(e, ara);
+  if (q > maxPrestec(e)) throw new Error(`El banc només et deixa ${diners(maxPrestec(e))} més.`);
+  e.deute += q;
+  e.diners += q;
+}
+export function retornarPrestec(e, q, ara = Date.now()) {
+  aplicarInteressos(e, ara);
+  q = Math.min(Math.floor(q), Math.ceil(e.deute));
+  if (!(q >= 1)) throw new Error('No tens cap préstec per tornar.');
+  if (q > e.diners) throw new Error('No tens prou diners.');
+  e.diners -= q;
+  e.deute = Math.max(0, e.deute - q);
+  if (e.deute < 0.5) e.deute = 0;
+}
+
+// ---------- balanç i historial ----------
+export function balanc(e) {
+  let estoc = 0;
+  for (const [r, q] of Object.entries(e.inventari)) estoc += q * (RECURSOS[r]?.preu || 0);
+  let edificis = 0;
+  for (const p of e.parceles) {
+    if (!p.tipus) continue;
+    const n = p.nivell || 1;
+    edificis += (EDIFICIS[p.tipus]?.cost || 0) * (n * (n + 1)) / 2;
+  }
+  const passius = Math.round(e.deute || 0);
+  return { diners: Math.round(e.diners), estoc: Math.round(estoc), corrents: Math.round(e.diners + estoc), noCorrents: Math.round(edificis), passius, net: Math.round(e.diners + estoc + edificis - passius) };
+}
+export function registrarHistorial(e, ara = Date.now()) {
+  e.historial ??= [];
+  const ultim = e.historial[e.historial.length - 1];
+  if (ultim && ara - ultim.t < HISTORIAL_MINUTS * 60000) return false;
+  e.historial.push({ t: ara, v: valorEmpresa(e) });
+  if (e.historial.length > 60) e.historial.shift();
+  return true;
+}
+
+// ---------- missions ----------
+export const missioActual = (e) => MISSIONS[e.missio || 0] || null;
+export function cobrarMissio(e) {
+  const m = missioActual(e);
+  if (!m || !m.fet(e)) throw new Error('Encara no has completat aquesta missió.');
+  e.diners += m.premi;
+  e.missio = (e.missio || 0) + 1;
+  return m;
+}
+
 const fmt = new Intl.NumberFormat('ca-ES', { maximumFractionDigits: 0 });
 export const diners = (n) => `${fmt.format(n)} €`;
 export const nombre = (n) => fmt.format(n);
+const fmtDec = new Intl.NumberFormat('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const dinersDec = (n) => `${fmtDec.format(n)} €`;
 
 export function temps(segons) {
   segons = Math.max(0, Math.ceil(segons));

@@ -1,6 +1,7 @@
 import {
   EDIFICIS, RECURSOS, MIDA_MAPA, BLOC, COST_CARRETERA, NUM_LOGOS, MAX_PER_ORDRE, NIVELL_MAX,
-  COMISSIO_BORSA, imgEdifici, imgRecurs, imgLogo, tempsConstruccio, preuReferencia,
+  COMISSIO_BORSA, CATEGORIES, DESBLOQUEIG, BANC, HISTORIAL_MINUTS, XAT_ACTIU,
+  imgEdifici, imgRecurs, imgLogo, tempsConstruccio, preuReferencia,
 } from './dades.js';
 import * as joc from './joc.js';
 import * as desa from './desa.js';
@@ -65,7 +66,6 @@ $('#btn-entrar').addEventListener('click', async () => {
   try { await desa.entrar(); }
   catch (err) { avis(`No s'ha pogut entrar: ${err.message}`, 'error'); }
 });
-$('#btn-sortir').addEventListener('click', () => desa.sortir());
 
 desa.escoltarSessio(async (u) => {
   usuari = u;
@@ -122,10 +122,16 @@ function iniciarJoc() {
   clearInterval(rellotgeBorsa);
   rellotgeBorsa = setInterval(cobrarBorsa, 60000);
   cobrarBorsa();
+  iniciarXat();
+  joc.aplicarInteressos(estat);
+  if (joc.registrarHistorial(estat)) desar();
   if (!estat.tutorialVist) obrirGuia();
 }
 
 function tic() {
+  joc.aplicarInteressos(estat);
+  if (joc.registrarHistorial(estat)) desar();
+  dibuixarCapcalera();
   const missatge = joc.actualitzar(estat);
   if (missatge) { desar(); dibuixarTot(); avis(missatge, 'ok'); return; }
   dibuixarMapa();
@@ -140,6 +146,7 @@ async function cobrarBorsa() {
 }
 
 function dibuixarTot() {
+  dibuixarCapcalera();
   $('#barra-logo').src = imgLogo(estat.logo);
   $('#barra-nom').textContent = estat.nom;
   $('#barra-diners').textContent = joc.diners(estat.diners);
@@ -189,6 +196,13 @@ function imatgeCarretera(R, C) {
   if (llarg && ample) return 'img/mapa/carretera-creuament.webp';
   if (ample) return 'img/mapa/carretera-b.webp';
   return 'img/mapa/carretera-a.webp';
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function svg(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
 }
 
 let escala = 0.75;
@@ -378,9 +392,11 @@ function obrirPanell(titol, contingut, info) {
   $('#panell-titol').textContent = titol;
   $('#panell-cos').replaceChildren(contingut);
   $('#panell').hidden = false;
+  $('#panell').classList.toggle('ample', !!info.ample);
+  if (info.tipus === 'parcela') marcarNav('mapa');
   panell = info;
 }
-function tancarPanell() { $('#panell').hidden = true; panell = null; }
+function tancarPanell() { $('#panell').hidden = true; panell = null; marcarNav('mapa'); }
 $('#panell-tancar').addEventListener('click', tancarPanell);
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') tancarPanell(); });
 
@@ -396,6 +412,8 @@ function refrescarPanell(forcar = false) {
   if (panell.tipus === 'parcela') {
     if (forcar || firmaParcela(panell.i) !== panell.firma) { obrirParcela(panell.i); return; }
   } else if (forcar && panell.tipus === 'magatzem') { obrirMagatzem(); return; }
+  else if (panell.tipus === 'empresa' && panell.pestanya === 'resum' && document.querySelector('#panell [data-fi]') &&
+    Number(document.querySelector('#panell [data-fi]').dataset.fi) <= Date.now()) { obrirEmpresa('resum'); return; }
   // actualitza els comptes enrere
   for (const el of document.querySelectorAll('#panell [data-fi]')) {
     el.textContent = joc.temps((Number(el.dataset.fi) - Date.now()) / 1000);
@@ -557,7 +575,7 @@ function opcioProduccio(i, opcio, nivell) {
   const info = h('span', { class: 'nota' });
   const { input, cont } = selectorQuantitat(Math.min(10, Math.max(1, max)), max, () => {
     const q = Number(input.value) || 0;
-    info.textContent = `Temps: ${joc.temps(joc.segonsProduccio(opcio, q, nivell))}. Sous: ${joc.diners(joc.souProduccio(opcio, q))}.`;
+    info.textContent = `Temps: ${joc.temps(joc.segonsProduccio(opcio, q, nivell))}. Sous: ${joc.diners(joc.souProduccio(opcio, q))}. Cost per unitat: ${joc.dinersDec(joc.costUnitariProduccio(estat, opcio))}.`;
   });
   input.dispatchEvent(new Event('input'));
   return h('div', { class: 'opcio' },
@@ -618,49 +636,387 @@ function seccioMillora(i) {
     }, `Millora per ${joc.diners(cost)}`));
 }
 
-// ---------- magatzem ----------
+// ---------- navegació inferior ----------
+function marcarNav(seccio) {
+  for (const b of document.querySelectorAll('.navegacio button')) b.classList.toggle('actiu', b.dataset.seccio === seccio);
+}
+const SECCIONS = {
+  mapa: () => tancarPanell(),
+  magatzem: () => obrirMagatzem(),
+  mercat: () => obrirMercat(),
+  empresa: () => obrirEmpresa(),
+  xat: () => obrirXat(),
+};
+for (const b of document.querySelectorAll('.navegacio button')) {
+  b.addEventListener('click', () => SECCIONS[b.dataset.seccio]());
+}
+if (!XAT_ACTIU) $('#nav-xat').hidden = true;
+
+// Pestanyes dins d'una secció (com la barra d'icones de Sim Companies)
+function pestanyes(actual, llista) {
+  return h('div', { class: 'pestanyes', role: 'tablist' },
+    ...llista.map(([id, text, fn, bloquejat]) => h('button', {
+      class: `pestanya${id === actual ? ' actiu' : ''}`, role: 'tab',
+      'aria-selected': id === actual ? 'true' : 'false', onclick: fn,
+    }, text, bloquejat ? h('span', { class: 'cadenat', title: 'Bloquejat' }, '🔒') : null)));
+}
+
+// ---------- barra de nivell i missions ----------
+function dibuixarCapcalera() {
+  const { nivell, fraccio, falta } = joc.progresNivell(estat);
+  $('#nivell-text').textContent = `Nivell ${nivell}`;
+  $('#nivell-ple').style.width = `${Math.round(fraccio * 100)}%`;
+  $('#barra-nivell').title = falta ? `Et falten ${joc.diners(falta)} de valor per pujar de nivell` : 'Nivell màxim';
+  if (nivell > (estat.nivellMax || 1)) {
+    estat.nivellMax = nivell;
+    desar();
+    avis(`Has pujat al nivell ${nivell}!`, 'ok');
+  }
+  const m = joc.missioActual(estat);
+  const boto = $('#missio');
+  boto.hidden = !m;
+  if (m) {
+    const fet = m.fet(estat);
+    $('#missio-text').textContent = `→ ${m.text}`;
+    $('#missio-premi').textContent = fet ? `Cobra ${joc.diners(m.premi)}` : `+${joc.diners(m.premi)}`;
+    boto.classList.toggle('feta', fet);
+  }
+}
+$('#missio').addEventListener('click', () => {
+  const m = joc.missioActual(estat);
+  if (!m) return;
+  if (m.fet(estat)) accio(() => { joc.cobrarMissio(estat); avis(`Missió completada: +${joc.diners(m.premi)}`, 'ok'); });
+  else avis(`Missió: ${m.text}. Premi: ${joc.diners(m.premi)}.`);
+});
+$('#barra-nivell').addEventListener('click', () => obrirEmpresa('resum'));
+
+// ---------- magatzem (estil Sim Companies) ----------
 function obrirMagatzem() {
+  marcarNav('magatzem');
   const items = Object.entries(estat.inventari).filter(([, q]) => q > 0);
   const cos = h('div', { class: 'bloc' });
   if (!items.length) {
     cos.append(h('img', { src: 'img/personatges/guia-pensa.webp', alt: '', width: 160, height: 160, class: 'panell-img' }),
-      h('p', {}, 'El magatzem és buit. Toca un edifici teu i posa\'l a produir, o compra a la borsa.'));
+      h('p', {}, 'El magatzem és buit. Toca un edifici teu i posa\'l a produir, o compra al Mercat.'));
   } else {
-    const llista = h('ul', { class: 'llista-magatzem' });
-    for (const [r, q] of items) {
-      const quant = h('input', { type: 'number', min: 1, max: q, value: q, inputmode: 'numeric', 'aria-label': `Unitats de ${RECURSOS[r].nom}` });
-      const preu = h('input', { type: 'number', min: 1, value: Math.max(1, Math.round(RECURSOS[r].preu * 1.2)), inputmode: 'numeric', 'aria-label': 'Preu a la borsa', class: 'input-preu' });
-      const formBorsa = h('div', { class: 'form-borsa', hidden: true },
-        h('label', { class: 'fila-preu' }, 'Preu per unitat a la borsa (€)', preu),
-        h('button', {
-          class: 'btn btn-principal',
-          onclick: () => accioRemota(() => desa.publicarOferta(usuari.uid, estat, r, Number(quant.value), Number(preu.value)),
-            `Oferta publicada a la borsa`),
-        }, 'Publica l\'oferta'),
-        h('p', { class: 'nota' }, `La borsa es queda un ${Math.round(COMISSIO_BORSA * 100)}% quan algú compra.`));
-      llista.append(h('li', {},
-        icona(r, 40),
-        h('div', { class: 'mag-info' }, h('strong', {}, RECURSOS[r].nom),
-          h('span', { class: 'nota' }, `${joc.nombre(q)} unitats. L'escola paga ${joc.diners(RECURSOS[r].preu)}`)),
-        h('div', { class: 'mag-venda' }, quant,
-          h('button', {
-            class: 'btn btn-principal',
-            onclick: () => accio(() => { const ing = joc.vendre(estat, r, Number(quant.value)); avis(`Venut per ${joc.diners(ing)}`, 'ok'); }),
-          }, 'Ven a l\'escola'),
-          h('button', { class: 'btn', onclick: () => { formBorsa.hidden = !formBorsa.hidden; } }, 'A la borsa')),
-        formBorsa));
+    let total = 0;
+    for (const [cat, nomCat] of Object.entries(CATEGORIES)) {
+      const delaCat = items.filter(([r]) => RECURSOS[r].cat === cat);
+      if (!delaCat.length) continue;
+      const graella = h('div', { class: 'graella-estoc' });
+      for (const [r, q] of delaCat) {
+        total += q * joc.costMitja(estat, r);
+        graella.append(h('button', { class: 'carta-estoc', onclick: () => obrirProducte(r) },
+          h('span', { class: 'carta-preu' }, joc.dinersDec(joc.costMitja(estat, r))),
+          h('span', { class: 'carta-q' }, joc.nombre(q)),
+          icona(r, 52),
+          h('span', { class: 'carta-nom' }, RECURSOS[r].nom)));
+      }
+      cos.append(h('h3', { class: 'subtitol' }, nomCat), graella);
     }
-    cos.append(h('p', { class: 'nota' }, 'L\'escola compra a preu fix. A la borsa pots demanar més, però algú t\'ho ha de comprar.'), llista);
+    cos.prepend(h('div', { class: 'total-estoc' }, h('span', {}, 'Valor de l\'estoc (a cost)'), h('strong', {}, joc.diners(total))));
+    cos.append(h('p', { class: 'nota' }, 'El preu petit de cada carta és el que t\'ha costat cada unitat de mitjana. Toca un producte per vendre\'l.'));
   }
-  obrirPanell('Magatzem', cos, { tipus: 'magatzem' });
+  obrirPanell('Magatzem', cos, { tipus: 'magatzem', ample: true });
 }
-$('#btn-magatzem').addEventListener('click', obrirMagatzem);
+
+function obrirProducte(r) {
+  const q = joc.quantitatA(estat, r);
+  if (!q) { obrirMagatzem(); return; }
+  const cost = joc.costMitja(estat, r);
+  const quant = h('input', { type: 'number', min: 1, max: q, value: q, inputmode: 'numeric', 'aria-label': 'Unitats', class: 'input-preu' });
+  const preu = h('input', { type: 'number', min: 1, value: Math.max(1, Math.round(RECURSOS[r].preu * 1.2)), inputmode: 'numeric', 'aria-label': 'Preu per unitat', class: 'input-preu' });
+  const desti = h('select', { class: 'input-preu ample', 'aria-label': 'Empresa destinatària' }, h('option', { value: '' }, 'Carregant empreses…'));
+  const potContractes = joc.nivellEmpresa(estat) >= DESBLOQUEIG.contractes;
+  if (potContractes) {
+    desa.classificacio(usuari.uid, estat).then((files) => {
+      const altres = files.filter((f) => f.uid !== usuari.uid);
+      desti.replaceChildren(...(altres.length
+        ? altres.map((f) => h('option', { value: f.uid, 'data-nom': f.nom }, f.nom))
+        : [h('option', { value: '' }, 'Encara no hi ha altres empreses')]));
+    }).catch(() => desti.replaceChildren(h('option', { value: '' }, 'No s\'han pogut carregar')));
+  }
+  const cos = h('div', { class: 'bloc' },
+    h('button', { class: 'btn-tornar', onclick: obrirMagatzem }, '← Magatzem'),
+    h('div', { class: 'opcio-cap' }, icona(r, 56),
+      h('div', {}, h('strong', {}, RECURSOS[r].nom),
+        h('span', { class: 'nota' }, `Tens ${joc.nombre(q)} unitats. Cost mitjà: ${joc.dinersDec(cost)}`))),
+    h('label', { class: 'fila-preu' }, 'Unitats', quant),
+
+    h('div', { class: 'opcio' },
+      h('strong', {}, 'Mercat de l\'escola'),
+      h('p', { class: 'nota' }, `Paga ${joc.diners(RECURSOS[r].preu)} per unitat, sempre i a l'instant.`),
+      h('button', {
+        class: 'btn btn-principal',
+        onclick: () => accio(() => { const ing = joc.vendre(estat, r, Number(quant.value)); avis(`Venut per ${joc.diners(ing)}`, 'ok'); obrirProducte(r); }),
+      }, 'Ven a l\'escola')),
+
+    h('div', { class: 'opcio' },
+      h('strong', {}, 'Borsa'),
+      h('p', { class: 'nota' }, `Hi poses el preu tu. Quan algú compra, la borsa es queda un ${Math.round(COMISSIO_BORSA * 100)}%.`),
+      h('label', { class: 'fila-preu' }, 'Preu per unitat (€)', preu),
+      h('button', {
+        class: 'btn btn-principal',
+        onclick: () => accioRemota(async () => {
+          await desa.publicarOferta(usuari.uid, estat, r, Number(quant.value), Number(preu.value));
+          joc.sumaStat(estat, 'ofertesBorsa', 1); await desar();
+        }, 'Oferta publicada a la borsa').then(() => obrirProducte(r)),
+      }, 'Publica a la borsa')),
+
+    h('div', { class: 'opcio' },
+      h('strong', {}, 'Contracte directe'),
+      potContractes
+        ? [h('p', { class: 'nota' }, 'Ofereix-ho a una empresa concreta. Sense comissió: només ella el pot acceptar. Fa servir el mateix preu de dalt.'),
+          desti,
+          h('button', {
+            class: 'btn',
+            onclick: () => {
+              const opt = desti.selectedOptions[0];
+              if (!desti.value) { avis('Tria una empresa.', 'error'); return; }
+              accioRemota(() => desa.publicarOferta(usuari.uid, estat, r, Number(quant.value), Number(preu.value), desti.value, opt.dataset.nom),
+                `Contracte enviat a ${opt.dataset.nom}`).then(() => obrirProducte(r));
+            },
+          }, 'Envia el contracte')]
+        : h('p', { class: 'nota' }, `Es desbloqueja al nivell ${DESBLOQUEIG.contractes} d'empresa.`)));
+  obrirPanell(RECURSOS[r].nom, cos, { tipus: 'producte', ample: true });
+}
+
+// ---------- mercat: borsa i contractes ----------
+async function cintaPreus() {
+  const cinta = h('div', { class: 'cinta' }, h('span', { class: 'nota' }, 'Carregant preus…'));
+  desa.preusMinims().then((preus) => {
+    const elems = Object.keys(RECURSOS).filter((r) => preus[r] != null).map((r) => {
+      const amunt = preus[r] >= RECURSOS[r].preu;
+      return h('span', { class: 'cinta-item' }, icona(r, 22), joc.diners(preus[r]), h('b', { class: amunt ? 'amunt' : 'avall' }, amunt ? '↑' : '↓'));
+    });
+    cinta.replaceChildren(h('div', { class: 'cinta-pista' }, ...elems, ...elems.map((e) => e.cloneNode(true))));
+  }).catch(() => cinta.replaceChildren());
+  return cinta;
+}
+
+async function obrirMercat(pestanya = 'borsa') {
+  marcarNav('mercat');
+  const tabs = pestanyes(pestanya, [
+    ['borsa', 'Borsa', () => obrirMercat('borsa')],
+    ['contractes', 'Contractes', () => obrirMercat('contractes'), joc.nivellEmpresa(estat) < DESBLOQUEIG.contractes],
+  ]);
+  if (pestanya === 'contractes') return obrirContractes(tabs);
+  const cos = h('div', { class: 'bloc' }, tabs, await cintaPreus());
+  for (const [cat, nomCat] of Object.entries(CATEGORIES)) {
+    cos.append(h('h3', { class: 'subtitol' }, nomCat),
+      h('div', { class: 'graella-mercat' }, ...Object.keys(RECURSOS).filter((r) => RECURSOS[r].cat === cat).map((r) =>
+        h('button', { class: 'btn-recurs', title: RECURSOS[r].nom, onclick: () => obrirBorsa(r) }, icona(r, 40), h('span', {}, RECURSOS[r].nom)))));
+  }
+  obrirPanell('Mercat', cos, { tipus: 'mercat', ample: true });
+}
+
+async function obrirContractes(tabs) {
+  const entrants = h('div', { class: 'llista-ofertes' }, h('p', { class: 'nota' }, 'Carregant…'));
+  const sortints = h('div', { class: 'llista-ofertes' });
+  obrirPanell('Mercat', h('div', { class: 'bloc' }, tabs,
+    joc.nivellEmpresa(estat) < DESBLOQUEIG.contractes ? h('p', { class: 'avis-bloqueig' }, `Els contractes es desbloquegen al nivell ${DESBLOQUEIG.contractes}. Encara pots acceptar els que t'enviïn.`) : null,
+    h('h3', { class: 'subtitol' }, 'Contractes que has rebut'), entrants,
+    h('h3', { class: 'subtitol' }, 'Contractes que has enviat'), sortints,
+    h('p', { class: 'nota' }, 'Els contractes no paguen comissió. Per enviar-ne un, ves al Magatzem i toca un producte.')), { tipus: 'mercat', ample: true });
+  try {
+    const [ent, meves] = await Promise.all([desa.contractesEntrants(usuari.uid), desa.mevesOfertes(usuari.uid)]);
+    entrants.replaceChildren(...(ent.length ? ent.map((o) => h('div', { class: 'fila-oferta' },
+      h('img', { src: imgLogo(o.logo || 1), alt: '', width: 34, height: 34 }),
+      h('span', { class: 'of-info' }, h('strong', {}, o.nomVenedor), h('span', { class: 'nota' }, `${joc.nombre(o.quantitat)} × ${RECURSOS[o.recurs].nom} a ${joc.diners(o.preu)} (total ${joc.diners(o.quantitat * o.preu)})`)),
+      h('div', { class: 'of-compra' }, icona(o.recurs, 30), h('button', {
+        class: 'btn btn-principal',
+        onclick: () => accioRemota(() => desa.comprar(usuari.uid, estat, o.id, o.quantitat), (r) => `Contracte acceptat: ${joc.diners(r.cost)}`).then(() => obrirMercat('contractes')),
+      }, 'Accepta')))) : [h('p', { class: 'nota' }, 'No tens cap contracte pendent.')]));
+    const env = meves.filter((o) => o.perA);
+    sortints.replaceChildren(...(env.length ? env.map((o) => h('div', { class: 'fila-oferta propia' },
+      icona(o.recurs, 30),
+      h('span', { class: 'of-info' }, `${joc.nombre(o.quantitat)} a ${joc.diners(o.preu)} per a ${o.nomPerA || 'una empresa'}`,
+        o.pendent ? h('span', { class: 'nota' }, `Per cobrar: ${joc.diners(o.pendent)}`) : null),
+      h('button', { class: 'btn', onclick: () => accioRemota(() => desa.retirarOferta(usuari.uid, estat, o.id), 'Contracte retirat').then(() => obrirMercat('contractes')) }, 'Retira'))) : [h('p', { class: 'nota' }, 'No has enviat cap contracte.')]));
+  } catch (err) {
+    console.error(err);
+    entrants.replaceChildren(h('p', { class: 'nota falta' }, 'No s\'han pogut carregar els contractes.'));
+  }
+}
+
+// ---------- empresa: resum, banc, classificació, recerca ----------
+function obrirEmpresa(pestanya = 'resum') {
+  marcarNav('empresa');
+  const n = joc.nivellEmpresa(estat);
+  const tabs = pestanyes(pestanya, [
+    ['resum', 'Resum', () => obrirEmpresa('resum')],
+    ['banc', 'Banc', () => obrirEmpresa('banc'), n < DESBLOQUEIG.banc],
+    ['classificacio', 'Classificació', () => obrirEmpresa('classificacio')],
+    ['recerca', 'Recerca', () => obrirEmpresa('recerca'), true],
+  ]);
+  const cos = h('div', { class: 'bloc' }, tabs);
+  if (pestanya === 'resum') cos.append(...seccioResum());
+  if (pestanya === 'banc') cos.append(...seccioBanc(n));
+  if (pestanya === 'classificacio') cos.append(seccioClassificacio());
+  if (pestanya === 'recerca') cos.append(h('div', { class: 'avis-bloqueig' },
+    h('strong', {}, 'La recerca arribarà aviat'),
+    h('p', {}, `Amb el laboratori podràs millorar la qualitat dels productes i vendre'ls més cars. Es desbloquejarà al nivell ${DESBLOQUEIG.recerca}.`)));
+  obrirPanell(estat.nom, cos, { tipus: 'empresa', pestanya, ample: true });
+}
+
+function seccioResum() {
+  const fase = joc.faseEconomica();
+  const b = joc.balanc(estat);
+  const fila = (k, v, classe = '') => [h('dt', { class: classe }, k), h('dd', { class: classe }, v)];
+  const rank = h('span', {}, '…');
+  desa.classificacio(usuari.uid, estat).then((f) => {
+    const pos = f.findIndex((x) => x.uid === usuari.uid);
+    rank.textContent = pos >= 0 ? `${pos + 1}a de ${f.length}` : 'n/d';
+  }).catch(() => { rank.textContent = 'n/d'; });
+  return [
+    h('div', { class: `fase fase-${fase.clau}` },
+      h('span', { class: 'nota' }, 'Fase econòmica actual'),
+      h('strong', {}, fase.nom),
+      h('div', { class: 'fase-efectes' },
+        h('span', {}, 'Producció ', fletxa(fase.produccio)),
+        h('span', {}, 'Vendes ', fletxa(fase.vendes))),
+      h('p', { class: 'nota' }, fase.text, ' Canvia d\'aquí a ', h('strong', { 'data-fi': fase.fi }, joc.temps((fase.fi - Date.now()) / 1000)), '.')),
+    h('div', { class: 'resum-graella' },
+      h('div', { class: 'grafic' }, h('span', { class: 'nota' }, 'Valor de l\'empresa'), graficValor()),
+      h('div', {},
+        h('p', { class: 'rank' }, 'Posició a la classe: ', rank),
+        h('dl', { class: 'dades balanc' },
+          ...fila('Diners', joc.diners(b.diners)),
+          ...fila('Estoc', joc.diners(b.estoc)),
+          ...fila('Actius corrents', joc.diners(b.corrents), 'fort'),
+          ...fila('Actius no corrents (edificis)', joc.diners(b.noCorrents), 'fort'),
+          ...fila('Passius (préstecs)', `−${joc.diners(b.passius)}`, 'fort'),
+          ...fila('Patrimoni net', joc.diners(b.net), 'total')))),
+    h('div', { class: 'fila-botons' },
+      h('button', { class: 'btn', onclick: obrirGuia }, 'Tutorial'),
+      h('button', { class: 'btn', onclick: () => desa.sortir() }, 'Tanca la sessió')),
+  ];
+}
+
+function fletxa(mult) {
+  if (mult > 1) return h('b', { class: 'amunt' }, '▲');
+  if (mult < 1) return h('b', { class: 'avall' }, '▼');
+  return h('b', { class: 'igual' }, '●');
+}
+
+function graficValor() {
+  const punts = estat.historial || [];
+  if (punts.length < 2) return h('p', { class: 'nota grafic-buit' }, `Aquí veuràs com creix la teva empresa. Es desa un punt cada ${HISTORIAL_MINUTS} minuts.`);
+  const W = 320, H = 150, P = 6;
+  const vs = punts.map((p) => p.v);
+  const min = Math.min(...vs), max = Math.max(...vs), rang = max - min || 1;
+  const x = (k) => P + (k / (punts.length - 1)) * (W - 2 * P);
+  const y = (v) => H - P - ((v - min) / rang) * (H - 2 * P);
+  const linia = punts.map((p, k) => `${k ? 'L' : 'M'}${x(k).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'grafic-svg', role: 'img', 'aria-label': `Valor de ${joc.diners(min)} a ${joc.diners(max)}` });
+  s.append(svg('path', { d: `${linia} L${x(punts.length - 1)},${H - P} L${x(0)},${H - P} Z`, fill: 'rgb(60 157 50 / .18)' }),
+    svg('path', { d: linia, fill: 'none', stroke: '#3c9d32', 'stroke-width': 3, 'stroke-linejoin': 'round' }));
+  return h('div', {}, s, h('div', { class: 'grafic-eix' }, h('span', {}, joc.diners(min)), h('span', {}, joc.diners(max))));
+}
+
+function seccioBanc(n) {
+  if (n < DESBLOQUEIG.banc) {
+    return [h('div', { class: 'avis-bloqueig' }, h('strong', {}, 'La teva empresa encara és massa petita per demanar préstecs'),
+      h('p', {}, `El banc et deixarà diners quan arribis al nivell ${DESBLOQUEIG.banc}. Fes créixer el valor de l'empresa.`))];
+  }
+  joc.aplicarInteressos(estat);
+  const max = joc.maxPrestec(estat);
+  const deute = Math.ceil(estat.deute || 0);
+  const demana = h('input', { type: 'number', min: 1, max: Math.max(1, max), value: Math.min(max, 5000), inputmode: 'numeric', class: 'input-preu', 'aria-label': 'Import del préstec' });
+  const torna = h('input', { type: 'number', min: 1, max: Math.max(1, deute), value: deute, inputmode: 'numeric', class: 'input-preu', 'aria-label': 'Import a tornar' });
+  return [
+    h('dl', { class: 'dades' },
+      h('dt', {}, 'Deute actual'), h('dd', {}, joc.diners(deute)),
+      h('dt', {}, 'Interès'), h('dd', {}, `${(BANC.interesHora * 100).toFixed(0)}% cada hora`),
+      h('dt', {}, 'Encara et poden deixar'), h('dd', {}, joc.diners(max))),
+    h('div', { class: 'opcio' }, h('strong', {}, 'Demana un préstec'),
+      h('p', { class: 'nota' }, 'Els diners arriben a l\'instant. El deute creix cada hora fins que el tornis: compta que la inversió et doni més del que costa.'),
+      h('label', { class: 'fila-preu' }, 'Import (€)', demana),
+      h('button', { class: 'btn btn-principal', disabled: max < 1, onclick: () => accio(() => { joc.demanarPrestec(estat, Number(demana.value)); avis('Préstec concedit', 'ok'); obrirEmpresa('banc'); }) }, 'Demana el préstec')),
+    h('div', { class: 'opcio' }, h('strong', {}, 'Torna diners'),
+      h('label', { class: 'fila-preu' }, 'Import (€)', torna),
+      h('button', { class: 'btn', disabled: deute < 1, onclick: () => accio(() => { joc.retornarPrestec(estat, Number(torna.value)); avis('Has tornat diners al banc', 'ok'); obrirEmpresa('banc'); }) }, 'Torna')),
+  ];
+}
+
+function seccioClassificacio() {
+  const cont = h('div', {}, h('p', { class: 'nota' }, 'Carregant…'));
+  desa.classificacio(usuari.uid, estat).then((files) => {
+    const llista = h('ol', { class: 'llista-classificacio' });
+    files.forEach((f, k) => llista.append(h('li', { class: f.uid === usuari.uid ? 'jo' : '' },
+      h('span', { class: 'posicio' }, k + 1),
+      h('img', { src: imgLogo(f.logo || 1), alt: '', width: 36, height: 36 }),
+      h('span', { class: 'cl-nom' }, f.nom),
+      h('span', { class: 'cl-valor' }, joc.diners(f.valor || 0)))));
+    cont.replaceChildren(h('p', { class: 'nota' }, 'Ordenat pel valor de l\'empresa: diners, estoc i edificis, menys els préstecs.'), llista);
+  }).catch(() => cont.replaceChildren(h('p', { class: 'nota falta' }, 'No s\'ha pogut carregar la classificació.')));
+  return cont;
+}
+
+// ---------- xat de la classe ----------
+let missatgesXat = [];
+let xatIniciat = false;
+let ultimVist = Date.now();
+
+async function iniciarXat() {
+  if (!XAT_ACTIU || xatIniciat) return;
+  xatIniciat = true;
+  try {
+    await desa.escoltarXat((llista) => {
+      const nous = llista.filter((m) => m.creada > ultimVist && m.autor !== usuari.uid);
+      missatgesXat = llista;
+      if (panell?.tipus === 'xat') { dibuixarXat(); ultimVist = Date.now(); return; }
+      for (const m of nous.slice(-3)) notificar(m);
+      const pendents = llista.filter((m) => m.creada > ultimVist && m.autor !== usuari.uid).length;
+      $('#xat-nous').hidden = !pendents;
+      $('#xat-nous').textContent = pendents;
+    });
+  } catch (err) { console.error(err); }
+}
+
+function notificar(m) {
+  const el = h('button', { class: 'notificacio', onclick: () => { el.remove(); obrirXat(); } },
+    h('img', { src: imgLogo(m.logo || 1), alt: '', width: 40, height: 40 }),
+    h('span', {}, h('strong', {}, m.nom), h('span', {}, m.text)));
+  $('#notificacions').append(el);
+  setTimeout(() => el.remove(), 7000);
+}
+
+function obrirXat() {
+  marcarNav('xat');
+  ultimVist = Date.now();
+  $('#xat-nous').hidden = true;
+  const entrada = h('input', { maxlength: 200, placeholder: 'Escriu un missatge…', 'aria-label': 'Missatge', autocomplete: 'off' });
+  const envia = async (ev) => {
+    ev.preventDefault();
+    const text = entrada.value.trim();
+    if (!text) return;
+    entrada.value = '';
+    try { await desa.enviarMissatge(usuari.uid, estat, text); } catch (err) { console.error(err); avis('No s\'ha pogut enviar.', 'error'); }
+  };
+  obrirPanell('Xat de la classe', h('div', { class: 'xat' },
+    h('div', { id: 'xat-llista', class: 'xat-llista' }),
+    h('form', { class: 'xat-form', onsubmit: envia }, entrada, h('button', { class: 'btn btn-principal', type: 'submit' }, 'Envia')),
+    h('p', { class: 'nota' }, 'Sigues respectuós: el professorat pot veure i esborrar els missatges.')), { tipus: 'xat', ample: true });
+  dibuixarXat();
+  entrada.focus();
+}
+
+function dibuixarXat() {
+  const llista = document.getElementById('xat-llista');
+  if (!llista) return;
+  llista.replaceChildren(...(missatgesXat.length ? missatgesXat.map((m) => h('div', { class: `xat-msg${m.autor === usuari.uid ? ' meu' : ''}` },
+    h('img', { src: imgLogo(m.logo || 1), alt: '', width: 32, height: 32 }),
+    h('div', {}, h('strong', {}, m.nom), h('p', {}, m.text)))) : [h('p', { class: 'nota' }, 'Encara no hi ha missatges. Saluda la classe!')]));
+  llista.scrollTop = llista.scrollHeight;
+}
 
 // ---------- borsa entre empreses ----------
 let recursBorsa = 'electricitat';
 
 async function obrirBorsa(recurs = recursBorsa) {
   recursBorsa = recurs;
+  marcarNav('mercat');
   const selector = h('div', { class: 'selector-recursos', role: 'tablist' },
     ...Object.keys(RECURSOS).map((r) => h('button', {
       class: `btn-recurs${r === recurs ? ' actiu' : ''}`, role: 'tab', 'aria-selected': r === recurs ? 'true' : 'false',
@@ -669,10 +1025,11 @@ async function obrirBorsa(recurs = recursBorsa) {
   const llista = h('div', { class: 'llista-ofertes' }, h('p', { class: 'nota' }, 'Carregant ofertes…'));
   const meves = h('div', { class: 'meves-ofertes' });
   obrirPanell('Borsa', h('div', { class: 'bloc' },
+    h('button', { class: 'btn-tornar', onclick: () => obrirMercat() }, '← Mercat'),
     selector,
     h('h3', { class: 'subtitol' }, icona(recurs, 32), `${RECURSOS[recurs].nom}`,
       h('span', { class: 'nota' }, `L'escola en paga ${joc.diners(RECURSOS[recurs].preu)}`)),
-    llista, meves), { tipus: 'borsa' });
+    llista, meves), { tipus: 'borsa', ample: true });
 
   try {
     const [ofs, propies] = await Promise.all([desa.ofertes(recurs), desa.mevesOfertes(usuari.uid)]);
@@ -708,26 +1065,6 @@ function filaOferta(o) {
           (r) => `Comprat per ${joc.diners(r.cost)}`).then(() => obrirBorsa(recursBorsa)),
       }, 'Compra')));
 }
-$('#btn-borsa').addEventListener('click', () => obrirBorsa());
-
-// ---------- classificació ----------
-$('#btn-classificacio').addEventListener('click', async () => {
-  obrirPanell('Classificació', h('p', {}, 'Carregant…'), { tipus: 'classificacio' });
-  try {
-    const files = await desa.classificacio(usuari.uid, estat);
-    const llista = h('ol', { class: 'llista-classificacio' });
-    files.forEach((f, n) => llista.append(h('li', { class: f.uid === usuari.uid ? 'jo' : '' },
-      h('span', { class: 'posicio' }, n + 1),
-      h('img', { src: imgLogo(f.logo || 1), alt: '', width: 36, height: 36 }),
-      h('span', { class: 'cl-nom' }, f.nom),
-      h('span', { class: 'cl-valor' }, joc.diners(f.valor || 0)))));
-    obrirPanell('Classificació', h('div', { class: 'bloc' },
-      h('p', { class: 'nota' }, 'Ordenat pel valor de l\'empresa: diners, estoc i edificis.'), llista), { tipus: 'classificacio' });
-  } catch (err) {
-    console.error(err);
-    obrirPanell('Classificació', h('p', {}, 'No s\'ha pogut carregar la classificació.'), { tipus: 'classificacio' });
-  }
-});
 
 // ---------- guia / tutorial ----------
 const PASSOS_GUIA = [

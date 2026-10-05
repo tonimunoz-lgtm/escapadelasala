@@ -20,21 +20,28 @@ export const COMISSIO_BORSA = 0.03;      // la borsa es queda un 3% de cada vend
 
 // preu = el que paga el mercat de l'escola per cada unitat
 export const RECURSOS = {
-  electricitat: { nom: 'Electricitat', preu: 3 },
-  aigua:        { nom: 'Aigua',        preu: 2 },
-  llavors:      { nom: 'Llavors',      preu: 12 },
-  blat:         { nom: 'Blat',         preu: 22 },
-  raim:         { nom: 'Raïm',         preu: 24 },
-  olives:       { nom: 'Olives',       preu: 24 },
-  ous:          { nom: 'Ous',          preu: 34 },
-  llet:         { nom: 'Llet',         preu: 62 },
-  farina:       { nom: 'Farina',       preu: 55 },
-  pa:           { nom: 'Pa',           preu: 140 },
-  vi:           { nom: 'Vi',           preu: 100 },
-  oli:          { nom: 'Oli',          preu: 130 },
-  fusta:        { nom: 'Fusta',        preu: 14 },
-  pedra:        { nom: 'Pedra',        preu: 16 },
-  maons:        { nom: 'Maons',        preu: 55 },
+  electricitat: { nom: 'Electricitat', preu: 3,   cat: 'energia' },
+  aigua:        { nom: 'Aigua',        preu: 2,   cat: 'energia' },
+  llavors:      { nom: 'Llavors',      preu: 12,  cat: 'agricultura' },
+  blat:         { nom: 'Blat',         preu: 22,  cat: 'agricultura' },
+  raim:         { nom: 'Raïm',         preu: 24,  cat: 'agricultura' },
+  olives:       { nom: 'Olives',       preu: 24,  cat: 'agricultura' },
+  ous:          { nom: 'Ous',          preu: 34,  cat: 'alimentacio' },
+  llet:         { nom: 'Llet',         preu: 62,  cat: 'alimentacio' },
+  farina:       { nom: 'Farina',       preu: 55,  cat: 'alimentacio' },
+  pa:           { nom: 'Pa',           preu: 140, cat: 'alimentacio' },
+  vi:           { nom: 'Vi',           preu: 100, cat: 'alimentacio' },
+  oli:          { nom: 'Oli',          preu: 130, cat: 'alimentacio' },
+  fusta:        { nom: 'Fusta',        preu: 14,  cat: 'construccio' },
+  pedra:        { nom: 'Pedra',        preu: 16,  cat: 'construccio' },
+  maons:        { nom: 'Maons',        preu: 55,  cat: 'construccio' },
+};
+
+export const CATEGORIES = {
+  energia: 'Energia i aigua',
+  agricultura: 'Agricultura',
+  alimentacio: 'Alimentació',
+  construccio: 'Construcció',
 };
 
 // temps = segons per unitat · entrades = el que es gasta per cada unitat
@@ -100,3 +107,55 @@ export const imgEdifici = (tipus) => `img/edificis/edifici-${tipus}.webp`;
 export const imgRecurs = (recurs) => `img/recursos/recurs-${recurs}.webp`;
 export const imgLogo = (n) => `img/avatars/logo-empresa-${String(n).padStart(2, '0')}.webp`;
 export const NUM_LOGOS = 20;
+
+// =============================================================
+//  NIVELLS D'EMPRESA: es puja de nivell segons el valor de l'empresa
+//  i cada nivell desbloqueja coses noves (com a Sim Companies)
+// =============================================================
+export const NIVELLS_EMPRESA = [0, 15000, 25000, 40000, 60000, 90000, 130000, 180000, 250000, 350000];
+export const DESBLOQUEIG = {
+  contractes: 2,   // enviar contractes directes a una altra empresa
+  banc: 3,         // demanar préstecs
+  recerca: 5,      // (properament)
+};
+
+// =============================================================
+//  FASES ECONÒMIQUES: canvien soles cada FASE_MINUTS, iguals per a tothom
+//  produccio / vendes: com més alt, més ràpid
+// =============================================================
+export const FASE_MINUTS = 20;
+export const FASES = {
+  normal:    { nom: 'Normalitat', produccio: 1,    vendes: 1,    text: 'L\'economia va com sempre.' },
+  expansio:  { nom: 'Expansió',   produccio: 1,    vendes: 1.3,  text: 'La gent compra més: les botigues venen més ràpid.' },
+  recessio:  { nom: 'Recessió',   produccio: 1.2,  vendes: 0.75, text: 'Es ven més lent, però produir és més ràpid.' },
+};
+
+// =============================================================
+//  BANC
+// =============================================================
+export const BANC = {
+  maxPercentValor: 0.3,   // pots demanar fins al 30% del valor de l'empresa
+  interesHora: 0.02,      // 2% d'interès cada hora real
+};
+
+export const HISTORIAL_MINUTS = 5;   // cada quan es desa un punt del gràfic de valor
+export const XAT_ACTIU = true;       // posa false per amagar el xat de la classe
+
+// =============================================================
+//  MISSIONS (tutorial guiat). La condició rep l'empresa (e).
+// =============================================================
+const teEdifici = (e, tipus) => e.parceles.some((p) => p.tipus === tipus && p.estat === 'edifici');
+const stat = (e, clau) => (e.stats && e.stats[clau]) || 0;
+export const MISSIONS = [
+  { text: 'Construeix una central elèctrica', premi: 500, fet: (e) => teEdifici(e, 'central-electrica') },
+  { text: 'Construeix una estació de bombeig', premi: 500, fet: (e) => teEdifici(e, 'estacio-bombeig') },
+  { text: 'Produeix i recull 20 unitats d\'aigua', premi: 300, fet: (e) => stat(e, 'produit_aigua') >= 20 },
+  { text: 'Construeix un viver', premi: 800, fet: (e) => teEdifici(e, 'viver') },
+  { text: 'Recull 10 llavors', premi: 500, fet: (e) => stat(e, 'produit_llavors') >= 10 },
+  { text: 'Ven alguna cosa al mercat de l\'escola', premi: 300, fet: (e) => stat(e, 'vendesEscola') >= 1 },
+  { text: 'Construeix un camp de cultiu', premi: 1000, fet: (e) => teEdifici(e, 'camp-cultiu') },
+  { text: 'Publica una oferta a la borsa', premi: 500, fet: (e) => stat(e, 'ofertesBorsa') >= 1 },
+  { text: 'Millora un edifici a nivell 2', premi: 1000, fet: (e) => e.parceles.some((p) => (p.nivell || 1) >= 2) },
+  { text: 'Construeix una botiga i ven-hi alguna cosa', premi: 1500, fet: (e) => stat(e, 'vendesBotiga') >= 1 },
+  { text: 'Arriba al nivell 3 d\'empresa', premi: 2000, fet: (e) => e.nivellMax >= 3 },
+];

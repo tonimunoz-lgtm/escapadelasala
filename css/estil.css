@@ -369,3 +369,130 @@ h1, h2 { font-family: var(--lletra-titol); font-weight: 800; line-height: 1.1; m
 @media (prefers-reduced-motion: reduce) {
   *, *::before { animation: none !important; transition: none !important; }
 }
+
+/* =============== v3: capçalera, missions, navegació i seccions =============== */
+.barra { justify-content: space-between; }
+.barra-dreta { display: flex; gap: 8px; align-items: center; }
+.barra-nivell {
+  display: grid; gap: 3px; min-width: 120px; border: 0; cursor: pointer;
+  background: rgb(255 255 255 / .95); border-radius: 14px; padding: 5px 12px 6px;
+  box-shadow: 0 4px 14px rgb(10 53 102 / .22); font: 800 .95rem/1 var(--lletra-titol);
+}
+.nivell-barra { display: block; height: 7px; border-radius: 99px; background: var(--linia); overflow: hidden; }
+.nivell-barra span { display: block; height: 100%; background: var(--verd); border-radius: 99px; transition: width .6s; }
+
+.missio {
+  position: absolute; z-index: 19; left: 10px; top: calc(62px + env(safe-area-inset-top, 0px));
+  display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 20px);
+  background: #fff; border: 0; border-radius: 999px; padding: 3px 6px 3px 3px; cursor: pointer;
+  box-shadow: 0 4px 14px rgb(10 53 102 / .22); font: 700 .98rem/1.2 var(--lletra); text-align: left;
+}
+.missio img { width: 40px; height: 40px; border-radius: 50%; background: var(--cel); object-fit: cover; object-position: top; }
+#missio-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.missio-premi { flex: none; background: #fff6dc; border-radius: 999px; padding: 4px 10px 3px; font: 800 .9rem/1.2 var(--lletra-titol); }
+.missio.feta .missio-premi { background: var(--verd); color: #fff; animation: salta 1s ease-in-out infinite; }
+
+.navegacio {
+  position: absolute; z-index: 25; left: 0; right: 0; bottom: 0;
+  display: flex; justify-content: center; gap: 4px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: var(--tinta); box-shadow: 0 -4px 16px rgb(10 53 102 / .3);
+}
+.navegacio button {
+  position: relative; flex: 0 1 120px; display: grid; justify-items: center; gap: 2px;
+  border: 0; background: transparent; color: #c9d8ea; cursor: pointer; border-radius: 12px; padding: 4px 6px;
+  font: 800 .92rem/1.1 var(--lletra-titol);
+}
+.navegacio button img { width: 30px; height: 30px; object-fit: contain; opacity: .8; }
+.navegacio button.actiu { background: rgb(255 255 255 / .14); color: #fff; }
+.navegacio button.actiu img { opacity: 1; }
+#xat-nous {
+  position: absolute; top: 0; right: 22%; min-width: 20px; height: 20px; border-radius: 99px;
+  background: var(--vermell); color: #fff; font: 800 .8rem/20px var(--lletra-titol);
+}
+
+.zoom { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+.guia { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+.avisos { top: calc(112px + env(safe-area-inset-top, 0px)); left: 10px; transform: none; width: min(340px, calc(100vw - 20px)); }
+.avisos .avis { padding: .5em .8em; font-size: .92rem; }
+.panell { top: calc(112px + env(safe-area-inset-top, 0px)); bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+.panell.ample { width: min(620px, calc(100vw - 24px)); }
+
+.notificacions {
+  position: absolute; z-index: 26; left: 10px; bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  display: grid; gap: 6px; width: min(300px, calc(100vw - 80px));
+}
+.notificacio {
+  display: grid; grid-template-columns: 40px 1fr; gap: 8px; align-items: center; text-align: left;
+  background: #fff; border: 0; border-left: 5px solid var(--blau); border-radius: 10px; padding: 8px; cursor: pointer;
+  box-shadow: 0 4px 14px rgb(10 53 102 / .25); animation: entra .25s ease-out; font-size: .92rem;
+}
+.notificacio span { display: grid; overflow: hidden; }
+.notificacio span span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pestanyes { display: flex; gap: 4px; border-bottom: 2px solid var(--linia); margin: -6px 0 2px; overflow-x: auto; }
+.pestanya {
+  border: 0; background: transparent; cursor: pointer; padding: 8px 12px; white-space: nowrap;
+  font: 800 1rem/1 var(--lletra-titol); color: var(--gris); border-bottom: 3px solid transparent; margin-bottom: -2px;
+}
+.pestanya.actiu { color: var(--tinta); border-bottom-color: var(--taronja); }
+.cadenat { font-size: .8em; margin-left: 4px; }
+.avis-bloqueig { background: #f3f8fc; border-radius: 14px; padding: 14px; display: grid; gap: 6px; margin: 0; }
+.btn-tornar { justify-self: start; border: 0; background: none; color: var(--blau); font: 800 1rem/1 var(--lletra-titol); cursor: pointer; padding: 4px 0; }
+select.input-preu.ample { width: 100%; text-align: left; }
+
+.total-estoc { display: flex; justify-content: space-between; align-items: center; background: #f3f8fc; border-radius: 12px; padding: 10px 14px; }
+.total-estoc strong { font: 800 1.3rem/1 var(--lletra-titol); }
+.graella-estoc { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.carta-estoc {
+  position: relative; display: grid; justify-items: start; gap: 2px; text-align: left;
+  border: 0; border-radius: 12px; background: #eef3f7; padding: 8px 10px; cursor: pointer; min-height: 112px;
+}
+.carta-estoc:hover { background: #e2ebf3; }
+.carta-estoc .icona { width: 48px; height: 48px; }
+.carta-preu { position: absolute; right: 8px; top: 6px; font-size: .78rem; color: var(--gris); font-weight: 700; }
+.carta-q { position: absolute; right: 8px; top: 22px; font: 800 1.3rem/1 var(--lletra-titol); }
+.carta-nom { font: 800 .95rem/1.1 var(--lletra-titol); margin-top: auto; }
+
+.cinta { overflow: hidden; background: var(--tinta); color: #fff; border-radius: 10px; padding: 6px 0; }
+.cinta-pista { display: flex; gap: 22px; width: max-content; animation: cinta 40s linear infinite; padding-left: 12px; }
+.cinta-item { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; white-space: nowrap; }
+@keyframes cinta { to { transform: translateX(-50%); } }
+.amunt { color: #5fd35a; } .avall { color: #ff6b5b; } .igual { color: #c9d8ea; }
+.graella-mercat { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px; }
+.graella-mercat .btn-recurs { display: grid; gap: 2px; padding: 8px 4px; font: 700 .82rem/1.1 var(--lletra); }
+
+.fase { text-align: center; display: grid; gap: 4px; padding: 14px; border-radius: 14px; background: linear-gradient(#fff, #f3f8fc); }
+.fase strong { font: 800 1.7rem/1 var(--lletra-titol); }
+.fase-recessio strong { color: #d0611f; } .fase-expansio strong { color: var(--verd); }
+.fase-efectes { display: flex; justify-content: center; gap: 28px; font-weight: 700; }
+.fase-efectes .amunt { color: var(--verd); } .fase-efectes .avall { color: var(--vermell); }
+.resum-graella { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.grafic { border: 2px dashed var(--linia); border-radius: 12px; padding: 10px; display: grid; gap: 6px; }
+.grafic-svg { width: 100%; height: auto; display: block; }
+.grafic-eix { display: flex; justify-content: space-between; font-size: .8rem; color: var(--gris); font-weight: 700; }
+.grafic-buit { margin: 20px 0; }
+.rank { font: 800 1.2rem/1.2 var(--lletra-titol); text-align: right; margin: 0 0 8px; }
+.balanc dt, .balanc dd { font-size: .95rem; }
+.balanc .fort { font-weight: 800; }
+.balanc .total { border-top: 2px solid var(--tinta); padding-top: 6px; font-size: 1.1rem; }
+.fila-botons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.xat { display: grid; gap: 10px; }
+.xat-llista { display: grid; gap: 8px; max-height: 50vh; overflow-y: auto; padding-right: 4px; }
+.xat-msg { display: grid; grid-template-columns: 32px 1fr; gap: 8px; align-items: start; }
+.xat-msg div { background: #eef3f7; border-radius: 4px 14px 14px 14px; padding: 6px 10px; }
+.xat-msg.meu div { background: #fff3e4; }
+.xat-msg p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.xat-form { display: flex; gap: 6px; }
+.xat-form input { flex: 1; border: 2px solid var(--linia); border-radius: 12px; padding: .5em .7em; font-size: 1rem; }
+
+@media (max-width: 640px) {
+  .barra-nivell { min-width: 84px; padding: 5px 8px; }
+  .missio { font-size: .85rem; }
+  .navegacio button { font-size: .75rem; padding: 4px 2px; }
+  .navegacio button img { width: 26px; height: 26px; }
+  .panell, .panell.ample { top: auto; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); max-height: calc(100vh - 190px); }
+  .resum-graella { grid-template-columns: 1fr; }
+  .zoom { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+}
