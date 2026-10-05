@@ -5,6 +5,10 @@ import {
 } from './dades.js';
 import * as joc from './joc.js';
 import * as desa from './desa.js';
+import {
+  FORMES, TRAMITS, OPCIONS_ESTATUTS, OFICINES, PERSONAL, SS_EMPRESA, GESTORIA, SECTORS, SETMANES_PER_MES, RISC_SANCIO,
+} from './legal.js';
+import { crearMon, casellaParcela, origenSlot } from './mon.js';
 
 // ---------- utilitats ----------
 const $ = (s) => document.querySelector(s);
@@ -78,7 +82,9 @@ desa.escoltarSessio(async (u) => {
     mostrarPantalla('pantalla-inici');
     return;
   }
-  if (!estat) { prepararCreacio(); mostrarPantalla('pantalla-crear'); return; }
+  if (!estat) { estat = joc.estatInicial('', 1); await desar(); }
+  joc.migrar(estat);
+  if (!estat.constitucio.constituida) { obrirConstitucio(); return; }
   iniciarJoc();
 }).catch((err) => {
   console.error(err);
@@ -86,37 +92,300 @@ desa.escoltarSessio(async (u) => {
   mostrarPantalla('pantalla-inici');
 });
 
-// ---------- creació de l'empresa ----------
-function prepararCreacio() {
-  const graella = $('#graella-logos');
-  graella.replaceChildren();
-  for (let n = 1; n <= NUM_LOGOS; n++) {
-    graella.append(h('label', { class: 'logo-opcio' },
-      h('input', { type: 'radio', name: 'logo', value: n, checked: n === 1 }),
-      h('img', { src: imgLogo(n), alt: `Logo ${n}`, width: 64, height: 64 })));
-  }
+// ---------- constitució de l'empresa (primer pas del joc) ----------
+let rellotgeTramit = null;
+
+function nomComplet(e) {
+  const f = FORMES[e.forma];
+  return f && f.sufix ? `${e.nomBase} ${f.sufix}` : (e.nomBase || 'La meva empresa');
 }
 
-$('#form-crear').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const nom = $('#nom-empresa').value.trim();
-  if (!nom) return;
-  const logo = Number(new FormData(ev.target).get('logo')) || 1;
-  estat = joc.estatInicial(nom, logo);
-  await desar();
-  iniciarJoc();
-});
+function obrirConstitucio() {
+  mostrarPantalla('pantalla-crear');
+  dibuixarConstitucio();
+  clearInterval(rellotgeTramit);
+  rellotgeTramit = setInterval(() => {
+    const c = estat?.constitucio;
+    if (!c || c.constituida) { clearInterval(rellotgeTramit); return; }
+    if (c.enCurs && c.enCurs.fi <= Date.now()) {
+      c.fets.push(c.enCurs.id);
+      avis(`Tràmit fet: ${TRAMITS[c.enCurs.id].nom}`, 'ok');
+      delete c.enCurs;
+      desar();
+      dibuixarConstitucio();
+    } else if (c.enCurs) {
+      const el = document.querySelector('#constitucio [data-fi]');
+      if (el) el.textContent = joc.temps((Number(el.dataset.fi) - Date.now()) / 1000);
+      const b = document.querySelector('#constitucio [data-inici]');
+      if (b) b.style.width = `${Math.min(100, ((Date.now() - c.enCurs.inici) / (c.enCurs.fi - c.enCurs.inici)) * 100)}%`;
+    }
+  }, 500);
+}
+
+const PASSOS = [['forma', 'Forma jurídica'], ['socis', 'Socis i capital'], ['nom', 'Nom'], ['oficina', 'Domicili'], ['tramits', 'Tràmits'], ['fet', 'A punt!']];
+
+function dibuixarConstitucio() {
+  const c = estat.constitucio;
+  const cont = $('#constitucio');
+  const idx = PASSOS.findIndex(([p]) => p === c.pas);
+  const progres = h('ol', { class: 'passos' }, ...PASSOS.map(([p, t], k) => h('li', { class: k < idx ? 'fet' : k === idx ? 'actiu' : '' }, h('span', {}, k + 1), t)));
+  const cap = h('div', { class: 'cons-cap' },
+    h('img', { src: 'img/personatges/guia-explica.webp', alt: '', width: 110, height: 110 }),
+    h('div', {}, h('h2', {}, 'Crea la teva empresa'),
+      h('p', { class: 'nota' }, `Tens ${joc.diners(estat.estalvis)} d'estalvis. Seguiràs els mateixos passos que a la vida real per crear una empresa a Catalunya.`)));
+  const cos = {
+    forma: pasForma, socis: pasSocis, nom: pasNom, oficina: pasOficina, tramits: pasTramits, fet: pasFet,
+  }[c.pas]();
+  cont.replaceChildren(cap, progres, cos);
+  cont.scrollTop = 0;
+}
+
+function anarA(pas) { estat.constitucio.pas = pas; desar(); dibuixarConstitucio(); }
+const botoTornar = (pas) => h('button', { class: 'btn', type: 'button', onclick: () => anarA(pas) }, '← Enrere');
+
+function pasForma() {
+  const sector = h('select', { class: 'camp-select', 'aria-label': 'Sector' },
+    ...Object.entries(SECTORS).map(([id, s]) => h('option', { value: id, selected: estat.sector === id }, s.nom)));
+  const graella = h('div', { class: 'formes' });
+  for (const [id, f] of Object.entries(FORMES)) {
+    graella.append(h('button', {
+      class: `forma${estat.forma === id ? ' triada' : ''}`, type: 'button',
+      onclick: () => { estat.forma = id; estat.sector = sector.value; anarA('socis'); },
+    },
+    h('strong', {}, f.nom),
+    h('dl', {},
+      h('dt', {}, 'Socis'), h('dd', {}, f.socisMin === f.socisMax ? `${f.socisMin}` : `${f.socisMin} o més`),
+      h('dt', {}, 'Capital mínim'), h('dd', {}, f.capitalMin ? joc.diners(f.capitalMin) + (f.desemborsMin < 1 ? ` (${f.desemborsMin * 100}% a l'inici)` : '') : 'No cal'),
+      h('dt', {}, 'Responsabilitat'), h('dd', {}, f.limitada ? 'Limitada' : 'Il·limitada'),
+      h('dt', {}, 'Impostos'), h('dd', {}, f.tributacio)),
+    h('p', { class: 'nota' }, f.avantatges),
+    h('p', { class: 'nota falta' }, f.inconvenients)));
+  }
+  return h('div', { class: 'bloc' },
+    h('p', {}, 'Primer de tot: a què et dedicaràs i quina forma jurídica tindrà la teva empresa? La forma jurídica decideix qui respon dels deutes, quins impostos pagues, quant capital cal i quins tràmits has de fer.'),
+    h('label', { class: 'camp' }, h('span', {}, 'Sector de l\'activitat'), sector),
+    graella);
+}
+
+function pasSocis() {
+  const f = FORMES[estat.forma];
+  const socis = h('input', { type: 'number', min: f.socisMin, max: f.socisMax, value: Math.max(f.socisMin, estat.socis || f.socisMin), class: 'input-preu' });
+  const meva = h('input', { type: 'number', min: 0, max: estat.estalvis, value: estat.aportacioMeva ?? Math.min(15000, estat.estalvis), class: 'input-preu' });
+  const altres = h('input', { type: 'number', min: 0, max: 200000, value: estat.aportacioAltres ?? (f.socisMin > 1 ? 5000 : 0), class: 'input-preu' });
+  const capital = h('input', { type: 'number', min: f.capitalMin, value: estat.capital ?? Math.max(f.capitalMin, 15000), class: 'input-preu' });
+  const info = h('div', { class: 'avis-bloqueig' });
+  const filaAltres = h('label', { class: 'fila-preu' }, 'Aportació dels altres socis (€)', altres);
+  const filaCapital = h('label', { class: 'fila-preu' }, 'Capital social subscrit (€)', capital);
+  const calcula = () => {
+    const n = Number(socis.value) || 1, m = Number(meva.value) || 0, a = n > 1 ? Number(altres.value) || 0 : 0;
+    filaAltres.hidden = n <= 1;
+    const desemb = m + a;
+    const cap = f.capitalMin ? Math.max(Number(capital.value) || 0, desemb) : desemb;
+    filaCapital.hidden = !f.capitalMin || f.desemborsMin >= 1;
+    const errors = [];
+    if (n < f.socisMin) errors.push(`Aquesta forma necessita com a mínim ${f.socisMin} socis.`);
+    if (m > estat.estalvis) errors.push('No pots aportar més del que tens d\'estalvis.');
+    if (f.capitalMin && cap < f.capitalMin) errors.push(`El capital mínim és ${joc.diners(f.capitalMin)}.`);
+    if (f.desemborsMin < 1 && desemb < cap * f.desemborsMin) errors.push(`Cal desemborsar com a mínim el ${f.desemborsMin * 100}% (${joc.diners(cap * f.desemborsMin)}).`);
+    if (estat.forma === 'sll' && m > desemb / 3 + 0.5) errors.push('En una societat laboral cap soci pot tenir més d\'un terç del capital.');
+    const avisos = [];
+    if (estat.forma === 'sl' && cap < 3000) avisos.push('Amb menys de 3.000 € de capital, el 20% dels beneficis anirà a reserva legal i en cas de liquidació respondries fins a 3.000 €.');
+    if (!f.limitada) avisos.push('Recorda: amb aquesta forma, si l\'empresa no pot pagar, es faran servir els teus estalvis personals.');
+    info.replaceChildren(
+      h('strong', {}, `Diners que tindrà l'empresa per començar: ${joc.diners(desemb)}`),
+      h('span', {}, `Et quedaran ${joc.diners(estat.estalvis - m)} d'estalvis personals per pagar els tràmits i per si de cas.`),
+      ...avisos.map((t) => h('span', { class: 'nota' }, t)),
+      ...errors.map((t) => h('span', { class: 'nota falta' }, t)));
+    seguent.disabled = errors.length > 0;
+    return { n, m, a, desemb, cap };
+  };
+  const seguent = h('button', {
+    class: 'btn btn-principal', type: 'button',
+    onclick: () => {
+      const r = calcula();
+      Object.assign(estat, { socis: r.n, aportacioMeva: r.m, aportacioAltres: r.a, desemborsat: r.desemb, capital: r.cap });
+      anarA('nom');
+    },
+  }, 'Següent');
+  for (const el of [socis, meva, altres, capital]) el.addEventListener('input', calcula);
+  const r = h('div', { class: 'bloc' },
+    h('h3', { class: 'subtitol' }, f.nom),
+    h('p', {}, f.capitalMin
+      ? 'El capital social són els diners que els socis posen a l\'empresa. No és una despesa: queden al compte de l\'empresa per invertir. A canvi, cada soci rep participacions o accions.'
+      : 'Com a autònom/a no hi ha capital social: decideixes quants dels teus estalvis poses al negoci.'),
+    h('label', { class: 'fila-preu' }, 'Nombre de socis (comptant-te a tu)', socis),
+    h('label', { class: 'fila-preu' }, f.capitalMin ? 'La teva aportació (€)' : 'Diners que poses al negoci (€)', meva),
+    filaAltres, filaCapital, info,
+    h('div', { class: 'fila-botons' }, botoTornar('forma'), seguent));
+  calcula();
+  return r;
+}
+
+function pasNom() {
+  const f = FORMES[estat.forma];
+  const nom = h('input', { maxlength: 24, value: estat.nomBase || '', placeholder: 'Per exemple: Forn de Sabadell', class: 'camp-text', 'aria-label': 'Nom' });
+  const mostra = h('p', { class: 'nom-final' });
+  const pinta = () => { mostra.textContent = f.sufix ? `${nom.value.trim() || '...'} ${f.sufix}` : (nom.value.trim() || '...'); };
+  nom.addEventListener('input', pinta); pinta();
+  const graella = h('div', { class: 'graella-logos' });
+  for (let n = 1; n <= NUM_LOGOS; n++) {
+    graella.append(h('label', { class: 'logo-opcio' },
+      h('input', { type: 'radio', name: 'logo', value: n, checked: (estat.logo || 1) === n }),
+      h('img', { src: imgLogo(n), alt: `Logo ${n}`, width: 64, height: 64 })));
+  }
+  const necessitaCert = f.tramits.includes('certificacio') || f.tramits.includes('certificacioCoop');
+  return h('div', { class: 'bloc' },
+    h('p', {}, necessitaCert
+      ? `La denominació social ha de ser única. Quan facis el tràmit de certificació negativa, el registre comprovarà que cap altra empresa no la té. La forma jurídica ha d'aparèixer al nom: "${f.sufix}".`
+      : 'Com a autònom/a factures amb el teu nom, però pots fer servir un nom comercial. Si el vols protegir, el pots registrar com a marca a l\'Oficina Espanyola de Patents i Marques.'),
+    h('label', { class: 'camp' }, h('span', {}, necessitaCert ? 'Denominació social' : 'Nom comercial'), nom),
+    mostra,
+    h('fieldset', { class: 'camp' }, h('legend', {}, 'Tria un logo'), graella),
+    h('div', { class: 'fila-botons' }, botoTornar('socis'), h('button', {
+      class: 'btn btn-principal', type: 'button',
+      onclick: async () => {
+        const t = nom.value.trim();
+        if (t.length < 3) { avis('Escriu un nom de 3 lletres o més.', 'error'); return; }
+        estat.nomBase = t;
+        estat.logo = Number(graella.querySelector('input:checked')?.value) || 1;
+        estat.nom = nomComplet(estat);
+        anarA('oficina');
+      },
+    }, 'Següent')));
+}
+
+function pasOficina() {
+  const llista = h('div', { class: 'formes' });
+  for (const [id, o] of Object.entries(OFICINES)) {
+    llista.append(h('button', {
+      class: `forma${estat.oficina === id ? ' triada' : ''}`, type: 'button',
+      onclick: () => { estat.oficina = id; anarA('tramits'); },
+    }, h('strong', {}, o.nom),
+    h('dl', {}, h('dt', {}, 'Lloguer'), h('dd', {}, `${joc.diners(o.mensual)} al mes`), h('dt', {}, 'Fiança'), h('dd', {}, o.fianca ? joc.diners(o.fianca) : 'No cal')),
+    h('p', { class: 'nota' }, o.text)));
+  }
+  return h('div', { class: 'bloc' },
+    h('p', {}, 'Tota empresa necessita un domicili social, que surt als estatuts i a les factures. Pots llogar des d\'una simple adreça fins a un local. El lloguer es paga cada mes i la fiança la recuperes si te\'n vas.'),
+    h('p', { class: 'nota' }, 'Al joc, 1 hora real equival a 1 setmana de l\'empresa: les despeses mensuals es van cobrant a poc a poc.'),
+    llista, botoTornar('nom'));
+}
+
+function pasTramits() {
+  const c = estat.constitucio;
+  const f = FORMES[estat.forma];
+  const llista = h('ol', { class: 'tramits' });
+  let total = 0;
+  const seguent = f.tramits.find((t) => !c.fets.includes(t));
+  for (const id of f.tramits) {
+    const t = TRAMITS[id];
+    const cost = joc.dinersCost(id, estat);
+    total += cost;
+    const fet = c.fets.includes(id);
+    const actual = id === seguent;
+    const item = h('li', { class: fet ? 'fet' : actual ? 'actual' : '' },
+      h('div', { class: 'tram-cap' }, h('strong', {}, t.nom), h('span', { class: 'tram-cost' }, cost ? joc.diners(cost) : 'Gratuït')),
+      h('span', { class: 'nota' }, `${t.on}. Temps real: ${t.real}.`));
+    if (actual || fet) item.append(h('p', {}, t.que));
+    if (actual) {
+      if (c.enCurs) {
+        item.append(h('div', { class: 'progres gran' }, h('span', { class: 'progres-ple', 'data-inici': c.enCurs.inici, style: 'width:0%' })),
+          h('p', { class: 'nota' }, 'En tràmit… falten ', h('strong', { 'data-fi': c.enCurs.fi }, joc.temps((c.enCurs.fi - Date.now()) / 1000))));
+      } else {
+        if (t.opcions) {
+          item.append(h('div', { class: 'opcions-estatuts' }, ...Object.entries(OPCIONS_ESTATUTS).map(([oid, o]) => h('label', { class: 'opcio-radio' },
+            h('input', { type: 'radio', name: 'estatuts', value: oid, checked: (estat.estatuts || 'tipus') === oid, onchange: () => { estat.estatuts = oid; dibuixarConstitucio(); } }),
+            h('span', {}, h('strong', {}, `${o.nom}${o.cost ? ` (${joc.diners(o.cost)})` : ''}`), h('span', { class: 'nota' }, o.text))))));
+        }
+        item.append(h('button', {
+          class: 'btn btn-principal', type: 'button',
+          onclick: async () => {
+            let cost2 = joc.dinersCost(id, estat);
+            if (t.nom_) {
+              const lliure = await desa.nomDisponible(usuari.uid, estat.nomBase).catch(() => true);
+              if (!lliure) {
+                estat.constitucio.pas = 'nom';
+                avis(`Certificació denegada: ja existeix una empresa que es diu "${estat.nomBase}". Tria un altre nom.`, 'error');
+                desar(); dibuixarConstitucio(); return;
+              }
+            }
+            if (estat.estalvis < cost2) { avis('No tens prou estalvis per pagar aquest tràmit.', 'error'); return; }
+            estat.estalvis -= cost2;
+            estat.costosConstitucio = (estat.costosConstitucio || 0) + cost2;
+            const ara = Date.now();
+            c.enCurs = { id, inici: ara, fi: ara + t.segonsJoc * 1000 };
+            desar(); dibuixarConstitucio();
+          },
+        }, `Fes el tràmit${cost ? ` (${joc.diners(cost)})` : ''}`));
+      }
+    }
+    llista.append(item);
+  }
+  const acabat = !seguent && !c.enCurs;
+  return h('div', { class: 'bloc' },
+    h('p', {}, `Aquests són els tràmits per crear una empresa com a ${f.nom.toLowerCase()} a Catalunya, en ordre. Els costos els pagues dels teus estalvis (són despeses de constitució). Cost total aproximat: ${joc.diners(total)}.`),
+    h('p', { class: 'nota' }, 'Truc real: als Punts d\'Atenció a l\'Emprenedor (PAE) i amb el sistema CIRCE pots fer molts d\'aquests tràmits en línia i d\'una sola vegada.'),
+    llista,
+    h('div', { class: 'fila-botons' }, c.fets.length ? null : botoTornar('oficina'),
+      h('button', { class: 'btn btn-principal', type: 'button', disabled: !acabat, onclick: () => anarA('fet') }, 'Veure el resultat')));
+}
+
+function pasFet() {
+  const f = FORMES[estat.forma];
+  if (!estat.nif) {
+    const xifres = String(Math.floor(10000000 + Math.random() * 89999999));
+    estat.nif = f.lletraNif ? `${f.lletraNif}${xifres}` : `${xifres}${'TRWAGMYFPDXBNJZSQVHLCKE'[Number(xifres) % 23]}`;
+  }
+  const fianca = OFICINES[estat.oficina]?.fianca || 0;
+  const diners = estat.desemborsat - fianca;
+  return h('div', { class: 'bloc' },
+    h('div', { class: 'escriptura' },
+      h('span', { class: 'nota' }, f.lletraNif ? 'Empresa inscrita' : 'Alta d\'activitat'),
+      h('strong', { class: 'nom-final' }, estat.nom),
+      h('dl', { class: 'dades' },
+        h('dt', {}, 'Forma jurídica'), h('dd', {}, f.nom),
+        h('dt', {}, f.lletraNif ? 'NIF' : 'NIF (el teu DNI)'), h('dd', {}, estat.nif),
+        h('dt', {}, 'Socis'), h('dd', {}, String(estat.socis)),
+        h('dt', {}, f.capitalMin ? 'Capital social' : 'Diners al negoci'), h('dd', {}, joc.diners(estat.capital)),
+        h('dt', {}, 'Desemborsat'), h('dd', {}, joc.diners(estat.desemborsat)),
+        h('dt', {}, 'Domicili'), h('dd', {}, OFICINES[estat.oficina].nom),
+        h('dt', {}, 'Despeses de constitució'), h('dd', {}, joc.diners(estat.costosConstitucio || 0)),
+        h('dt', {}, 'Fiança de l\'oficina'), h('dd', {}, joc.diners(fianca)),
+        h('dt', {}, 'Diners al compte de l\'empresa'), h('dd', {}, joc.diners(diners)),
+        h('dt', {}, 'Els teus estalvis'), h('dd', {}, joc.diners(estat.estalvis - estat.aportacioMeva)))),
+    h('p', {}, 'Ara comença la feina de veritat: donar-te d\'alta com a ocupador, triar qui et porta les nòmines i els impostos, contractar personal i construir. Cada setmana (1 hora real) pagaràs el lloguer, la quota d\'autònom i les nòmines.'),
+    h('div', { class: 'fila-botons' }, h('button', {
+      class: 'btn btn-principal btn-gran', type: 'button',
+      onclick: async () => {
+        try {
+          if (estat.slot == null) estat.slot = await desa.assignarSlot();
+          estat.estalvis -= estat.aportacioMeva;
+          estat.diners = diners;
+          estat.constitucio = { ...estat.constitucio, constituida: true, pas: 'fet', data: Date.now() };
+          estat.despesesT = Date.now();
+          await desar();
+          iniciarJoc();
+        } catch (err) { console.error(err); avis('No s\'ha pogut acabar. Torna-ho a provar.', 'error'); }
+      },
+    }, 'Comença a treballar!')));
+}
 
 // ---------- joc ----------
-let rellotge = null, rellotgeBorsa = null;
+let rellotge = null, rellotgeBorsa = null, rellotgeMon = null;
 
-function iniciarJoc() {
+async function iniciarJoc() {
   joc.migrar(estat);
+  clearInterval(rellotgeTramit);
   mostrarPantalla('pantalla-joc');
+  if (estat.slot == null) {
+    try { estat.slot = await desa.assignarSlot(); await desar(); } catch (err) { console.error(err); estat.slot = 0; }
+  }
   if (joc.actualitzar(estat)) desar();
   construirMapa();
   dibuixarTot();
   centrarMapa();
+  carregarMon();
+  if (!rellotgeMon) rellotgeMon = setInterval(carregarMon, 60000);
+  { const m = joc.aplicarDespeses(estat); m.forEach((t) => setTimeout(() => avis(t, 'error'), 1200)); }
   clearInterval(rellotge);
   rellotge = setInterval(tic, 1000);
   clearInterval(rellotgeBorsa);
@@ -131,6 +400,8 @@ function iniciarJoc() {
 
 function tic() {
   joc.aplicarInteressos(estat);
+  const despeses = joc.aplicarDespeses(estat);
+  if (despeses.length) { despeses.forEach((t) => avis(t, 'error')); desar(); }
   const marxen = joc.aplicarDirectors(estat);
   if (marxen) { avis(marxen, 'error'); desar(); }
   if (joc.registrarHistorial(estat)) desar();
@@ -171,95 +442,65 @@ async function accioRemota(fn, missatgeOk) {
   }
 }
 
-// ---------- mapa isomètric amb illes i carrers ----------
-// El mapa és una quadrícula de caselles iguals. Cada BLOC x BLOC parcel·les hi ha una fila
-// i una columna de carretera (imatges img/mapa/carretera-*.webp).
-// Les imatges fan 256x256: el rombe superior fa 236 px d'ample i el seu centre és a y=175.
-const IMG = 256, W = 236, CENTRE_Y = 175;
-const PAS = BLOC + 1;                                // parcel·les d'una illa + 1 carretera
-const NUM_ILLES = MIDA_MAPA / BLOC;
-const CASELLES = NUM_ILLES * PAS + 1;                 // caselles per costat (amb carreteres)
-const EXTENSIO = CASELLES;
-const coord = (k) => k + Math.floor(k / BLOC) + 1;   // casella on va la parcel·la k
-const iso = (u, v) => ({ x: (u - v) * W / 2, y: (u + v) * W / 4 });
-const centreParcela = (i) => iso(coord(i % MIDA_MAPA) + 0.5, coord(Math.floor(i / MIDA_MAPA)) + 0.5);
-const zIndex = (u, v) => Math.round((u + v) * 4) + 10;
-
-const esCarreteraFixa = (R, C) => R % PAS === 0 || C % PAS === 0;
-const indexParcela = (R, C) => (R - Math.floor(R / PAS) - 1) * MIDA_MAPA + (C - Math.floor(C / PAS) - 1);
-function hiHaCarretera(R, C) {
-  if (R < 0 || C < 0 || R >= CASELLES || C >= CASELLES) return false;
-  if (esCarreteraFixa(R, C)) return true;
-  return estat.parceles[indexParcela(R, C)]?.estat === 'carretera';
-}
-// Tria la peça segons les carreteres veïnes
-function imatgeCarretera(R, C) {
-  const llarg = hiHaCarretera(R, C - 1) || hiHaCarretera(R, C + 1);
-  const ample = hiHaCarretera(R - 1, C) || hiHaCarretera(R + 1, C);
-  if (llarg && ample) return 'img/mapa/carretera-creuament.webp';
-  if (ample) return 'img/mapa/carretera-b.webp';
-  return 'img/mapa/carretera-a.webp';
-}
-
-const SVG_NS = 'http://www.w3.org/2000/svg';
-function svg(tag, attrs) {
-  const el = document.createElementNS(SVG_NS, tag);
-  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-  return el;
-}
-
-let escala = 0.75;
-let despl = { x: 0, y: 0 };
-const caselles = [];
-const carreteresFixes = [];
-
-function posarTile(mapa, R, C, src, classe) {
-  const { x, y } = iso(C + 0.5, R + 0.5);
-  const img = h('img', {
-    class: classe, src, alt: '', draggable: 'false',
-    style: `left:${x - IMG / 2}px;top:${y - CENTRE_Y}px;z-index:${zIndex(C + 0.5, R + 0.5)}`,
-  });
-  mapa.append(img);
-  return img;
-}
-
+// ---------- mapa del món (canvas, js/mon.js) ----------
+let mon = null;
+let arrossegat = false; // compatibilitat
 function construirMapa() {
-  const mapa = $('#mapa');
-  mapa.replaceChildren();
-  caselles.length = 0;
-  carreteresFixes.length = 0;
-  // Bosc al voltant, alineat amb la quadrícula
-  for (let k = -1; k <= CASELLES; k++) {
-    for (const [R, C] of [[-1, k], [CASELLES, k], [k, -1], [k, CASELLES]]) {
-      if ((R * 7 + C * 3) % 4 === 0) continue;
-      posarTile(mapa, R, C, 'img/mapa/decor-arbres.webp', 'decor');
-    }
+  if (!mon) {
+    mon = crearMon({ canvas: $('#mon-canvas'), onClic: clicMon });
   }
-  // Carreteres fixes
-  for (let R = 0; R < CASELLES; R++) for (let C = 0; C < CASELLES; C++) {
-    if (esCarreteraFixa(R, C)) carreteresFixes.push({ R, C, img: posarTile(mapa, R, C, '', 'decor carretera') });
-  }
-  // Parcel·les
-  for (let i = 0; i < MIDA_MAPA * MIDA_MAPA; i++) {
-    const R = coord(Math.floor(i / MIDA_MAPA)), C = coord(i % MIDA_MAPA);
-    const u = C + 0.5, v = R + 0.5;
-    const { x, y } = iso(u, v);
-    const img = h('img', { class: 'casella-img', alt: '', draggable: 'false' });
-    const casella = h('div', { class: 'casella', style: `left:${x - IMG / 2}px;top:${y - CENTRE_Y}px;z-index:${zIndex(u, v)}` }, img);
-    const zona = h('button', {
-      class: 'zona', style: `left:${x - W / 2}px;top:${y - W / 4}px`,
-      onclick: () => { if (!arrossegat) obrirParcela(i); },
-    });
-    const etiqueta = h('div', { class: 'etiqueta', style: `left:${x}px;top:${y - 30}px` });
-    const rotul = h('div', { class: 'rotul', style: `left:${x}px;top:${y + 26}px` });
-    mapa.append(casella, zona, etiqueta, rotul);
-    caselles.push({ img, etiqueta, zona, casella, rotul, R, C });
-  }
-  aplicarTransformacio();
+  mon.setJo(usuari.uid, estat);
+}
+async function carregarMon() {
+  try { mon?.setEmpreses(await desa.carregarMon(usuari.uid, estat)); } catch (err) { console.error(err); }
+}
+function centrarMapa() { mon?.vistaCiutat(estat.slot); }
+function dibuixarMapa() {
+  mon?.setJo(usuari.uid, estat);
+  $('#barra-diners').textContent = joc.diners(estat.diners);
 }
 
-function imatgeParcela(p, i) {
-  if (p.estat === 'carretera') { const { R, C } = caselles[i]; return imatgeCarretera(R, C); }
+function clicMon({ X, Y, cella }) {
+  if (cella && cella.emp.uid === usuari.uid) {
+    if (cella.tipus === 'parcela') return obrirParcela(cella.i);
+    if (cella.mon) return obrirCarreteraMon(X, Y, true);
+    return avis('Carrer de la teva ciutat.');
+  }
+  if (cella) {
+    if (String(cella.emp.uid).startsWith('bot')) return avis(`${cella.emp.nom}: empresa fictícia del mode de prova.`);
+    return obrirPerfil(cella.emp.uid);
+  }
+  obrirCarreteraMon(X, Y, false);
+}
+
+function obrirCarreteraMon(X, Y, meva) {
+  const cos = h('div', { class: 'bloc' },
+    h('img', { src: 'img/mapa/carretera-a.webp', alt: '', width: 140, height: 140, class: 'panell-img' }));
+  if (meva) {
+    cos.append(h('p', {}, 'Aquest tros de carretera l\'has fet tu. Si el treus, pots deixar alguna ciutat sense connexió.'),
+      h('button', { class: 'btn', onclick: () => accio(() => { joc.treureCarreteraMon(estat, X, Y); tancarPanell(); }) }, 'Treu la carretera'));
+  } else {
+    const potser = mon.teCarreteraVeina(X, Y);
+    cos.append(
+      h('p', {}, 'Camp lliure. Hi pots fer un tros de carretera per arribar a altres ciutats. Les empreses connectades per carretera no paguen transport quan es compren coses a la borsa.'),
+      potser ? null : h('p', { class: 'nota falta' }, 'Només pots construir al costat d\'una carretera que ja existeixi.'),
+      h('button', {
+        class: 'btn btn-principal', disabled: !potser || estat.diners < COST_CARRETERA,
+        onclick: () => accio(() => { joc.construirCarreteraMon(estat, X, Y); tancarPanell(); }),
+      }, `Construeix carretera (${joc.diners(COST_CARRETERA)})`));
+  }
+  obrirPanell('Carretera', cos, { tipus: 'carretera-mon' });
+}
+
+const PERCENT_TRANSPORT = 0.1;
+function percentTransport(uidVenedor) {
+  const e = mon?.empresaDeUid(uidVenedor);
+  if (!e || e.slot == null) return PERCENT_TRANSPORT;
+  return mon.connectades(estat.slot, e.slot) ? 0 : PERCENT_TRANSPORT;
+}
+
+function imatgeParcela(p) {
+  if (p.estat === 'carretera') return 'img/mapa/carretera-a.webp';
   if (p.estat === 'bloquejada') return 'img/mapa/parcela-bloquejada.webp';
   if (p.estat === 'buida') return 'img/mapa/parcela-buida.webp';
   if (p.estat === 'obres') return 'img/mapa/parcela-obres.webp';
@@ -275,118 +516,10 @@ function nomParcela(p) {
   return `${EDIFICIS[p.tipus].nom}, nivell ${p.nivell || 1}`;
 }
 
-function dibuixarMapa() {
-  const ara = Date.now();
-  for (const c of carreteresFixes) {
-    const src = imatgeCarretera(c.R, c.C);
-    if (c.img.getAttribute('src') !== src) c.img.src = src;
-  }
-  estat.parceles.forEach((p, i) => {
-    const { img, etiqueta, zona, casella, rotul } = caselles[i];
-    const src = imatgeParcela(p, i);
-    if (img.getAttribute('src') !== src) img.src = src;
-    zona.setAttribute('aria-label', nomParcela(p));
-    const feina = p.produccio || p.venda;
-    casella.classList.toggle('produint', !!p.produccio && p.produccio.fi > ara);
-    casella.classList.toggle('bloquejada', p.estat === 'bloquejada');
-
-    let contingut = null;
-    if (p.estat === 'obres') {
-      const total = tempsConstruccio(p.tipus) * 1000;
-      contingut = barra(1 - (p.fiObres - ara) / total, joc.temps((p.fiObres - ara) / 1000));
-    } else if (p.millora) {
-      contingut = barra((ara - p.millora.inici) / (p.millora.fi - p.millora.inici), joc.temps((p.millora.fi - ara) / 1000));
-    } else if (feina) {
-      const icon = p.venda ? 'img/recursos/recurs-diners.webp' : imgRecurs(feina.recurs);
-      contingut = feina.fi <= ara
-        ? h('span', { class: 'recollir' }, h('img', { src: icon, alt: '' }), p.venda ? 'Cobra' : 'Recull')
-        : barra((ara - feina.inici) / (feina.fi - feina.inici), joc.temps((feina.fi - ara) / 1000));
-    }
-    etiqueta.replaceChildren(...(contingut ? [contingut] : []));
-    etiqueta.hidden = !contingut;
-
-    const teRotul = p.estat === 'edifici' || p.estat === 'obres';
-    rotul.hidden = !teRotul;
-    if (teRotul) {
-      const nom = p.tipus === 'seu-central' ? estat.nom : EDIFICIS[p.tipus].nom;
-      const clau = `${nom}|${p.nivell}|${p.estat}`;
-      if (rotul.dataset.clau !== clau) {
-        rotul.dataset.clau = clau;
-        const parts = [h('span', {}, nom)];
-        if (p.estat === 'edifici' && p.tipus !== 'seu-central') parts.push(h('b', {}, `Nv ${p.nivell || 1}`));
-        rotul.replaceChildren(...parts);
-      }
-    }
-  });
-  $('#barra-diners').textContent = joc.diners(estat.diners);
-}
-
-function barra(fraccio, text) {
-  const pct = Math.max(0, Math.min(1, fraccio)) * 100;
-  return h('span', { class: 'progres' },
-    h('span', { class: 'progres-ple', style: `width:${pct}%` }),
-    h('span', { class: 'progres-text' }, text));
-}
-
-// ---------- moure i fer zoom al mapa ----------
-let arrossegat = false;
-function aplicarTransformacio() {
-  const mapa = $('#mapa');
-  mapa.style.transform = `translate(${despl.x}px, ${despl.y}px) scale(${escala})`;
-  // Amb el mapa allunyat només es veu el nivell; apropant-lo apareixen els noms
-  mapa.classList.toggle('lluny', escala < 0.8);
-  mapa.classList.toggle('molt-lluny', escala < 0.45);
-}
-function centrarMapa() {
-  const v = $('#visor').getBoundingClientRect();
-  const T = EXTENSIO;
-  escala = Math.min(1, Math.min(v.width / (T * W * 1.05), (v.height - 120) / (T * W / 2 + 260)));
-  let centre = iso(T / 2, T / 2);
-  if (escala < 0.42) { escala = 0.42; centre = centreParcela(estat.parceles.findIndex((p) => p.tipus === 'seu-central')); }
-  despl.x = v.width / 2 - centre.x * escala;
-  despl.y = v.height / 2 + 30 - centre.y * escala;
-  aplicarTransformacio();
-}
-function zoom(factor, cx, cy) {
-  const v = $('#visor').getBoundingClientRect();
-  cx ??= v.width / 2; cy ??= v.height / 2;
-  const nova = Math.min(1.6, Math.max(0.2, escala * factor));
-  despl.x = cx - (cx - despl.x) * (nova / escala);
-  despl.y = cy - (cy - despl.y) * (nova / escala);
-  escala = nova;
-  aplicarTransformacio();
-}
-$('#zoom-mes').addEventListener('click', () => zoom(1.2));
-$('#zoom-menys').addEventListener('click', () => zoom(1 / 1.2));
-$('#visor').addEventListener('wheel', (ev) => {
-  ev.preventDefault();
-  const v = $('#visor').getBoundingClientRect();
-  zoom(ev.deltaY < 0 ? 1.1 : 1 / 1.1, ev.clientX - v.left, ev.clientY - v.top);
-}, { passive: false });
-
-{
-  let inici = null;
-  const visor = $('#visor');
-  visor.addEventListener('pointerdown', (ev) => {
-    inici = { x: ev.clientX, y: ev.clientY, dx: despl.x, dy: despl.y };
-    arrossegat = false;
-  });
-  window.addEventListener('pointermove', (ev) => {
-    if (!inici) return;
-    const mx = ev.clientX - inici.x, my = ev.clientY - inici.y;
-    if (!arrossegat && Math.hypot(mx, my) < 6) return;
-    arrossegat = true;
-    visor.classList.add('arrossegant');
-    despl.x = inici.dx + mx; despl.y = inici.dy + my;
-    aplicarTransformacio();
-  });
-  window.addEventListener('pointerup', () => {
-    inici = null;
-    visor.classList.remove('arrossegant');
-    setTimeout(() => { arrossegat = false; }, 0);
-  });
-}
-window.addEventListener('resize', () => { if (estat) centrarMapa(); });
+$('#zoom-mes').addEventListener('click', () => mon?.zoom(1.25));
+$('#zoom-menys').addEventListener('click', () => mon?.zoom(1 / 1.25));
+$('#zoom-mon').addEventListener('click', () => mon?.centrarEnSlot(estat.slot, 0.07));
+$('#zoom-ciutat').addEventListener('click', () => centrarMapa());
 
 // ---------- panell lateral ----------
 let panell = null; // { tipus, i, firma }
@@ -498,7 +631,7 @@ function panellConstruir(i) {
 
 function panellCarretera(i) {
   return h('div', { class: 'bloc' },
-    h('img', { src: imatgeParcela(estat.parceles[i], i), alt: '', width: 160, height: 160, class: 'panell-img' }),
+    h('img', { src: imatgeParcela(estat.parceles[i]), alt: '', width: 160, height: 160, class: 'panell-img' }),
     h('p', {}, 'Aquest tros de carretera és teu. Pots treure\'l per tornar a tenir la parcel·la lliure (no es recuperen els diners).'),
     h('button', { class: 'btn', onclick: () => accio(() => { joc.treureCarretera(estat, i); tancarPanell(); }) }, 'Treu la carretera'));
 }
@@ -530,7 +663,7 @@ function panellEdifici(i) {
   const nivell = p.nivell || 1;
   const cos = h('div', { class: 'bloc' },
     h('div', { class: 'cap-edifici' },
-      h('img', { src: imatgeParcela(p, i), alt: '', width: 140, height: 140, class: 'panell-img' }),
+      h('img', { src: imatgeParcela(p), alt: '', width: 140, height: 140, class: 'panell-img' }),
       h('span', { class: 'insignia-nivell' }, `Nivell ${nivell}`)));
 
   // Millorant
@@ -579,7 +712,7 @@ function opcioProduccio(i, opcio, nivell) {
   const info = h('span', { class: 'nota' });
   const { input, cont } = selectorQuantitat(Math.min(10, Math.max(1, max)), max, () => {
     const q = Number(input.value) || 0;
-    info.textContent = `Temps: ${joc.temps(joc.tempsProduccio(estat, opcio, q, nivell))}. Sous: ${joc.diners(joc.souProduccio(opcio, q))}. Cost per unitat: ${joc.dinersDec(joc.costUnitariProduccio(estat, opcio))}.`;
+    info.textContent = `Temps: ${joc.temps(joc.tempsProduccio(estat, opcio, q, nivell))}. Costos variables: ${joc.diners(joc.souProduccio(opcio, q))}. Cost per unitat: ${joc.dinersDec(joc.costUnitariProduccio(estat, opcio))}.`;
   });
   input.dispatchEvent(new Event('input'));
   return h('div', { class: 'opcio' },
@@ -610,7 +743,7 @@ function opcioVenda(i, opcio, nivell) {
   function calcula() {
     const q = Number(input.value) || 0, pr = Number(preu.value) || 0;
     if (!q || !pr) { info.textContent = ''; return; }
-    info.textContent = `Temps: ${joc.temps(joc.tempsVenda(estat, opcio, q, pr, nivell))}. Ingressos: ${joc.diners(q * pr)}. Sous: ${joc.diners(joc.souVenda(opcio, q, pr))}.`;
+    info.textContent = `Temps: ${joc.temps(joc.tempsVenda(estat, opcio, q, pr, nivell))}. Ingressos: ${joc.diners(q * pr)}. Costos de la botiga: ${joc.diners(joc.souVenda(opcio, q, pr))}.`;
   }
   preu.addEventListener('input', calcula);
   calcula();
@@ -834,7 +967,7 @@ async function obrirContractes(tabs) {
       h('span', { class: 'of-info' }, h('strong', {}, o.nomVenedor), h('span', { class: 'nota' }, `${joc.nombre(o.quantitat)} × ${RECURSOS[o.recurs].nom} a ${joc.diners(o.preu)} (total ${joc.diners(o.quantitat * o.preu)})`)),
       h('div', { class: 'of-compra' }, icona(o.recurs, 30), h('button', {
         class: 'btn btn-principal',
-        onclick: () => accioRemota(() => desa.comprar(usuari.uid, estat, o.id, o.quantitat), (r) => `Contracte acceptat: ${joc.diners(r.cost)}`).then(() => obrirMercat('contractes')),
+        onclick: () => accioRemota(() => desa.comprar(usuari.uid, estat, o.id, o.quantitat, percentTransport(o.venedor)), (r) => `Contracte acceptat: ${joc.diners(r.cost)}${r.transport ? ` + ${joc.diners(r.transport)} de transport` : ''}`).then(() => obrirMercat('contractes')),
       }, 'Accepta')))) : [h('p', { class: 'nota' }, 'No tens cap contracte pendent.')]));
     const env = meves.filter((o) => o.perA);
     sortints.replaceChildren(...(env.length ? env.map((o) => h('div', { class: 'fila-oferta propia' },
@@ -854,6 +987,7 @@ function obrirEmpresa(pestanya = 'resum') {
   const n = joc.nivellEmpresa(estat);
   const tabs = pestanyes(pestanya, [
     ['resum', 'Resum', () => obrirEmpresa('resum')],
+    ['personal', 'Personal i despeses', () => obrirEmpresa('personal')],
     ['banc', 'Banc', () => obrirEmpresa('banc'), n < DESBLOQUEIG.banc],
     ['classificacio', 'Classificació', () => obrirEmpresa('classificacio')],
     ['recerca', 'Recerca', () => obrirEmpresa('recerca'), n < DESBLOQUEIG.recerca],
@@ -861,6 +995,7 @@ function obrirEmpresa(pestanya = 'resum') {
   ]);
   const cos = h('div', { class: 'bloc' }, tabs);
   if (pestanya === 'resum') cos.append(...seccioResum());
+  if (pestanya === 'personal') cos.append(...seccioPersonal());
   if (pestanya === 'banc') cos.append(...seccioBanc(n));
   if (pestanya === 'classificacio') cos.append(seccioClassificacio());
   if (pestanya === 'recerca') cos.append(...seccioRecerca(n));
@@ -915,6 +1050,56 @@ function seccioDirectors(n) {
   ];
 }
 
+function seccioPersonal() {
+  const files = joc.despesesMensuals(estat);
+  const total = joc.totalMensual(estat);
+  const lliures = joc.operarisLliures(estat);
+  const filaRol = (rol) => {
+    const d = PERSONAL[rol];
+    const n = estat.plantilla?.[rol] || 0;
+    return h('div', { class: 'fila-director' },
+      h('img', { src: rol === 'rrhh' ? imgLogo(20) : 'img/recursos/recurs-treballadors.webp', alt: '', width: 52, height: 52 }),
+      h('div', { class: 'of-info' }, h('strong', {}, `${d.nom}: ${n}`),
+        h('span', {}, d.text),
+        h('span', { class: 'nota' }, `Sou brut ${joc.diners(d.sou)}/mes + Seguretat Social de l'empresa (~${Math.round(SS_EMPRESA * 100)}%) = ${joc.diners(joc.costPersona(rol))}/mes per persona.`),
+        rol === 'operari' ? h('span', { class: 'nota' }, `Ara en tens ${Math.max(0, lliures)} de lliures.`) : null),
+      h('div', { class: 'fila-botons' },
+        h('button', { class: 'btn', disabled: n < 1, onclick: () => accio(() => { joc.acomiadar(estat, rol); obrirEmpresa('personal'); }) }, '−1'),
+        h('button', { class: 'btn btn-principal', onclick: () => accio(() => { joc.contractar(estat, rol); avis(`Contracte signat: ${d.nom}`, 'ok'); obrirEmpresa('personal'); }) }, '+1')));
+  };
+  return [
+    h('div', { class: 'opcio' },
+      h('strong', {}, 'Despeses fixes cada mes'),
+      h('dl', { class: 'dades balanc' }, ...files.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, joc.diners(v))]),
+        h('dt', { class: 'total' }, 'Total al mes'), h('dd', { class: 'total' }, joc.diners(total))),
+      h('p', { class: 'nota' }, `Al joc, 1 hora real és 1 setmana: pagues uns ${joc.diners(total / SETMANES_PER_MES)} cada hora.`)),
+
+    h('div', { class: 'opcio' },
+      h('strong', {}, '1. Alta com a empresa ocupadora'),
+      estat.altaOcupador
+        ? h('p', {}, '✔ Feta. L\'empresa ja té codi de compte de cotització a la Seguretat Social.')
+        : [h('p', {}, 'Abans de contractar ningú, l\'empresa s\'ha d\'inscriure a la Tresoreria General de la Seguretat Social (es fa per Internet amb el sistema RED o la gestoria). És gratuït.'),
+          h('button', { class: 'btn btn-principal', onclick: () => accio(() => { estat.altaOcupador = true; avis('Empresa inscrita a la Seguretat Social', 'ok'); obrirEmpresa('personal'); }) }, 'Inscriu l\'empresa')]),
+
+    h('div', { class: 'opcio' },
+      h('strong', {}, '2. Qui et porta els papers?'),
+      h('p', { class: 'nota' }, GESTORIA.text),
+      h('p', {}, estat.gestoria
+        ? `Tens gestoria contractada: ${joc.diners(GESTORIA.fixe)}/mes + ${joc.diners(GESTORIA.perTreballador)} per cada nòmina.`
+        : `No tens gestoria. Si no tens un/a tècnic/a de RRHH no podràs contractar operaris, i cada setmana hi ha un ${Math.round(RISC_SANCIO.probabilitat * 100)}% de risc de sanció d'Hisenda (${joc.diners(RISC_SANCIO.import)}).`),
+      h('button', { class: estat.gestoria ? 'btn' : 'btn btn-principal', onclick: () => accio(() => { estat.gestoria = !estat.gestoria; obrirEmpresa('personal'); }) },
+        estat.gestoria ? 'Dona de baixa la gestoria' : 'Contracta una gestoria')),
+
+    h('div', { class: 'opcio' }, h('strong', {}, '3. Plantilla'), filaRol('operari'), filaRol('rrhh')),
+
+    h('div', { class: 'opcio' },
+      h('strong', {}, 'Seu de l\'empresa'),
+      h('p', {}, `Ara: ${OFICINES[estat.oficina]?.nom || 'cap'}. Una seu millor dona més confiança al banc.`),
+      h('div', { class: 'fila-botons' }, ...Object.entries(OFICINES).filter(([id]) => id !== estat.oficina).map(([id, o]) =>
+        h('button', { class: 'btn', onclick: () => accio(() => { joc.canviarOficina(estat, id); avis(`Ens traslladem: ${o.nom}`, 'ok'); obrirEmpresa('personal'); }) }, `${o.nom} (${joc.diners(o.mensual)}/mes)`)))),
+  ];
+}
+
 function seccioResum() {
   const fase = joc.faseEconomica();
   const b = joc.balanc(estat);
@@ -932,6 +1117,7 @@ function seccioResum() {
         h('span', {}, 'Producció ', fletxa(fase.produccio)),
         h('span', {}, 'Vendes ', fletxa(fase.vendes))),
       h('p', { class: 'nota' }, fase.text, ' Canvia d\'aquí a ', h('strong', { 'data-fi': fase.fi }, joc.temps((fase.fi - Date.now()) / 1000)), '.')),
+    targetaLegal(),
     h('div', { class: 'resum-graella' },
       h('div', { class: 'grafic' }, h('span', { class: 'nota' }, 'Valor de l\'empresa'), graficValor()),
       h('div', {},
@@ -947,6 +1133,17 @@ function seccioResum() {
       h('button', { class: 'btn', onclick: obrirGuia }, 'Tutorial'),
       h('button', { class: 'btn', onclick: () => desa.sortir() }, 'Tanca la sessió')),
   ];
+}
+
+function targetaLegal() {
+  const f = FORMES[estat.forma] || FORMES.sl;
+  return h('div', { class: 'targeta-legal' },
+    h('div', {}, h('strong', {}, estat.nom), h('span', { class: 'nota' }, `${f.nom}. NIF ${estat.nif || '—'}`)),
+    h('dl', { class: 'dades' },
+      h('dt', {}, f.capitalMin ? 'Capital social' : 'Aportació inicial'), h('dd', {}, joc.diners(estat.capital || 0)),
+      h('dt', {}, 'Responsabilitat'), h('dd', {}, f.limitada ? 'Limitada' : 'Il·limitada'),
+      h('dt', {}, 'Els teus estalvis personals'), h('dd', {}, joc.diners(estat.estalvis || 0))),
+    h('p', { class: 'nota' }, f.responsabilitat));
 }
 
 function fletxa(mult) {
@@ -1168,12 +1365,13 @@ function filaOferta(o) {
   return h('div', { class: `fila-oferta${meva ? ' propia' : ''}` },
     h('img', { src: imgLogo(o.logo || 1), alt: '', width: 34, height: 34 }),
     h('span', { class: 'of-info' }, h('strong', {}, o.nomVenedor || 'Empresa'),
-      h('span', { class: 'nota' }, `${joc.nombre(o.quantitat)} unitats a ${joc.diners(o.preu)}, qualitat Q${o.qualitat || 0}`)),
+      h('span', { class: 'nota' }, `${joc.nombre(o.quantitat)} unitats a ${joc.diners(o.preu)}, qualitat Q${o.qualitat || 0}`),
+      meva ? null : h('span', { class: 'nota' }, percentTransport(o.venedor) ? `+${Math.round(PERCENT_TRANSPORT * 100)}% de transport (no hi ha carretera fins a la teva ciutat)` : 'Connectada per carretera: sense transport')),
     meva ? h('span', { class: 'nota' }, 'La teva') : h('div', { class: 'of-compra' }, cont,
       h('button', {
         class: 'btn btn-principal',
-        onclick: () => accioRemota(() => desa.comprar(usuari.uid, estat, o.id, Number(input.value)),
-          (r) => `Comprat per ${joc.diners(r.cost)}`).then(() => obrirBorsa(recursBorsa)),
+        onclick: () => accioRemota(() => desa.comprar(usuari.uid, estat, o.id, Number(input.value), percentTransport(o.venedor)),
+          (r) => `Comprat per ${joc.diners(r.cost)}${r.transport ? ` + ${joc.diners(r.transport)} de transport` : ''}`).then(() => obrirBorsa(recursBorsa)),
       }, 'Compra')));
 }
 

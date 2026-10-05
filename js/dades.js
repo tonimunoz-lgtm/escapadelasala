@@ -118,7 +118,7 @@ export const NUM_LOGOS = 20;
 export const NIVELLS_EMPRESA = [0, 15000, 25000, 40000, 60000, 90000, 130000, 180000, 250000, 350000];
 export const DESBLOQUEIG = {
   contractes: 2,   // enviar contractes directes a una altra empresa
-  banc: 3,         // demanar préstecs
+  banc: 1,         // demanar préstecs
   recerca: 4,      // construir el laboratori i millorar la qualitat
   directors: 4,    // contractar directors
 };
@@ -175,6 +175,8 @@ export const XAT_ACTIU = true;       // posa false per amagar el xat de la class
 const teEdifici = (e, tipus) => e.parceles.some((p) => p.tipus === tipus && p.estat === 'edifici');
 const stat = (e, clau) => (e.stats && e.stats[clau]) || 0;
 export const MISSIONS = [
+  { text: 'Dona\'t d\'alta com a ocupador i tria qui et porta les nòmines', premi: 300, fet: (e) => e.altaOcupador && (e.gestoria || (e.plantilla?.rrhh || 0) > 0) },
+  { text: 'Contracta 2 operaris', premi: 300, fet: (e) => (e.plantilla?.operari || 0) >= 2 },
   { text: 'Construeix una central elèctrica', premi: 500, fet: (e) => teEdifici(e, 'central-electrica') },
   { text: 'Construeix una estació de bombeig', premi: 500, fet: (e) => teEdifici(e, 'estacio-bombeig') },
   { text: 'Produeix i recull 20 unitats d\'aigua', premi: 300, fet: (e) => stat(e, 'produit_aigua') >= 20 },

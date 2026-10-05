@@ -516,4 +516,60 @@ select.input-preu.ample { width: 100%; text-align: left; }
 @media (max-width: 640px) {
   .fila-director { grid-template-columns: 44px 1fr; }
   .fila-director .btn { grid-column: 1 / -1; }
+  .fila-director > .fila-botons { grid-column: 1 / -1; }
+  .fila-director > .fila-botons .btn { grid-column: auto; flex: 1; }
+}
+
+/* =============== v5: món en canvas i constitució =============== */
+.visor { background: #7cb342; }
+.visor::after { display: none; }
+.mon-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.mon-canvas.arrossegant { cursor: grabbing; }
+.zoom .zoom-text { font-size: .8rem; width: 52px; }
+
+.crear-caixa.cons { width: min(980px, 100%); }
+.cons-cap { display: flex; gap: 14px; align-items: center; }
+.cons-cap img { width: 96px; height: auto; flex: none; }
+.cons-cap h2 { font-size: 1.9rem; }
+.passos { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.passos li { display: flex; align-items: center; gap: 6px; padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--cel); color: var(--gris); font: 800 .9rem/1 var(--lletra-titol); }
+.passos li span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #fff; }
+.passos li.actiu { background: var(--taronja); color: #fff; }
+.passos li.actiu span { color: var(--taronja); }
+.passos li.fet { background: #dff1da; color: var(--verd-fosc); }
+.formes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.forma {
+  display: grid; gap: 6px; align-content: start; text-align: left; cursor: pointer;
+  border: 2px solid var(--linia); border-radius: 16px; background: #fff; padding: 14px; font: inherit;
+}
+.forma:hover { border-color: var(--blau); }
+.forma.triada { border-color: var(--taronja); background: #fff8ee; }
+.forma strong { font: 800 1.15rem/1.2 var(--lletra-titol); }
+.forma dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: .9rem; }
+.forma dt { color: var(--gris); font-weight: 700; }
+.forma dd { margin: 0; font-weight: 700; }
+.forma p { margin: 0; }
+.camp-select, .camp-text { font-size: 1.05rem; padding: .55em .7em; border: 2px solid var(--linia); border-radius: 12px; width: 100%; background: #fff; }
+.nom-final { font: 800 1.5rem/1.2 var(--lletra-titol); color: var(--tinta); margin: 0; }
+.tramits { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: t; }
+.tramits li { counter-increment: t; display: grid; gap: 6px; padding: 12px 14px 12px 50px; border: 2px solid var(--linia); border-radius: 14px; position: relative; background: #fff; }
+.tramits li::before { content: counter(t); position: absolute; left: 12px; top: 12px; width: 28px; height: 28px; border-radius: 50%; background: var(--cel); display: grid; place-items: center; font: 800 .95rem/1 var(--lletra-titol); }
+.tramits li.fet { background: #f1faef; border-color: #bfe3b6; }
+.tramits li.fet::before { content: '✔'; background: var(--verd); color: #fff; }
+.tramits li.actual { border-color: var(--taronja); box-shadow: 0 4px 14px rgb(242 137 29 / .18); }
+.tramits li p { margin: 0; }
+.tramits .btn { justify-self: start; }
+.tram-cap { display: flex; justify-content: space-between; gap: 10px; }
+.tram-cost { font: 800 1rem/1.2 var(--lletra-titol); white-space: nowrap; }
+.opcions-estatuts { display: grid; gap: 6px; }
+.opcio-radio { display: flex; gap: 8px; align-items: flex-start; padding: 8px; border-radius: 10px; background: #f3f8fc; cursor: pointer; }
+.opcio-radio span { display: grid; }
+.escriptura { border: 3px double var(--tinta); border-radius: 16px; padding: 18px; display: grid; gap: 10px; background: #fffdf6; }
+.targeta-legal { border: 2px solid var(--linia); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+.targeta-legal > div { display: grid; }
+@media (max-width: 640px) {
+  .cons-cap img { width: 70px; }
+  .cons-cap h2 { font-size: 1.5rem; }
+  .passos li { font-size: 0; padding: 4px; }
+  .passos li span { font-size: .85rem; }
 }

@@ -190,7 +190,7 @@ export async function mevesOfertes(uid) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function comprar(uid, estat, idOferta, quantitat) {
+export async function comprar(uid, estat, idOferta, quantitat, percentTransport = 0) {
   quantitat = Math.floor(quantitat);
   if (!(quantitat >= 1)) throw new Error('Tria una quantitat de 1 o més.');
   const aplicar = (o) => {
@@ -199,11 +199,12 @@ export async function comprar(uid, estat, idOferta, quantitat) {
     if (o.perA && o.perA !== uid) throw new Error('Aquest contracte és per a una altra empresa.');
     if (quantitat > o.quantitat) throw new Error(`Només en queden ${o.quantitat}.`);
     const cost = quantitat * o.preu;
+    const transport = Math.ceil(cost * percentTransport);
     const nou = copia(estat);
-    if (nou.diners < cost) throw new Error('No tens prou diners.');
-    nou.diners -= cost;
+    if (nou.diners < cost + transport) throw new Error('No tens prou diners.');
+    nou.diners -= cost + transport;
     afegirAmbCost(nou, o.recurs, quantitat, o.preu);
-    return { nou, quantitat: o.quantitat - quantitat, pendent: (o.pendent || 0) + cost, cost, recurs: o.recurs };
+    return { nou, quantitat: o.quantitat - quantitat, pendent: (o.pendent || 0) + cost, cost, transport, recurs: o.recurs };
   };
   if (modeProva) {
     const m = mercatProva();
@@ -346,4 +347,47 @@ export async function perfilEmpresa(uid) {
   const { fs, db } = await carregarFirebase();
   const snap = await fs.getDoc(fs.doc(db, 'empreses', uid));
   return snap.exists() ? snap.data() : null;
+}
+
+// =============================================================
+//  MÓN: cada empresa té una ciutat en una posició (slot) del mapa comú
+// =============================================================
+export async function assignarSlot() {
+  if (modeProva) return 0;
+  const { fs, db } = await carregarFirebase();
+  const ref = fs.doc(db, 'mon', 'comptador');
+  return fs.runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const n = snap.exists() ? snap.data().n : 0;
+    tx.set(ref, { n: n + 1 });
+    return n;
+  });
+}
+
+// Totes les empreses (per dibuixar el món). En mode de prova, dues ciutats fictícies.
+export async function carregarMon(uid, estat) {
+  if (modeProva) {
+    const bot = (nom, logo, slot, edificis) => {
+      const parceles = Array.from({ length: estat.parceles.length }, () => ({ estat: 'bloquejada' }));
+      edificis.forEach(([i, tipus, nivell]) => { parceles[i] = { estat: 'edifici', tipus, nivell }; });
+      return { uid: `bot-${slot}`, nom, logo, slot, parceles, carreteresMon: [] };
+    };
+    return [
+      { uid, ...estat },
+      bot('Cooperativa del Poble SCCL', 8, 1, [[14, 'camp-cultiu', 2], [15, 'granja', 1], [20, 'seu-central', 1], [21, 'moli', 1]]),
+      bot('Distribucions Vallès SL', 13, 2, [[14, 'estacio-bombeig', 3], [15, 'central-electrica', 2], [21, 'seu-central', 1], [20, 'botiga', 1], [8, 'solar', 1]]),
+    ];
+  }
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDocs(fs.collection(db, 'empreses'));
+  return snap.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((e) => e.slot != null);
+}
+
+// El nom (certificació negativa) no pot coincidir amb el d'una altra empresa de la classe
+export async function nomDisponible(uid, nom) {
+  const net = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  if (modeProva) return !['cooperativadelpoble', 'distribucionsvalles', 'canpages'].includes(net(nom));
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDocs(fs.collection(db, 'empreses'));
+  return !snap.docs.some((d) => d.id !== uid && net(d.data().nomBase || d.data().nom) === net(nom));
 }

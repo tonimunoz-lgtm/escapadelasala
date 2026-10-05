@@ -26,7 +26,17 @@ En aquest punt el joc ja funciona en **mode de prova** (sense comptes, les dades
 5. **Firestore Database > Crea una base de dades** en mode producció, ubicació `eur3 (europe-west)`.
 6. A la pestanya **Regles** de Firestore, enganxa el contingut de `firestore.rules` i prem **Publica**.
 
+## Com comença el joc
+1. **Constitució de l'empresa** com a la vida real a Catalunya: forma jurídica (autònom, CB, SCP, SL, SLL, SA, cooperativa),
+   socis i capital social, denominació (certificació negativa: el nom no es pot repetir a la classe), domicili social
+   i tots els tràmits en ordre (banc, estatuts, notari, NIF, Registre, Hisenda, RETA, comunicació a l'Ajuntament), amb costos i terminis reals orientatius.
+   Les dades són a `js/legal.js` (revisa-les: la normativa i les taxes canvien).
+2. **Posada en marxa**: alta com a empresa ocupadora, gestoria o tècnic/a de RRHH, contractar personal (sou + Seguretat Social),
+   lloguer de l'oficina. **1 hora real = 1 setmana** de l'empresa: les despeses mensuals es cobren a poc a poc.
+
 ## Què es pot fer al joc
+- **Món comú**: totes les empreses de la classe en un sol mapa. Fes zoom enrere (botó "Món") per veure-les i construeix carreteres
+  pel camp per connectar ciutats (sense carretera, comprar a la borsa costa un 10% de transport).
 - **Ciutat amb illes i carrers**: 36 parcel·les en 9 illes separades per carreteres (imatges `img/mapa/carretera-*.webp`).
   Comences a la illa central i pots comprar més parcel·les o fer-hi carreteres noves, que s'uneixen soles amb les del costat.
   Per fer la ciutat més gran, canvia `MIDA_MAPA` a `js/dades.js` (ha de ser múltiple de 2).

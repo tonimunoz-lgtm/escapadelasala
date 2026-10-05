@@ -31,19 +31,7 @@
 
   <!-- Creació de l'empresa -->
   <section id="pantalla-crear" class="pantalla" hidden>
-    <form id="form-crear" class="crear-caixa">
-      <img src="img/personatges/guia-explica.webp" alt="" class="crear-guia" width="256" height="256">
-      <h2>Funda la teva empresa</h2>
-      <label class="camp">
-        <span>Nom de l'empresa</span>
-        <input id="nom-empresa" maxlength="30" required autocomplete="off" placeholder="Per exemple: Pa i Oli SL">
-      </label>
-      <fieldset class="camp">
-        <legend>Tria un logo</legend>
-        <div id="graella-logos" class="graella-logos"></div>
-      </fieldset>
-      <button class="btn btn-principal btn-gran" type="submit">Crea l'empresa</button>
-    </form>
+    <div id="constitucio" class="crear-caixa cons"></div>
   </section>
 
   <!-- Joc -->
@@ -72,12 +60,14 @@
     </button>
 
     <div id="visor" class="visor">
-      <div id="mapa" class="mapa"></div>
+      <canvas id="mon-canvas" class="mon-canvas" aria-label="Mapa del món: arrossega per moure't i fes zoom per veure les altres empreses"></canvas>
     </div>
 
     <div class="zoom">
       <button id="zoom-mes" aria-label="Apropa">+</button>
       <button id="zoom-menys" aria-label="Allunya">−</button>
+      <button id="zoom-mon" class="zoom-text" title="Veure tot el món">Món</button>
+      <button id="zoom-ciutat" class="zoom-text" title="Tornar a la meva ciutat">Ciutat</button>
     </div>
 
     <nav class="navegacio" aria-label="Seccions">

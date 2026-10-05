@@ -7,7 +7,18 @@ import {
   QUALITAT, DIRECTORS,
   tempsConstruccio, preuReferencia,
 } from './dades.js';
+import {
+  FORMES, OFICINES, PERSONAL, SS_EMPRESA, GESTORIA, RISC_SANCIO, SETMANES_PER_MES, ESTALVIS_INICIALS,
+  OPCIONS_ESTATUTS, costTramit,
+} from './legal.js';
 
+// Cost d'un tràmit de constitució segons les decisions de l'empresa
+export function dinersCost(id, e) {
+  if (id === 'estatuts') return OPCIONS_ESTATUTS[e.estatuts || 'tipus'].cost;
+  return costTramit(id, e.forma, e.capital || 0, (e.estatuts || 'tipus') === 'tipus');
+}
+
+// Empresa nova: encara s'ha de constituir (vegeu constitucio a app)
 export function estatInicial(nom, logo) {
   const parceles = [];
   for (let i = 0; i < MIDA_MAPA * MIDA_MAPA; i++) {
@@ -29,6 +40,11 @@ export function estatInicial(nom, logo) {
     historial: [],
     missio: 0,
     nivellMax: 1,
+    estalvis: ESTALVIS_INICIALS,
+    constitucio: { constituida: false, pas: 'forma', fets: [] },
+    plantilla: { operari: 0, rrhh: 0 },
+    gestoria: false,
+    altaOcupador: false,
   };
 }
 
@@ -54,6 +70,19 @@ export function migrar(e) {
   e.qualitat ??= {};
   e.recerca ??= 0;
   e.directors ??= {};
+  // Empreses creades abans del procés de constitució: es consideren SL ja constituïdes
+  if (!e.constitucio) {
+    let operaris = 0;
+    for (const p of e.parceles) if (p.estat === 'edifici' && p.tipus !== 'seu-central') operaris += p.nivell || 1;
+    e.constitucio = { constituida: true, pas: 'fet', fets: [] };
+    e.forma ??= 'sl';
+    e.oficina ??= 'coworking';
+    e.plantilla ??= { operari: Math.max(2, operaris), rrhh: 0 };
+    e.gestoria ??= true;
+    e.altaOcupador ??= true;
+    e.estalvis ??= 0;
+  }
+  e.plantilla ??= { operari: 0, rrhh: 0 };
   for (const p of e.parceles) if (p.estat === 'edifici' && !p.nivell) p.nivell = 1;
   return e;
 }
@@ -96,7 +125,7 @@ export function construir(e, i, tipus, ara = Date.now()) {
   if (def.nivellMinim && nivellEmpresa(e) < def.nivellMinim) throw new Error(`Necessites el nivell ${def.nivellMinim} d'empresa.`);
   if (e.diners < def.cost) throw new Error(`Et falten ${diners(def.cost - e.diners)} per construir-lo.`);
   e.diners -= def.cost;
-  e.parceles[i] = { estat: 'obres', tipus, fiObres: ara + tempsConstruccio(tipus) * 1000 };
+  e.parceles[i] = { estat: 'obres', tipus, fiObres: ara + tempsConstruccio(tipus) * 1000, duradaObres: tempsConstruccio(tipus) * 1000 };
 }
 
 // ---------- carreteres ----------
@@ -110,6 +139,22 @@ export function construirCarretera(e, i) {
 export function treureCarretera(e, i) {
   if (e.parceles[i].estat !== 'carretera') throw new Error('Aquí no hi ha cap carretera teva.');
   e.parceles[i] = { estat: 'buida' };
+}
+
+// Carreteres noves al camp, entre ciutats (es guarden en coordenades del món)
+export function construirCarreteraMon(e, X, Y) {
+  if (e.diners < COST_CARRETERA) throw new Error(`Necessites ${diners(COST_CARRETERA)}.`);
+  e.carreteresMon ??= [];
+  const k = `${X},${Y}`;
+  if (e.carreteresMon.includes(k)) throw new Error('Aquí ja hi ha carretera.');
+  if (e.carreteresMon.length >= 200) throw new Error('Has arribat al màxim de carreteres.');
+  e.diners -= COST_CARRETERA;
+  e.carreteresMon.push(k);
+}
+export function treureCarreteraMon(e, X, Y) {
+  const k = `${X},${Y}`;
+  if (!e.carreteresMon?.includes(k)) throw new Error('Aquesta carretera no és teva.');
+  e.carreteresMon = e.carreteresMon.filter((x) => x !== k);
 }
 
 // ---------- millores de nivell ----------
@@ -165,7 +210,8 @@ export function iniciarProduccio(e, i, recurs, quantitat, ara = Date.now()) {
   if (!opcio) throw new Error('Aquest edifici no fa aquest producte.');
   quantitat = Math.floor(quantitat);
   if (!(quantitat >= 1)) throw new Error('Tria una quantitat de 1 o més.');
-  if (quantitat > maxProduible(e, opcio)) throw new Error('No tens prou material o diners per als sous.');
+  if (quantitat > maxProduible(e, opcio)) throw new Error('No tens prou material o diners per als costos.');
+  if (operarisLliures(e) < (p.nivell || 1)) throw new Error(`Calen ${p.nivell || 1} operaris lliures. Contracta'n a Empresa > Personal.`);
   const cost = costUnitariProduccio(e, opcio);
   for (const [r, q] of Object.entries(opcio.entrades)) {
     e.inventari[r] = quantitatA(e, r) - q * quantitat;
@@ -220,6 +266,7 @@ export function iniciarVenda(e, i, recurs, quantitat, preu, ara = Date.now()) {
   if (!(quantitat >= 1)) throw new Error('Tria una quantitat de 1 o més.');
   if (!(preu >= 1)) throw new Error('El preu ha de ser d\'1 € o més.');
   if (quantitat > quantitatA(e, recurs)) throw new Error('No en tens tantes unitats al magatzem.');
+  if (operarisLliures(e) < (p.nivell || 1)) throw new Error(`Calen ${p.nivell || 1} persones lliures per atendre la botiga. Contracta'n a Empresa > Personal.`);
   const sou = souVenda(opcio, quantitat, preu);
   if (e.diners < sou) throw new Error(`Necessites ${diners(sou)} per pagar els sous de la botiga.`);
   e.inventari[recurs] -= quantitat;
@@ -300,7 +347,8 @@ export function aplicarInteressos(e, ara = Date.now()) {
   e.deute = e.deute * (1 + interesHora(e)) ** hores;
   e.deuteT = ara;
 }
-export const maxPrestec = (e) => Math.max(0, Math.floor((valorEmpresa(e) + (e.deute || 0)) * BANC.maxPercentValor - (e.deute || 0)));
+export const maxPrestec = (e) => Math.max(0, Math.floor((valorEmpresa(e) + (e.deute || 0)) * BANC.maxPercentValor
+  * (FORMES[e.forma]?.bancFactor || 1) * (OFICINES[e.oficina]?.confianca || 1) - (e.deute || 0)));
 export function demanarPrestec(e, q, ara = Date.now()) {
   q = Math.floor(q);
   if (!(q >= 1)) throw new Error('Tria una quantitat.');
@@ -392,6 +440,87 @@ export function aplicarDirectors(e, ara = Date.now()) {
     return 'No podies pagar els sous: els directors han marxat.';
   }
   return null;
+}
+
+// ---------- personal i despeses fixes (1 hora real = 1 setmana) ----------
+export const operarisOcupats = (e) => e.parceles.reduce((s, p) => s + ((p.produccio || p.venda) ? (p.nivell || 1) : 0), 0);
+export const operarisLliures = (e) => (e.plantilla?.operari || 0) - operarisOcupats(e);
+export const costPersona = (rol) => PERSONAL[rol].sou * (1 + SS_EMPRESA);
+export const treballadors = (e) => (e.plantilla?.operari || 0) + (e.plantilla?.rrhh || 0);
+export const teGestioLaboral = (e) => !!e.gestoria || (e.plantilla?.rrhh || 0) > 0;
+
+// Despeses fixes mensuals, desglossades
+export function despesesMensuals(e) {
+  const f = FORMES[e.forma] || FORMES.sl;
+  const files = [];
+  if (e.oficina) files.push(['Lloguer: ' + OFICINES[e.oficina].nom, OFICINES[e.oficina].mensual]);
+  files.push(['Quota d\'autònom (RETA)', f.quotaMensual]);
+  if (e.gestoria) files.push(['Gestoria', GESTORIA.fixe + GESTORIA.perTreballador * treballadors(e)]);
+  for (const [rol, d] of Object.entries(PERSONAL)) {
+    const n = e.plantilla?.[rol] || 0;
+    if (n) files.push([`${n} × ${d.nom} (sou + Seg. Social)`, Math.round(n * costPersona(rol))]);
+  }
+  return files;
+}
+export const totalMensual = (e) => despesesMensuals(e).reduce((s, [, v]) => s + v, 0);
+
+// Cobra les despeses fixes del temps passat. Retorna missatges per mostrar.
+export function aplicarDespeses(e, ara = Date.now()) {
+  if (!e.constitucio?.constituida) { e.despesesT = ara; return []; }
+  const msgs = [];
+  const abans = e.despesesT ?? ara;
+  e.despesesT = ara;
+  const hores = Math.min((ara - abans) / 3600000, 24 * 7); // màxim una setmana real fora
+  e.diners -= totalMensual(e) / SETMANES_PER_MES * hores;
+  // Sancions si ningú porta els impostos
+  const setmana = Math.floor(ara / 3600000);
+  if (e.ultimaSetmana == null) e.ultimaSetmana = setmana;
+  const noves = Math.min(setmana - e.ultimaSetmana, 4);
+  e.ultimaSetmana = setmana;
+  if (!e.gestoria) {
+    for (let k = 0; k < noves; k++) {
+      if (Math.random() < RISC_SANCIO.probabilitat) {
+        e.diners -= RISC_SANCIO.import;
+        e.sancions = (e.sancions || 0) + 1;
+        msgs.push(`${RISC_SANCIO.text} −${diners(RISC_SANCIO.import)}`);
+      }
+    }
+  }
+  if (e.diners < 0) {
+    const f = FORMES[e.forma] || FORMES.sl;
+    if (!f.limitada && e.estalvis > 0) {
+      const tapa = Math.min(e.estalvis, -e.diners);
+      e.estalvis -= tapa; e.diners += tapa;
+      msgs.push(`L'empresa no tenia diners: com que la teva responsabilitat és il·limitada, s'han fet servir ${diners(tapa)} dels teus estalvis.`);
+    }
+    if (e.diners < 0 && treballadors(e) > 0) {
+      e.plantilla = { operari: 0, rrhh: 0 };
+      msgs.push('No podies pagar les nòmines: el personal ha marxat. Busca diners (banc, vendes) i torna a contractar.');
+    }
+  }
+  return msgs;
+}
+
+export function contractar(e, rol, n = 1) {
+  if (!e.altaOcupador) throw new Error('Primer t\'has de donar d\'alta com a empresa ocupadora a la Seguretat Social.');
+  if (rol === 'operari' && !teGestioLaboral(e)) throw new Error('Necessites una gestoria o un/a tècnic/a de RRHH per fer les nòmines.');
+  e.plantilla[rol] = (e.plantilla[rol] || 0) + n;
+}
+export function acomiadar(e, rol, n = 1) {
+  const actual = e.plantilla[rol] || 0;
+  if (actual < n) throw new Error('No tens tanta gent en aquest lloc.');
+  if (rol === 'operari' && actual - n < operarisOcupats(e)) throw new Error('Aquestes persones estan treballant ara mateix. Espera que acabin.');
+  e.plantilla[rol] = actual - n;
+}
+
+export function canviarOficina(e, id) {
+  const o = OFICINES[id];
+  if (!o) throw new Error('Aquesta oficina no existeix.');
+  if (e.oficina === id) throw new Error('Ja hi tens la seu.');
+  const fianca = o.fianca - (OFICINES[e.oficina]?.fianca || 0);
+  if (fianca > 0 && e.diners < fianca) throw new Error(`Necessites ${diners(fianca)} per a la fiança.`);
+  e.diners -= fianca; // es recupera la fiança de l'anterior
+  e.oficina = id;
 }
 
 // ---------- missions ----------
