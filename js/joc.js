@@ -3,7 +3,7 @@
 import {
   EDIFICIS, RECURSOS, VELOCITAT, DINERS_INICIALS, MIDA_MAPA, PARCELES_OBERTES,
   PARCELA_SEU, COST_PARCELA_BASE, MAX_PER_ORDRE, NIVELL_MAX, SALARI_PER_SEGON,
-  COST_CARRETERA, FASES, FASE_MINUTS, NIVELLS_EMPRESA, BANC, HISTORIAL_MINUTS, MISSIONS,
+  COST_CARRETERA, FASES, FASE_MINUTS, NIVELLS_EMPRESA, BANC, HISTORIAL_MINUTS, MISSIONS, TIPUS_REPTE,
   QUALITAT, DIRECTORS,
   tempsConstruccio, preuReferencia,
 } from './dades.js';
@@ -316,8 +316,12 @@ export function afegirAmbCost(e, recurs, q, costUnitari) {
 }
 
 // ---------- fase econòmica (igual per a tothom, depèn de l'hora) ----------
+// El professorat pot fixar la fase des del seu panell
+let faseForcada = null;
+export function setFaseForcada(clau) { faseForcada = FASES[clau] ? clau : null; }
 export function faseEconomica(ara = Date.now()) {
   const periode = FASE_MINUTS * 60000;
+  if (faseForcada) return { clau: faseForcada, ...FASES[faseForcada], fi: null, forcada: true };
   const n = Math.floor(ara / periode);
   const h = ((n * 2654435761) >>> 0) % 10;
   const clau = h < 5 ? 'normal' : h < 8 ? 'expansio' : 'recessio';
@@ -521,6 +525,36 @@ export function canviarOficina(e, id) {
   if (fianca > 0 && e.diners < fianca) throw new Error(`Necessites ${diners(fianca)} per a la fiança.`);
   e.diners -= fianca; // es recupera la fiança de l'anterior
   e.oficina = id;
+}
+
+// ---------- reptes del professorat ----------
+export function progresRepte(e, r) {
+  const st = (k) => e.stats?.[k] || 0;
+  const x = Number(r.xifra) || 0;
+  switch (r.tipus) {
+    case 'valor': return [valorEmpresa(e), x];
+    case 'diners': return [Math.round(e.diners), x];
+    case 'nivell': return [nivellEmpresa(e), x];
+    case 'produir': return [st(`produit_${r.recurs}`), x];
+    case 'edifici': return [e.parceles.some((p) => p.tipus === r.edifici && p.estat === 'edifici') ? 1 : 0, 1];
+    case 'qualitat': return [qualitat(e, r.recurs), x];
+    case 'treballadors': return [treballadors(e), x];
+    case 'vendesBotiga': return [st('vendesBotiga'), x];
+    case 'ofertesBorsa': return [st('ofertesBorsa'), x];
+    case 'carreteres': return [(e.carreteresMon || []).length, x];
+    case 'senseDeute': return [(e.deute || 0) < 1 && e.constitucio?.constituida ? 1 : 0, 1];
+    default: return [0, 1];
+  }
+}
+export const repteFet = (e, r) => { const [a, b] = progresRepte(e, r); return a >= b; };
+export const textRepte = (r) => r.text || TIPUS_REPTE[r.tipus]?.text(r) || 'Repte';
+export function cobrarRepte(e, r) {
+  e.reptesCobrats ??= [];
+  if (e.reptesCobrats.includes(r.id)) throw new Error('Ja l\'has cobrat.');
+  if (r.fins && Date.now() > r.fins) throw new Error('Aquest repte ja ha caducat.');
+  if (!repteFet(e, r)) throw new Error('Encara no l\'has aconseguit.');
+  e.reptesCobrats.push(r.id);
+  e.diners += Number(r.premi) || 0;
 }
 
 // ---------- missions ----------

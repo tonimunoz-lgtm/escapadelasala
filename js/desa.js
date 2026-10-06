@@ -28,7 +28,7 @@ export async function escoltarSessio(cb) {
     return;
   }
   const { auth, a } = await carregarFirebase();
-  auth.onAuthStateChanged(a, (u) => cb(u ? { uid: u.uid, nom: u.displayName || u.email } : null));
+  auth.onAuthStateChanged(a, (u) => cb(u ? { uid: u.uid, nom: u.displayName || u.email, email: (u.email || '').toLowerCase() } : null));
 }
 
 export async function entrar() {
@@ -398,4 +398,139 @@ export async function esborrarMevesOfertes(uid) {
   const { fs, db } = await carregarFirebase();
   const snap = await fs.getDocs(fs.query(fs.collection(db, 'mercat'), fs.where('venedor', '==', uid)));
   await Promise.all(snap.docs.map((d) => fs.deleteDoc(d.ref)));
+}
+
+// =============================================================
+//  PROFESSORAT
+//  config/joc: { professors: [correus], partida, fase, anunci, xatActiu, reptes: [] }
+//  avisos/{id}: { perA, tipus: 'ajut' | 'missatge' | 'reinici', import, text, creada, llegit }
+// =============================================================
+const CLAU_CONFIG = 'fem-empresa-config';
+const CLAU_AVISOS = 'fem-empresa-avisos';
+export const CONFIG_INICIAL = { professors: [], partida: 1, fase: 'auto', anunci: '', xatActiu: true, reptes: [] };
+
+export async function getConfig() {
+  if (modeProva) {
+    try { return { ...CONFIG_INICIAL, ...JSON.parse(localStorage.getItem(CLAU_CONFIG) || '{}') }; } catch { return { ...CONFIG_INICIAL }; }
+  }
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDoc(fs.doc(db, 'config', 'joc'));
+  return { ...CONFIG_INICIAL, ...(snap.exists() ? snap.data() : {}) };
+}
+
+export async function setConfig(canvis) {
+  if (modeProva) {
+    const c = await getConfig();
+    localStorage.setItem(CLAU_CONFIG, JSON.stringify({ ...c, ...canvis }));
+    return;
+  }
+  const { fs, db } = await carregarFirebase();
+  await fs.setDoc(fs.doc(db, 'config', 'joc'), canvis, { merge: true });
+}
+
+export function esProfessor(usuari, config) {
+  if (modeProva) return sessionStorage.getItem('fem-empresa-prof') === '1';
+  return !!usuari?.email && (config.professors || []).map((x) => String(x).toLowerCase().trim()).includes(usuari.email);
+}
+export function entrarComProfessorProva() {
+  sessionStorage.setItem('fem-empresa-prof', '1');
+  sessionStorage.setItem('fem-empresa-dins', '1');
+  location.reload();
+}
+export function sortirModeProfessorProva() { sessionStorage.removeItem('fem-empresa-prof'); location.reload(); }
+
+// Totes les empreses, amb totes les dades (també les que encara s'estan constituint)
+export async function llistarEmpreses() {
+  if (modeProva) {
+    const e = JSON.parse(localStorage.getItem(CLAU_PROVA) || 'null');
+    return e ? [{ uid: 'prova', ...e }] : [];
+  }
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDocs(fs.collection(db, 'empreses'));
+  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+}
+
+export async function enviarAvis(perA, dades) {
+  const av = { perA, tipus: dades.tipus, import: Math.round(Number(dades.import) || 0), text: String(dades.text || '').slice(0, 300), creada: Date.now(), llegit: false };
+  if (modeProva) {
+    const l = JSON.parse(localStorage.getItem(CLAU_AVISOS) || '[]');
+    l.push({ ...av, id: `a${Date.now()}${Math.random().toString(36).slice(2, 6)}` });
+    localStorage.setItem(CLAU_AVISOS, JSON.stringify(l));
+    return;
+  }
+  const { fs, db } = await carregarFirebase();
+  await fs.addDoc(fs.collection(db, 'avisos'), av);
+}
+
+export async function avisosPendents(uid) {
+  if (modeProva) return JSON.parse(localStorage.getItem(CLAU_AVISOS) || '[]').filter((a) => a.perA === uid && !a.llegit);
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDocs(fs.query(fs.collection(db, 'avisos'), fs.where('perA', '==', uid), fs.where('llegit', '==', false)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.creada - b.creada);
+}
+
+export async function marcarLlegit(id) {
+  if (modeProva) {
+    const l = JSON.parse(localStorage.getItem(CLAU_AVISOS) || '[]').map((a) => (a.id === id ? { ...a, llegit: true } : a));
+    localStorage.setItem(CLAU_AVISOS, JSON.stringify(l));
+    return;
+  }
+  const { fs, db } = await carregarFirebase();
+  await fs.updateDoc(fs.doc(db, 'avisos', id), { llegit: true });
+}
+
+export async function esborrarEmpresa(uid) {
+  if (modeProva) { localStorage.removeItem(CLAU_PROVA); return; }
+  const { fs, db } = await carregarFirebase();
+  await fs.deleteDoc(fs.doc(db, 'empreses', uid));
+}
+
+export async function missatgesXat() {
+  if (modeProva) return JSON.parse(localStorage.getItem(CLAU_XAT) || '[]').map((m, k) => ({ id: String(k), ...m })).reverse();
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDocs(fs.query(fs.collection(db, 'xat'), fs.orderBy('creada', 'desc'), fs.limit(100)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function esborrarMissatge(id) {
+  if (modeProva) {
+    const l = JSON.parse(localStorage.getItem(CLAU_XAT) || '[]');
+    l.splice(Number(id), 1);
+    localStorage.setItem(CLAU_XAT, JSON.stringify(l));
+    return;
+  }
+  const { fs, db } = await carregarFirebase();
+  await fs.deleteDoc(fs.doc(db, 'xat', id));
+}
+
+// Esborra tots els documents d'una col·lecció (per lots de 400)
+async function buidarColleccio(nom) {
+  const { fs, db } = await carregarFirebase();
+  for (;;) {
+    const snap = await fs.getDocs(fs.query(fs.collection(db, nom), fs.limit(400)));
+    if (snap.empty) return;
+    const lot = fs.writeBatch(db);
+    snap.docs.forEach((d) => lot.delete(d.ref));
+    await lot.commit();
+  }
+}
+
+// Partida nova per a tota la classe: cada alumne torna a començar en entrar
+export async function novaPartida() {
+  const c = await getConfig();
+  if (modeProva) {
+    localStorage.removeItem(CLAU_MERCAT); localStorage.removeItem(CLAU_XAT); localStorage.removeItem(CLAU_AVISOS);
+    await setConfig({ partida: (c.partida || 1) + 1, reptes: [], anunci: '' });
+    return;
+  }
+  await buidarColleccio('mercat');
+  await buidarColleccio('xat');
+  await buidarColleccio('avisos');
+  const { fs, db } = await carregarFirebase();
+  await fs.setDoc(fs.doc(db, 'mon', 'comptador'), { n: 0 });
+  await setConfig({ partida: (c.partida || 1) + 1, reptes: [], anunci: '' });
+}
+export async function buidarXat() {
+  if (modeProva) { localStorage.removeItem(CLAU_XAT); return; }
+  await buidarColleccio('xat');
 }

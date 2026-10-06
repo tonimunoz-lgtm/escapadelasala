@@ -189,3 +189,21 @@ export const MISSIONS = [
   { text: 'Construeix una botiga i ven-hi alguna cosa', premi: 1500, fet: (e) => stat(e, 'vendesBotiga') >= 1 },
   { text: 'Arriba al nivell 3 d\'empresa', premi: 2000, fet: (e) => e.nivellMax >= 3 },
 ];
+
+// =============================================================
+//  REPTES QUE POT CREAR EL PROFESSORAT (des del seu panell)
+//  params: quins camps cal omplir. El text es genera sol.
+// =============================================================
+export const TIPUS_REPTE = {
+  valor:        { nom: 'Valor de l\'empresa', params: ['xifra'], text: (r) => `Arriba a ${r.xifra.toLocaleString('ca-ES')} € de valor d'empresa` },
+  diners:       { nom: 'Diners a la caixa', params: ['xifra'], text: (r) => `Tingues ${r.xifra.toLocaleString('ca-ES')} € a la caixa` },
+  nivell:       { nom: 'Nivell d\'empresa', params: ['xifra'], text: (r) => `Arriba al nivell ${r.xifra} d'empresa` },
+  produir:      { nom: 'Produir un producte', params: ['recurs', 'xifra'], text: (r) => `Produeix ${r.xifra} unitats de ${RECURSOS[r.recurs]?.nom || r.recurs}` },
+  edifici:      { nom: 'Tenir un edifici', params: ['edifici'], text: (r) => `Construeix: ${EDIFICIS[r.edifici]?.nom || r.edifici}` },
+  qualitat:     { nom: 'Qualitat d\'un producte', params: ['recurs', 'xifra'], text: (r) => `Aconsegueix ${RECURSOS[r.recurs]?.nom || r.recurs} de qualitat Q${r.xifra}` },
+  treballadors: { nom: 'Plantilla', params: ['xifra'], text: (r) => `Tingues ${r.xifra} persones contractades` },
+  vendesBotiga: { nom: 'Vendes a la botiga', params: ['xifra'], text: (r) => `Fes ${r.xifra} vendes a la botiga` },
+  ofertesBorsa: { nom: 'Ofertes a la borsa', params: ['xifra'], text: (r) => `Publica ${r.xifra} ofertes a la borsa` },
+  carreteres:   { nom: 'Carreteres al món', params: ['xifra'], text: (r) => `Construeix ${r.xifra} trossos de carretera al camp` },
+  senseDeute:   { nom: 'Sense deutes', params: [], text: () => 'Torna tots els préstecs del banc' },
+};

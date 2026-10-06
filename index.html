@@ -25,13 +25,36 @@
     <div class="inici-caixa">
       <p class="inici-text">Crea la teva empresa, produeix i competeix amb la resta de la classe.</p>
       <button id="btn-entrar" class="btn btn-principal btn-gran">Entra amb Google</button>
-      <p id="avis-prova" class="avis-prova" hidden>Mode de prova: les dades només es desen en aquest navegador.</p>
+      <p id="avis-prova" class="avis-prova" hidden>Mode de prova: les dades només es desen en aquest navegador.
+        <button id="btn-prof-prova" class="btn-enllac" type="button">Prova el panell del professorat</button></p>
     </div>
   </section>
 
   <!-- Creació de l'empresa -->
   <section id="pantalla-crear" class="pantalla" hidden>
     <div id="constitucio" class="crear-caixa cons"></div>
+  </section>
+
+  <!-- Panell del professorat -->
+  <section id="pantalla-professor" class="pantalla" hidden>
+    <div class="prof">
+      <header class="prof-cap">
+        <img src="img/marca/logo.webp" alt="Fem Empresa" width="120" height="98">
+        <div><h1>Panell del professorat</h1><p class="nota">Controla la partida de la classe.</p></div>
+        <div class="fila-botons">
+          <button id="prof-jugar" class="btn">Juga com a alumne</button>
+          <button id="prof-sortir" class="btn">Tanca la sessió</button>
+        </div>
+      </header>
+      <nav id="prof-pestanyes" class="pestanyes">
+        <button class="pestanya" data-p="empreses">Empreses</button>
+        <button class="pestanya" data-p="reptes">Reptes</button>
+        <button class="pestanya" data-p="economia">Economia i anuncis</button>
+        <button class="pestanya" data-p="xat">Xat</button>
+        <button class="pestanya" data-p="partida">Partida i professorat</button>
+      </nav>
+      <div id="prof-cos" class="prof-cos"></div>
+    </div>
   </section>
 
   <!-- Joc -->
@@ -58,6 +81,8 @@
       <span id="missio-text"></span>
       <span id="missio-premi" class="missio-premi"></span>
     </button>
+
+    <div id="anunci" class="anunci" hidden></div>
 
     <div id="visor" class="visor">
       <canvas id="mon-canvas" class="mon-canvas" aria-label="Mapa del món: arrossega per moure't i fes zoom per veure les altres empreses"></canvas>

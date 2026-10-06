@@ -2,7 +2,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Empreses: cadascú només escriu la seva; tothom amb sessió pot llegir (classificació).
+    // Professorat: els correus que hi ha a config/joc, camp "professors" (llista).
+    function esProf() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/config/joc)
+        && request.auth.token.email.lower() in get(/databases/$(database)/documents/config/joc).data.professors;
+    }
+
+    // Configuració de la partida (fase, anunci, reptes...). Tothom la llegeix, només el professorat l'escriu.
+    match /config/{doc} {
+      allow read: if request.auth != null;
+      allow write: if esProf();
+    }
+
+    // Empreses: cadascú només escriu la seva; tothom amb sessió pot llegir (classificació i món).
     match /empreses/{uid} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null
@@ -10,32 +24,37 @@ service cloud.firestore {
         && request.resource.data.nom is string
         && request.resource.data.nom.size() <= 30
         && request.resource.data.diners is number;
-      allow delete: if false;
+      allow delete: if esProf();
+    }
+
+    // Avisos del professorat a un alumne (ajuts, missatges, reinicis)
+    match /avisos/{id} {
+      allow read: if request.auth != null && (resource.data.perA == request.auth.uid || esProf());
+      allow create, delete: if esProf();
+      allow update: if request.auth != null
+        && resource.data.perA == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['llegit'])
+        && request.resource.data.llegit == true;
     }
 
     // Borsa: ofertes de venda entre empreses.
     match /mercat/{id} {
       allow read: if request.auth != null;
 
-      // Publicar: només en nom propi, amb quantitat i preu enters positius.
       allow create: if request.auth != null
         && request.resource.data.venedor == request.auth.uid
         && request.resource.data.quantitat is int && request.resource.data.quantitat > 0
         && request.resource.data.preu is int && request.resource.data.preu > 0
         && request.resource.data.pendent == 0
-        // contracte directe: perA és l'empresa que el pot acceptar
         && (!('perA' in request.resource.data) || request.resource.data.perA is string);
 
-      // Retirar o esborrar una oferta esgotada: només el venedor.
-      allow delete: if request.auth != null && resource.data.venedor == request.auth.uid;
+      allow delete: if request.auth != null && (resource.data.venedor == request.auth.uid || esProf());
 
       allow update: if request.auth != null && (
-        // El venedor cobra: només pot posar "pendent" a zero.
         (resource.data.venedor == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pendent'])
           && request.resource.data.pendent == 0)
         ||
-        // Un comprador: treu unitats i afegeix exactament unitats x preu al "pendent".
         (resource.data.venedor != request.auth.uid
           && (!('perA' in resource.data) || resource.data.perA == request.auth.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantitat', 'pendent'])
@@ -47,14 +66,14 @@ service cloud.firestore {
       );
     }
 
-    // Comptador de posicions al mapa del món (cada empresa nova n'agafa una)
+    // Comptador de posicions al mapa del món
     match /mon/comptador {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.n == 1;
-      allow update: if request.auth != null && request.resource.data.n == resource.data.n + 1;
+      allow create: if (request.auth != null && request.resource.data.n == 1) || esProf();
+      allow update: if (request.auth != null && request.resource.data.n == resource.data.n + 1) || esProf();
     }
 
-    // Xat de la classe: missatges curts, només en nom propi. El professorat els pot esborrar des de la consola.
+    // Xat de la classe
     match /xat/{id} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
@@ -62,7 +81,8 @@ service cloud.firestore {
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 200;
-      allow update, delete: if false;
+      allow delete: if esProf();
+      allow update: if false;
     }
   }
 }

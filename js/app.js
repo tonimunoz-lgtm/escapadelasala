@@ -10,34 +10,7 @@ import {
 } from './legal.js';
 import { crearMon, casellaParcela, origenSlot } from './mon.js';
 
-// ---------- utilitats ----------
-const $ = (s) => document.querySelector(s);
-
-// Crea elements sense innerHTML (els noms d'empresa els escriu l'alumnat)
-function h(tag, attrs = {}, ...fills) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (v === false || v == null) continue;
-    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else if (k === 'class') el.className = v;
-    else if (k === 'style') el.style.cssText = v;
-    else el.setAttribute(k, v === true ? '' : v);
-  }
-  for (const f of fills.flat()) if (f != null && f !== false) el.append(f.nodeType ? f : String(f));
-  return el;
-}
-
-function avis(text, tipus = 'info') {
-  const el = h('div', { class: `avis avis-${tipus}` }, text);
-  $('#avisos').append(el);
-  setTimeout(() => el.classList.add('fora'), 3200);
-  setTimeout(() => el.remove(), 3700);
-}
-
-function mostrarPantalla(id) {
-  for (const p of document.querySelectorAll('.pantalla')) p.hidden = p.id !== id;
-  $('#carregant').hidden = true;
-}
+import { $, h, svg, avis, mostrarPantalla } from './ui.js';
 
 // ---------- estat ----------
 let usuari = null;
@@ -71,26 +44,107 @@ $('#btn-entrar').addEventListener('click', async () => {
   catch (err) { avis(`No s'ha pogut entrar: ${err.message}`, 'error'); }
 });
 
+let config = { ...desa.CONFIG_INICIAL };
+$('#btn-prof-prova').addEventListener('click', () => desa.entrarComProfessorProva());
+
 desa.escoltarSessio(async (u) => {
   usuari = u;
   if (!u) { mostrarPantalla('pantalla-inici'); return; }
+  try { config = await desa.getConfig(); } catch (err) { console.error(err); }
+  // El professorat entra al seu panell (pot jugar també com a alumne)
+  if (desa.esProfessor(u, config) && !sessionStorage.getItem('fem-empresa-jugar')) {
+    const m = await import('./professor.js');
+    m.iniciar({ usuari: u, config, jugar: () => { sessionStorage.setItem('fem-empresa-jugar', '1'); entrarAlumne(); } });
+    return;
+  }
+  entrarAlumne();
+}).catch((err) => {
+  console.error(err);
+  avis('No s\'ha pogut connectar amb Firebase. Revisa js/firebase-config.js.', 'error');
+  mostrarPantalla('pantalla-inici');
+});
+
+async function entrarAlumne() {
   try {
-    estat = await desa.carregarEmpresa(u.uid);
+    estat = await desa.carregarEmpresa(usuari.uid);
   } catch (err) {
     console.error(err);
     avis('No s\'han pogut carregar les dades.', 'error');
     mostrarPantalla('pantalla-inici');
     return;
   }
-  if (!estat) { estat = joc.estatInicial('', 1); await desar(); }
+  // Partida nova del professorat: es torna a començar
+  if (estat && config.partida && estat.partida != null && estat.partida !== config.partida) estat = null;
+  if (!estat) { estat = joc.estatInicial('', 1); estat.partida = config.partida; await desar(); }
+  if (estat.partida == null) estat.partida = config.partida;
   joc.migrar(estat);
+  aplicarConfig();
   if (!estat.constitucio.constituida) { obrirConstitucio(); return; }
   iniciarJoc();
-}).catch((err) => {
-  console.error(err);
-  avis('No s\'ha pogut connectar amb Firebase. Revisa js/firebase-config.js.', 'error');
-  mostrarPantalla('pantalla-inici');
-});
+}
+
+// ---------- ordres del professorat (config/joc i avisos) ----------
+function aplicarConfig() {
+  joc.setFaseForcada(config.fase && config.fase !== 'auto' ? config.fase : null);
+  $('#nav-xat').hidden = !(XAT_ACTIU && config.xatActiu !== false);
+  $('#anunci').hidden = !config.anunci;
+  $('#anunci').textContent = config.anunci || '';
+  if (estat) {
+    estat.reptesVistos ??= [];
+    for (const r of config.reptes || []) {
+      if (estat.reptesVistos.includes(r.id)) continue;
+      estat.reptesVistos.push(r.id);
+      if (estat.constitucio?.constituida) avis(`Nou repte del professorat: ${joc.textRepte(r)} (+${joc.diners(r.premi)})`, 'ok');
+    }
+  }
+}
+
+function missatgeProfessor(text) {
+  const el = h('button', { class: 'notificacio prof-notif', onclick: () => el.remove() },
+    h('img', { src: 'img/personatges/guia-explica.webp', alt: '', width: 40, height: 40 }),
+    h('span', {}, h('strong', {}, 'Professorat'), h('span', { class: 'prof-text' }, text)));
+  $('#notificacions').append(el);
+}
+
+async function reiniciarEmpresa() {
+  await desa.esborrarMevesOfertes(usuari.uid).catch(() => {});
+  const slot = estat.slot;
+  estat = joc.estatInicial('', 1);
+  estat.slot = slot;
+  estat.partida = config.partida;
+  await desar();
+  location.reload();
+}
+
+async function comprovarProfessorat() {
+  try {
+    const c = await desa.getConfig();
+    if (estat.partida != null && c.partida && c.partida !== estat.partida) {
+      config = c;
+      estat = joc.estatInicial('', 1);
+      estat.partida = c.partida;
+      await desar();
+      location.reload();
+      return;
+    }
+    config = c;
+    aplicarConfig();
+    const avisos = await desa.avisosPendents(usuari.uid);
+    for (const a of avisos) {
+      await desa.marcarLlegit(a.id);
+      if (a.tipus === 'ajut') {
+        estat.diners += a.import;
+        missatgeProfessor(`${a.import >= 0 ? 'Has rebut una subvenció' : 'Has rebut una sanció'} de ${joc.diners(Math.abs(a.import))}. ${a.text || ''}`);
+      } else if (a.tipus === 'missatge') {
+        missatgeProfessor(a.text);
+      } else if (a.tipus === 'reinici') {
+        await reiniciarEmpresa();
+        return;
+      }
+    }
+    if (avisos.length) { await desar(); dibuixarTot(); }
+  } catch (err) { console.error(err); }
+}
 
 // ---------- constitució de l'empresa (primer pas del joc) ----------
 let rellotgeTramit = null;
@@ -370,7 +424,7 @@ function pasFet() {
 }
 
 // ---------- joc ----------
-let rellotge = null, rellotgeBorsa = null, rellotgeMon = null;
+let rellotge = null, rellotgeBorsa = null, rellotgeMon = null, rellotgeProf = null;
 
 async function iniciarJoc() {
   joc.migrar(estat);
@@ -385,6 +439,8 @@ async function iniciarJoc() {
   centrarMapa();
   carregarMon();
   if (!rellotgeMon) rellotgeMon = setInterval(carregarMon, 60000);
+  if (!rellotgeProf) rellotgeProf = setInterval(comprovarProfessorat, 45000);
+  comprovarProfessorat();
   { const m = joc.aplicarDespeses(estat); m.forEach((t) => setTimeout(() => avis(t, 'error'), 1200)); }
   clearInterval(rellotge);
   rellotge = setInterval(tic, 1000);
@@ -988,6 +1044,7 @@ function obrirEmpresa(pestanya = 'resum') {
   const tabs = pestanyes(pestanya, [
     ['resum', 'Resum', () => obrirEmpresa('resum')],
     ['personal', 'Personal i despeses', () => obrirEmpresa('personal')],
+    ['reptes', 'Reptes', () => obrirEmpresa('reptes')],
     ['banc', 'Banc', () => obrirEmpresa('banc'), n < DESBLOQUEIG.banc],
     ['classificacio', 'Classificació', () => obrirEmpresa('classificacio')],
     ['recerca', 'Recerca', () => obrirEmpresa('recerca'), n < DESBLOQUEIG.recerca],
@@ -996,6 +1053,7 @@ function obrirEmpresa(pestanya = 'resum') {
   const cos = h('div', { class: 'bloc' }, tabs);
   if (pestanya === 'resum') cos.append(...seccioResum());
   if (pestanya === 'personal') cos.append(...seccioPersonal());
+  if (pestanya === 'reptes') cos.append(...seccioReptes());
   if (pestanya === 'banc') cos.append(...seccioBanc(n));
   if (pestanya === 'classificacio') cos.append(seccioClassificacio());
   if (pestanya === 'recerca') cos.append(...seccioRecerca(n));
@@ -1048,6 +1106,24 @@ function seccioDirectors(n) {
     }),
     h('p', { class: 'nota' }, 'Els sous es descompten sols mentre tens el joc obert i quan hi tornes a entrar.'),
   ];
+}
+
+function seccioReptes() {
+  const reptes = config.reptes || [];
+  if (!reptes.length) return [h('div', { class: 'avis-bloqueig' }, h('strong', {}, 'Ara mateix no hi ha reptes'), h('p', {}, 'Quan el professorat en publiqui, els veuràs aquí amb el seu premi.'))];
+  return reptes.map((r) => {
+    const [a, b] = joc.progresRepte(estat, r);
+    const cobrat = (estat.reptesCobrats || []).includes(r.id);
+    const caducat = r.fins && Date.now() > r.fins;
+    const fet = a >= b;
+    return h('div', { class: `fila-director${cobrat ? ' contractat' : ''}` },
+      h('span', { class: 'trofeu' }, '🏆'),
+      h('div', { class: 'of-info' }, h('strong', {}, joc.textRepte(r)),
+        h('span', {}, `Premi: ${joc.diners(r.premi)}`),
+        h('span', { class: 'nota' }, `Progrés: ${joc.nombre(Math.min(a, b))} de ${joc.nombre(b)}${r.fins ? `. Acaba ${new Date(r.fins).toLocaleString('ca-ES', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}`)),
+      cobrat ? h('span', { class: 'nota' }, 'Cobrat ✔')
+        : h('button', { class: 'btn btn-principal', disabled: !fet || caducat, onclick: () => accio(() => { joc.cobrarRepte(estat, r); avis(`Repte aconseguit: +${joc.diners(r.premi)}`, 'ok'); obrirEmpresa('reptes'); }) }, caducat ? 'Caducat' : 'Cobra'));
+  });
 }
 
 function seccioPersonal() {
@@ -1116,7 +1192,9 @@ function seccioResum() {
       h('div', { class: 'fase-efectes' },
         h('span', {}, 'Producció ', fletxa(fase.produccio)),
         h('span', {}, 'Vendes ', fletxa(fase.vendes))),
-      h('p', { class: 'nota' }, fase.text, ' Canvia d\'aquí a ', h('strong', { 'data-fi': fase.fi }, joc.temps((fase.fi - Date.now()) / 1000)), '.')),
+      h('p', { class: 'nota' }, fase.text, ...(fase.forcada
+        ? [' Fase fixada pel professorat.']
+        : [' Canvia d\'aquí a ', h('strong', { 'data-fi': fase.fi }, joc.temps((fase.fi - Date.now()) / 1000)), '.']))),
     targetaLegal(),
     h('div', { class: 'resum-graella' },
       h('div', { class: 'grafic' }, h('span', { class: 'nota' }, 'Valor de l\'empresa'), graficValor()),
@@ -1132,20 +1210,14 @@ function seccioResum() {
     h('div', { class: 'fila-botons' },
       h('button', { class: 'btn', onclick: obrirGuia }, 'Tutorial'),
       h('button', { class: 'btn', onclick: () => desa.sortir() }, 'Tanca la sessió'),
-      h('button', { class: 'btn btn-perill', onclick: tornarAComencar }, 'Torna a començar de zero')),
+      h('button', { class: 'btn btn-perill', onclick: tornarAComencar }, 'Torna a començar de zero'),
+      desa.esProfessor(usuari, config) ? h('button', { class: 'btn btn-principal', onclick: () => { sessionStorage.removeItem('fem-empresa-jugar'); location.reload(); } }, 'Torna al panell del professorat') : null),
   ];
 }
 
 async function tornarAComencar() {
   if (!confirm('Segur que vols esborrar la teva empresa i tornar a començar des de la constitució? No es pot desfer.')) return;
-  try {
-    await desa.esborrarMevesOfertes(usuari.uid);
-    const slot = estat.slot;
-    estat = joc.estatInicial('', 1);
-    estat.slot = slot; // conserves la mateixa posició al món
-    await desar();
-    location.reload();
-  } catch (err) { console.error(err); avis('No s\'ha pogut reiniciar. Torna-ho a provar.', 'error'); }
+  try { await reiniciarEmpresa(); } catch (err) { console.error(err); avis('No s\'ha pogut reiniciar. Torna-ho a provar.', 'error'); }
 }
 
 function targetaLegal() {

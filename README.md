@@ -63,6 +63,22 @@ En aquest punt el joc ja funciona en **mode de prova** (sense comptes, les dades
 Torna a enganxar `firestore.rules` a Firestore > Regles i prem **Publica** cada cop que aquest fitxer canviï (borsa, contractes i xat).
 Les empreses ja creades s'adapten soles al mapa nou.
 
+## Panell del professorat
+1. A Firestore, crea la col·lecció **config** amb un document d'ID **joc**.
+   Afegeix-hi un camp **professors** de tipus *array* amb el teu correu (el mateix amb què entres amb Google), en minúscules.
+2. Publica `firestore.rules` (cada cop que canviï).
+3. Entra al joc: veuràs el **Panell del professorat** en lloc del joc. Des d'allà pots:
+   - veure totes les empreses (valor, diners, deute, plantilla, darrera activitat) i descarregar-les en CSV;
+   - enviar **subvencions** (o multes, amb import negatiu) i **missatges** a una empresa o a tothom;
+   - **reiniciar** o **esborrar** l'empresa d'un alumne;
+   - crear **reptes** amb premi i data límit (valor, diners, nivell, produir, construir, qualitat, plantilla...);
+   - fixar la **fase econòmica**, publicar un **anunci** per a tothom i activar o desactivar el **xat**;
+   - llegir i **esborrar missatges** del xat;
+   - començar una **partida nova** per a tota la classe;
+   - afegir més professorat a la llista.
+   Amb el botó "Juga com a alumne" pots tenir també la teva empresa.
+Els alumnes reben les ordres del professorat en menys d'un minut.
+
 ## Ajustar el joc
 Tota l'economia és a `js/dades.js`: diners inicials, preus, temps, costos i la constant `VELOCITAT`
 (posa 2 o 3 per a sessions curtes de classe).
