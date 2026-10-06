@@ -40,6 +40,13 @@ export const SECTORS_NEGOCI = {
     demanda: 70, capacitat: 40, ofici: 'Mecànic/a',
     text: 'Repares i vens bicicletes. Feina especialitzada: pocs clients, tiquet alt i molta mà d\'obra.',
   },
+  restaurant: {
+    nom: 'Restaurant', iae: 'Epígraf 671 - Restaurants',
+    materia: { nom: 'Ingredients frescos', cost: 3.5, img: 'img/productes/materia-restaurant.webp' },
+    producte: { nom: 'Menús', preuRef: 13, img: 'img/productes/producte-restaurant.webp' },
+    demanda: 450, capacitat: 160, ofici: 'Cuiner/a o cambrer/a',
+    text: 'Serveis menús i sopars. Marge alt per plat, però necessites cuina, sala i bon servei.',
+  },
 };
 export const imgNegoci = (sector, fase) => `img/negocis/${sector}-${Math.min(3, Math.max(1, fase || 1))}.webp`;
 

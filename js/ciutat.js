@@ -142,6 +142,12 @@ export const nomCarrerDe = (X, Y) => {
   return opcions[0][1];
 };
 
+// Vehicles i persones (img/animacions). Els cotxes surten més sovint que els camions.
+const VEHICLES = ['cotxe-1', 'cotxe-vermell', 'cotxe-blau', 'cotxe-groc', 'cotxe-blanc', 'cotxe-verd', 'cotxe-taronja', 'cotxe-gris',
+  'cotxe-blau2', 'cabrio-vermell', 'cabrio-blau', 'familiar-beix', 'familiar-verd', 'furgoneta', 'furgoneta', 'camio', 'autobus'];
+const AMPLADA_VEHICLE = { autobus: 175, camio: 150, furgoneta: 120 };
+const NUM_PERSONES = 13;
+
 // =============================================================
 //  DIBUIX
 // =============================================================
@@ -243,12 +249,12 @@ export function crearCiutat({ canvas, onClic }) {
     const [X, Y] = llistaCarreteres[Math.floor(Math.random() * llistaCarreteres.length)];
     const dirs = veinesCarretera(X, Y);
     const [dx, dy] = dirs[Math.floor(Math.random() * dirs.length)] || [1, 0];
-    const vehicles = ['cotxe-1', 'cotxe-2', 'cotxe-1', 'cotxe-2', 'furgoneta', 'autobus'];
+    const vehicles = VEHICLES;
     return {
       X, Y, dx, dy, t: Math.random(),
       vel: tipus === 'cotxe' ? 0.9 + Math.random() * 0.5 : 0.22 + Math.random() * 0.1,
       costat: tipus === 'cotxe' ? 0.18 : (Math.random() < 0.5 ? 0.4 : -0.4),
-      img: tipus === 'cotxe' ? vehicles[Math.floor(Math.random() * vehicles.length)] : `persona-${1 + Math.floor(Math.random() * 4)}`,
+      img: tipus === 'cotxe' ? vehicles[Math.floor(Math.random() * vehicles.length)] : `persona-${1 + Math.floor(Math.random() * NUM_PERSONES)}`,
       tipus, fade: 1,
     };
   }
@@ -278,25 +284,26 @@ export function crearCiutat({ canvas, onClic }) {
     }
   }
 
+  // Les imatges tenen 4 direccions en aquest ordre: ↙ (avall-esquerra), ↘, ↗, ↖
+  const direccio = (a) => (a.dy === 1 ? 0 : a.dx === 1 ? 1 : a.dy === -1 ? 2 : 3);
   function dibuixaAgent(a) {
-    // posició al llarg del carrer, desplaçada cap a un costat (carril o vorera)
-    const u = a.X + 0.5 + a.dx * (a.t - 0.5) + (-a.dy) * a.costat * (a.tipus === 'cotxe' ? 1 : 1);
+    const u = a.X + 0.5 + a.dx * (a.t - 0.5) + (-a.dy) * a.costat;
     const v = a.Y + 0.5 + a.dy * (a.t - 0.5) + (a.dx) * a.costat;
     const { x, y } = iso(u, v);
     const im = img(`img/animacions/${a.img}.webp`);
     if (!im) return;
-    // les imatges miren avall-esquerra (+Y). Per a +X i -Y, es giren.
-    const girar = a.dx === 1 || a.dy === -1;
+    const dir = direccio(a);
     ctx.save();
     ctx.globalAlpha = a.entrant ? Math.max(0, a.fade) : 1;
-    ctx.translate(x, y + DZ);
-    if (girar) ctx.scale(-1, 1);
     if (a.tipus === 'cotxe') {
-      const s = a.img === 'autobus' ? 1.25 : 0.95;
-      ctx.drawImage(im, -64 * s, -80 * s, 128 * s, 96 * s);
+      const fw = im.naturalWidth / 4, fh = im.naturalHeight;
+      const ample = AMPLADA_VEHICLE[a.img] || 120;
+      const k = ample / fw;
+      ctx.drawImage(im, dir * fw, 0, fw, fh, x - (fw * k) / 2, y + DZ - fh * k + 10, fw * k, fh * k);
     } else {
-      const frame = Math.floor((performance.now() / 160 + a.X * 3) % 4);
-      ctx.drawImage(im, frame * 48, 0, 48, 64, -17, -52, 34, 46);
+      const fw = im.naturalWidth / 4, fh = im.naturalHeight / 4;
+      const frame = Math.floor((performance.now() / 150 + a.X * 3) % 4);
+      ctx.drawImage(im, frame * fw, dir * fh, fw, fh, x - 20, y + DZ - 58, 40, 60);
     }
     ctx.restore();
   }
