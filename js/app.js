@@ -1131,8 +1131,21 @@ function seccioResum() {
           ...fila('Patrimoni net', joc.diners(b.net), 'total')))),
     h('div', { class: 'fila-botons' },
       h('button', { class: 'btn', onclick: obrirGuia }, 'Tutorial'),
-      h('button', { class: 'btn', onclick: () => desa.sortir() }, 'Tanca la sessió')),
+      h('button', { class: 'btn', onclick: () => desa.sortir() }, 'Tanca la sessió'),
+      h('button', { class: 'btn btn-perill', onclick: tornarAComencar }, 'Torna a començar de zero')),
   ];
+}
+
+async function tornarAComencar() {
+  if (!confirm('Segur que vols esborrar la teva empresa i tornar a començar des de la constitució? No es pot desfer.')) return;
+  try {
+    await desa.esborrarMevesOfertes(usuari.uid);
+    const slot = estat.slot;
+    estat = joc.estatInicial('', 1);
+    estat.slot = slot; // conserves la mateixa posició al món
+    await desar();
+    location.reload();
+  } catch (err) { console.error(err); avis('No s\'ha pogut reiniciar. Torna-ho a provar.', 'error'); }
 }
 
 function targetaLegal() {

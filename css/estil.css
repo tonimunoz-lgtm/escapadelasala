@@ -573,3 +573,5 @@ select.input-preu.ample { width: 100%; text-align: left; }
   .passos li { font-size: 0; padding: 4px; }
   .passos li span { font-size: .85rem; }
 }
+
+.btn-perill { background: #fdecea; color: var(--vermell); }

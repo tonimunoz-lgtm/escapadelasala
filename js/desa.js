@@ -391,3 +391,11 @@ export async function nomDisponible(uid, nom) {
   const snap = await fs.getDocs(fs.collection(db, 'empreses'));
   return !snap.docs.some((d) => d.id !== uid && net(d.data().nomBase || d.data().nom) === net(nom));
 }
+
+// Esborra totes les ofertes i contractes propis (per tornar a començar)
+export async function esborrarMevesOfertes(uid) {
+  if (modeProva) { desarMercatProva(mercatProva().filter((o) => o.venedor !== uid)); return; }
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDocs(fs.query(fs.collection(db, 'mercat'), fs.where('venedor', '==', uid)));
+  await Promise.all(snap.docs.map((d) => fs.deleteDoc(d.ref)));
+}

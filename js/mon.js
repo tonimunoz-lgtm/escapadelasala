@@ -10,6 +10,7 @@ export const W = 236;            // amplada del rombe d'una casella (px del món
 const IMG = 256, CENTRE_Y = 172; // les imatges fan 256x256 i el centre del rombe superior és a y=172
 const DZ = 14;                   // les parcel·les estan 14 px més altes que el terra (carrers i camp)
 const PAS = BLOC + 1;
+const MARGE_PARCELA = 0.08;      // amplada del carreró de vianants al voltant de cada parcel·la
 const NUM_ILLES = MIDA_MAPA / BLOC;
 export const CASELLES = NUM_ILLES * PAS + 1; // caselles de costat d'una ciutat
 export const SEPARACIO = CASELLES + 4;       // distància entre ciutats (4 caselles de camp)
@@ -38,7 +39,7 @@ export const casellaParcela = (i) => {
 const hash = (X, Y) => { let h = (X * 374761393 + Y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h % 1000; };
 
 const COLORS = {
-  asfalt: '#5d636b', vorera: '#c9ced5', vora: '#9aa2ac', linia: '#f2f2ee',
+  asfalt: '#5d636b', vorera: '#c9ced5', carrero: '#d9d4c8', vorada: 'rgba(90,80,60,.35)', vora: '#9aa2ac', linia: '#f2f2ee',
   plana: { bloquejada: '#8f969e', buida: '#8cc152', obres: '#e9a23b', carretera: '#5d636b', edifici: '#4f86c6' },
 };
 
@@ -127,26 +128,16 @@ export function crearMon({ canvas, onClic, onCanvi }) {
     if (!w) { rombe(X, Y, v, 1, DZ); ctx.fill(); }
     if (!e) { rombe(X + 1 - v, Y, v, 1, DZ); ctx.fill(); }
     if (escala < 0.3) return;
-    const graus = n + s + w + e;
+    // línies discontínues des del centre cap a cada costat connectat: rectes, revolts i cruïlles en creu
     const c = iso(X + 0.5, Y + 0.5);
     const mig = { n: iso(X + 0.5, Y), s: iso(X + 0.5, Y + 1), w: iso(X, Y + 0.5), e: iso(X + 1, Y + 0.5) };
     ctx.strokeStyle = COLORS.linia;
-    if (graus <= 2) {
-      ctx.lineWidth = 3; ctx.setLineDash([14, 12]);
-      ctx.beginPath();
-      for (const [ok, p] of [[n, mig.n], [s, mig.s], [w, mig.w], [e, mig.e]]) if (ok) { ctx.moveTo(c.x, c.y + DZ); ctx.lineTo(p.x, p.y + DZ); }
-      ctx.stroke(); ctx.setLineDash([]);
-    } else {
-      // pas de vianants a les cruïlles
-      ctx.lineWidth = 5; ctx.setLineDash([5, 6]);
-      ctx.beginPath();
-      const z = 0.2;
-      if (n) { const a = iso(X + 0.25, Y + z), b = iso(X + 0.75, Y + z); ctx.moveTo(a.x, a.y + DZ); ctx.lineTo(b.x, b.y + DZ); }
-      if (s) { const a = iso(X + 0.25, Y + 1 - z), b = iso(X + 0.75, Y + 1 - z); ctx.moveTo(a.x, a.y + DZ); ctx.lineTo(b.x, b.y + DZ); }
-      if (w) { const a = iso(X + z, Y + 0.25), b = iso(X + z, Y + 0.75); ctx.moveTo(a.x, a.y + DZ); ctx.lineTo(b.x, b.y + DZ); }
-      if (e) { const a = iso(X + 1 - z, Y + 0.25), b = iso(X + 1 - z, Y + 0.75); ctx.moveTo(a.x, a.y + DZ); ctx.lineTo(b.x, b.y + DZ); }
-      ctx.stroke(); ctx.setLineDash([]);
+    ctx.lineWidth = 3; ctx.setLineDash([14, 12]); ctx.lineDashOffset = -7;
+    for (const [ok, p] of [[n, mig.n], [s, mig.s], [w, mig.w], [e, mig.e]]) {
+      if (!ok) continue;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y + DZ); ctx.lineTo(c.x, c.y + DZ); ctx.stroke();
     }
+    ctx.setLineDash([]); ctx.lineDashOffset = 0;
   }
 
   function srcParcela(p) {
@@ -158,13 +149,36 @@ export function crearMon({ canvas, onClic, onCanvi }) {
     return 'img/mapa/parcela-buida.webp';
   }
 
-  function sprite(src, X, Y, alfa = 1) {
+  // Les imatges porten un tros de terra (vora marró) a sota. El retallem perquè la casella
+  // quedi plana, al mateix nivell que els carrers.
+  // marge > 0: la parcel·la es fa una mica més petita i queda un carreró de vianants al voltant
+  // (entre les 4 parcel·les d'una illa es veu un carreró en forma de creu).
+  function sprite(src, X, Y, { base = null, marge = 0 } = {}) {
     const im = img(src);
+    if (marge) {
+      // paviment del carreró
+      rombe(X, Y, 1, 1, DZ); ctx.fillStyle = COLORS.carrero; ctx.fill();
+    }
+    const u = X + marge, v = Y + marge, t = 1 - 2 * marge;
+    if (base) { rombe(u, v, t, t, DZ); ctx.fillStyle = base; ctx.fill(); }
     if (!im) return;
     const { x, y } = iso(X + 0.5, Y + 0.5);
-    if (alfa !== 1) ctx.globalAlpha = alfa;
-    ctx.drawImage(im, x - IMG / 2, y - CENTRE_Y, IMG, IMG);
-    if (alfa !== 1) ctx.globalAlpha = 1;
+    const b = iso(u + t, v), c = iso(u + t, v + t), d = iso(u, v + t);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(d.x, d.y + DZ); ctx.lineTo(c.x, c.y + DZ); ctx.lineTo(b.x, b.y + DZ);
+    ctx.lineTo(b.x, b.y - 600); ctx.lineTo(d.x, d.y - 600);
+    ctx.closePath();
+    ctx.clip();
+    // el rombe de la imatge fa 233 px: l'ajustem a la mida de la parcel·la
+    const k = (W * t) / 233;
+    ctx.drawImage(im, x - (IMG / 2) * k, y + DZ - CENTRE_Y * k, IMG * k, IMG * k);
+    ctx.restore();
+    if (marge) {
+      // vorada de la parcel·la
+      rombe(u, v, t, t, DZ);
+      ctx.strokeStyle = COLORS.vorada; ctx.lineWidth = 2; ctx.stroke();
+    }
   }
 
   function pastilla(x, y, text, { fons = '#fff', color = '#0a3566', mida = 17, icona = null } = {}) {
@@ -225,7 +239,7 @@ export function crearMon({ canvas, onClic, onCanvi }) {
         const c = cel.get(clau(X, Y));
         if (!c) {
           // arbres al camp (no al costat de carreteres)
-          if (!simple && escala > 0.25 && hash(X, Y) < 140 && !aprop(X, Y)) sprite('img/mapa/decor-arbres.webp', X, Y);
+          if (!simple && escala > 0.25 && hash(X, Y) < 140 && !aprop(X, Y)) sprite('img/mapa/decor-arbres.webp', X, Y, { base: '#8cbf45' });
           continue;
         }
         if (c.tipus === 'carretera' || c.p?.estat === 'carretera') { dibuixaCarretera(X, Y); continue; }
@@ -237,10 +251,10 @@ export function crearMon({ canvas, onClic, onCanvi }) {
           ctx.fill();
           continue;
         }
-        sprite(srcParcela(c.p), X, Y, c.p.estat === 'bloquejada' ? 0.85 : 1);
+        sprite(srcParcela(c.p), X, Y, { base: c.p.estat === 'bloquejada' ? '#a7adb3' : '#8cbf45', marge: MARGE_PARCELA });
         if (esMeu) meus.push([X, Y, c]);
         else if (c.p.estat === 'edifici' && escala > 0.35 && c.p.tipus !== 'seu-central') {
-          const { x, y } = iso(X + 0.5, Y + 0.5);
+          const { x, y } = iso(X + 0.5, Y + 0.5 + DZ / (W / 2));
           pastilla(x, y + 26, `Nv ${c.p.nivell || 1}`, { fons: '#0a3566', color: '#fff', mida: 15 });
         }
       }
@@ -251,7 +265,8 @@ export function crearMon({ canvas, onClic, onCanvi }) {
       rellotgeFum = (rellotgeFum + 1) % 8;
       for (const [X, Y, c] of meus) {
         const p = c.p;
-        const { x, y } = iso(X + 0.5, Y + 0.5);
+        const { x, y: y0 } = iso(X + 0.5, Y + 0.5);
+        const y = y0 + DZ;
         const feina = p.produccio || p.venda;
         if (p.produccio && p.produccio.fi > ara) {
           const fum = img('img/anim/anim-fum.webp');
