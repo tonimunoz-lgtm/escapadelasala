@@ -32,17 +32,30 @@ export const CARRERS = {
 // Serveis i edificis singulars: [id, X, Y, mida, imatge, nom, servei]
 // servei = edifici on es fan tràmits (gestoria, notaria, registre, banc, hisenda, seguretat-social, ajuntament)
 export const EDIFICIS_CIUTAT = [
+  // Centre: Ajuntament, plaça, serveis
   ['ajuntament', 9, 5, 2, 'img/ciutat/ajuntament.webp', 'Ajuntament de Matadepera', 'ajuntament'],
   ['placa-ajuntament', 9, 9, 2, 'img/ciutat/placa-font.webp', 'Plaça de l\'Ajuntament', null],
   ['gestoria', 11, 5, 1, 'img/ciutat/gestoria.webp', 'Gestoria', 'gestoria'],
   ['banc-sabadell', 11, 7, 1, 'img/ciutat/banc.webp', 'Banc (c. Sant Joan, 99)', 'banc'],
   ['caixabank', 7, 9, 1, 'img/ciutat/banc.webp', 'Banc (Ctra. de Terrassa, 23)', 'banc'],
-  ['casal', 2, 5, 2, 'img/ciutat/placa-font.webp', 'Plaça del Casal de Cultura', null],
-  ['institut', 13, 13, 1, 'img/edificis/edifici-tecnologia.webp', 'Institut Matadepera', null],
-  ['pistes', 14, 13, 1, 'img/ciutat/parc.webp', 'Parc', null],
+  ['esglesia', 11, 11, 1, 'img/ciutat/esglesia.webp', 'Església', null],
+  ['aparcament', 10, 11, 1, 'img/ciutat/aparcament.webp', 'Aparcament', null],
+  ['cap', 5, 11, 1, 'img/ciutat/cap.webp', 'CAP Matadepera', null],
+  // Casal de Cultura (c. Pere Aldavert)
+  ['casal', 3, 5, 1, 'img/ciutat/casal-cultura.webp', 'Casal de Cultura', null],
+  ['placa-casal', 3, 6, 1, 'img/ciutat/jardi.webp', 'Plaça del Casal', null],
+  ['parc-infantil-1', 2, 5, 1, 'img/ciutat/parc-infantil.webp', 'Parc infantil', null],
+  // Educació i esport
+  ['institut', 13, 13, 2, 'img/ciutat/institut.webp', 'Institut Matadepera', null],
+  ['escola', 13, 1, 1, 'img/ciutat/escola.webp', 'Escola', null],
+  ['piscina', 17, 13, 2, 'img/ciutat/piscina-municipal.webp', 'Piscines municipals', null],
+  ['pavello', 1, 13, 2, 'img/ciutat/pavello.webp', 'Pavelló esportiu', null],
+  ['padel', 3, 13, 1, 'img/ciutat/pistes-padel.webp', 'Pistes municipals', null],
+  ['camp-futbol', 17, 1, 2, 'img/ciutat/camp-futbol.webp', 'Camp de futbol', null],
   ['mercat', 5, 13, 2, 'img/ciutat/mercat-municipal.webp', 'Mercat', null],
-  ['parc-1', 17, 1, 1, 'img/ciutat/parc.webp', 'Parc', null],
-  ['parc-2', 1, 14, 1, 'img/ciutat/parc.webp', 'Parc', null],
+  ['hort', 1, 10, 1, 'img/ciutat/hort-urba.webp', 'Horts urbans', null],
+  // Al peu de la muntanya
+  ['golf', 9, -4, 2, 'img/ciutat/camp-golf.webp', 'Camp de golf de La Mola', null],
   // Terrassa
   ['notaria', 5, 21, 1, 'img/ciutat/notaria.webp', 'Notaria (Terrassa)', 'notaria'],
   ['registre', 6, 21, 1, 'img/ciutat/registre-mercantil.webp', 'Registre Mercantil (Terrassa)', 'registre'],
@@ -60,7 +73,7 @@ export const LOCALS_CIUTAT = [
   // carrer de Sant Llorenç i Ctra. de Terrassa
   ['L14', 6, 3, 'local'], ['L15', 7, 5, 'local'], ['L16', 13, 3, 'local'], ['L17', 7, 11, 'local'], ['L18', 9, 13, 'local'],
   // barris
-  ['L19', 2, 9, 'local'], ['L20', 18, 9, 'local'], ['L21', 17, 13, 'local'], ['L22', 2, 3, 'local'],
+  ['L19', 2, 9, 'local'], ['L20', 18, 9, 'local'], ['L21', 19, 13, 'local'], ['L22', 2, 3, 'local'],
   // Terrassa: polígon
   ['N1', 9, 21, 'nau'], ['N2', 10, 21, 'nau'], ['N3', 11, 21, 'nau'], ['N4', 13, 21, 'nau'], ['N5', 14, 21, 'nau'],
   ['S1', 9, 25, 'solar'], ['S2', 10, 25, 'solar'], ['S3', 13, 25, 'solar'], ['S4', 14, 25, 'solar'], ['S5', 5, 25, 'solar'],
@@ -98,15 +111,19 @@ function generarMapa() {
     }
   }
   for (const [id, X, Y, tipus] of LOCALS_CIUTAT) posa(X, Y, { tipus: 'local', id, sub: tipus, zona: zonaDe(X, Y), X, Y });
-  // la resta de caselles de les illes: habitatges i alguns parcs
+  // la resta de caselles: cases amb jardí, espais verds i pocs blocs baixos al centre
+  const CASES = ['casa-1', 'casa-2', 'casa-3', 'casa-4', 'casa-piscina'];
   for (const z of zones) {
     for (let by = z.by[0]; by <= z.by[1]; by++) for (let bx = z.bx[0]; bx <= z.bx[1]; bx++) {
       for (let dx = 1; dx <= 3; dx++) for (let dy = 1; dy <= 3; dy++) {
         const X = bx * 4 + dx, Y = by * 4 + dy;
         if (cel.has(clau(X, Y))) continue;
         const h = hash(X, Y);
-        if (z === TERRASSA) posa(X, Y, { tipus: 'decor', img: h < 550 ? 'img/edificis/edifici-magatzem.webp' : `img/ciutat/habitatges-${1 + (h % 3)}.webp` });
-        else posa(X, Y, { tipus: 'decor', img: h < 120 ? 'img/ciutat/parc.webp' : `img/ciutat/habitatges-${1 + (h % 3)}.webp` });
+        let img;
+        if (z === TERRASSA) img = h < 450 ? 'img/edificis/edifici-magatzem.webp' : h < 750 ? `img/ciutat/bloc-baix-${1 + ((h >> 4) % 2)}.webp` : 'img/ciutat/jardi.webp';
+        else if (zonaDe(X, Y) === 'centre') img = h < 380 ? `img/ciutat/bloc-baix-${1 + ((h >> 4) % 2)}.webp` : h < 760 ? `img/ciutat/${CASES[h % 5]}.webp` : h < 900 ? 'img/ciutat/jardi.webp' : 'img/ciutat/gespa.webp';
+        else img = h < 680 ? `img/ciutat/${CASES[h % 5]}.webp` : h < 800 ? 'img/ciutat/jardi.webp' : h < 900 ? 'img/ciutat/gespa.webp' : h < 950 ? 'img/ciutat/parc-infantil.webp' : 'img/ciutat/hort-urba.webp';
+        posa(X, Y, { tipus: 'decor', img });
       }
     }
   }
@@ -191,7 +208,7 @@ export function crearCiutat({ canvas, onClic }) {
       const k = (W * t) / cara;
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(d.x, d.y + DZ); ctx.lineTo(c.x, c.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.lineTo(b.x, b.y - 900); ctx.lineTo(d.x, d.y - 900);
+      ctx.moveTo(d.x - W, d.y + DZ); ctx.lineTo(d.x, d.y + DZ); ctx.lineTo(c.x, c.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.lineTo(b.x + W, b.y + DZ); ctx.lineTo(b.x + W, b.y - 900); ctx.lineTo(d.x - W, d.y - 900);
       ctx.closePath(); ctx.clip();
       if (alfa !== 1) ctx.globalAlpha = alfa;
       ctx.drawImage(im, c.x - (S / 2) * k, c.y + DZ - puntaY * k, S * k, S * k);
@@ -465,7 +482,7 @@ export function crearCiutat({ canvas, onClic }) {
       const l = localsPerId[id];
       if (l) centrar(l.X + 0.5, l.Y + 0.5, Math.max(escala, 0.5));
     },
-    vistaPoble() { const r = canvas.getBoundingClientRect(); centrar(10.5, 8.5, Math.min(0.6, Math.max(0.22, r.width / (W * 24)))); },
+    vistaPoble() { const r = canvas.getBoundingClientRect(); centrar(10.5, 8.5, r.width < 700 ? 0.32 : 0.45); },
     vistaTot() { const r = canvas.getBoundingClientRect(); centrar(10.5, 12, Math.min(0.4, Math.max(0.1, Math.min(r.width / (W * 34), r.height / (W * 20))))); },
   };
 }
