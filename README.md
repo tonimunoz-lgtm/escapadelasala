@@ -26,42 +26,19 @@ En aquest punt el joc ja funciona en **mode de prova** (sense comptes, les dades
 5. **Firestore Database > Crea una base de dades** en mode producció, ubicació `eur3 (europe-west)`.
 6. A la pestanya **Regles** de Firestore, enganxa el contingut de `firestore.rules` i prem **Publica**.
 
-## Com comença el joc
-1. **Constitució de l'empresa** com a la vida real a Catalunya: forma jurídica (autònom, CB, SCP, SL, SLL, SA, cooperativa),
-   socis i capital social, denominació (certificació negativa: el nom no es pot repetir a la classe), domicili social
-   i tots els tràmits en ordre (banc, estatuts, notari, NIF, Registre, Hisenda, RETA, comunicació a l'Ajuntament), amb costos i terminis reals orientatius.
-   Les dades són a `js/legal.js` (revisa-les: la normativa i les taxes canvien).
-2. **Posada en marxa**: alta com a empresa ocupadora, gestoria o tècnic/a de RRHH, contractar personal (sou + Seguretat Social),
-   lloguer de l'oficina. **1 hora real = 1 setmana** de l'empresa: les despeses mensuals es cobren a poc a poc.
-
-## Què es pot fer al joc
-- **Món comú**: totes les empreses de la classe en un sol mapa. Fes zoom enrere (botó "Món") per veure-les i construeix carreteres
-  pel camp per connectar ciutats (sense carretera, comprar a la borsa costa un 10% de transport).
-- **Ciutat amb illes i carrers**: 36 parcel·les en 9 illes separades per carreteres (imatges `img/mapa/carretera-*.webp`).
-  Comences a la illa central i pots comprar més parcel·les o fer-hi carreteres noves, que s'uneixen soles amb les del costat.
-  Per fer la ciutat més gran, canvia `MIDA_MAPA` a `js/dades.js` (ha de ser múltiple de 2).
-- **Construir i produir** en cadena (aigua, electricitat, llavors, blat, farina, pa, vi, oli, maons…). Produir costa **sous**.
-- **Nivells**: cada edifici es pot millorar fins al nivell 10; cada nivell el fa treballar més ràpid.
-- **Botiga**: ven al públic al preu que tu triïs. Com més car, més lenta la venda (i més sous).
-- **Borsa entre alumnes**: publica ofertes des del Magatzem i compra les dels companys. La borsa cobra un 3% al venedor.
-  Els diners de les vendes es cobren sols quan el venedor té el joc obert.
-- **Mercat de l'escola**: compra qualsevol producte a preu fix (la sortida segura).
-- **Missions** guiades amb premi (barra de dalt, com a Sim Companies).
-- **Nivell d'empresa** segons el valor: desbloqueja els contractes (nivell 2) i el banc (nivell 3).
-- **Fases econòmiques** (normalitat, expansió, recessió) que canvien cada 20 minuts i afecten la producció i les vendes.
-- **Magatzem** per categories amb el cost mitjà de cada producte i el valor total de l'estoc.
-- **Mercat** amb cinta de preus, categories, borsa i **contractes directes** entre empreses (sense comissió).
-- **Empresa**: gràfic del valor, posició a la classe, balanç (actius, passius, patrimoni net), **banc** amb préstecs i interessos.
-- **Recerca i qualitat** (nivell 4): el laboratori fa punts de recerca que pugen la qualitat (Q0 a Q5) de cada producte.
-  Més qualitat vol dir que l'escola paga més i que la botiga ven més cara.
-- **Directors** (nivell 4): operacions, màrqueting, tecnologia i finances. Cobren cada hora i milloren l'empresa.
-- **Cerca d'empreses**: troba qualsevol empresa de la classe, mira'n els edificis, la qualitat i compra-li les ofertes.
-- **Xat de la classe** amb avisos de missatges nous (es pot desactivar amb `XAT_ACTIU` a `js/dades.js`).
-- **Classificació** pel valor de l'empresa.
-
-## Si ja tenies una versió anterior publicada
-Torna a enganxar `firestore.rules` a Firestore > Regles i prem **Publica** cada cop que aquest fitxer canviï (borsa, contractes i xat).
-Les empreses ja creades s'adapten soles al mapa nou.
+## Com és el joc (versió 2: Matadepera)
+- **Una ciutat comuna** inspirada en Matadepera, amb els carrers reals (Sant Joan, Sant Llorenç, Ctra. de Terrassa,
+  Pg. Àngel Guimerà, Av. del Mas Sot...), l'Ajuntament, els bancs, l'Institut, la Plaça del Casal, el Parc Natural al nord
+  i, per la Carretera de Terrassa, la zona de **Terrassa** amb la Notaria, Hisenda, la Seguretat Social, el Registre Mercantil
+  i el polígon. El plànol és esquemàtic: es pot retocar a `js/ciutat.js` (EDIFICIS_CIUTAT i LOCALS_CIUTAT).
+- **Constitució guiada**: la Marta et rep (nom, sector i logo) i vas edifici per edifici (Gestoria, Registre, Banc, Notaria,
+  Hisenda, Seguretat Social, Ajuntament). A cada lloc t'atén una persona i et dona un document per a la **carpeta**.
+- **Local**: llogues un local amb el cartell ES LLOGA (o una nau al polígon), demanes el permís d'obres, fas la reforma i obres.
+- **Negoci** (fleca, cafeteria, botiga de roba o taller de bicicletes): compres matèria primera, poses el preu, contractes gent,
+  fas publicitat i amplies el negoci en tres fases. Més endavant pots comprar un solar i construir-hi el teu edifici.
+- **Vida a la ciutat**: cotxes, furgonetes i autobusos pels carrers i vianants que entren als negocis.
+- **Empresa**: compte de resultats de cada setmana, balanç, banc, personal i despeses, reptes, directors i classificació.
+- 1 hora real = 1 setmana de l'empresa.
 
 ## Panell del professorat
 1. A Firestore, crea la col·lecció **config** amb un document d'ID **joc**.

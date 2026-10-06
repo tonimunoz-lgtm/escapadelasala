@@ -480,6 +480,7 @@ export async function marcarLlegit(id) {
 }
 
 export async function esborrarEmpresa(uid) {
+  await alliberarLocalsDe(uid).catch(() => {});
   if (modeProva) { localStorage.removeItem(CLAU_PROVA); return; }
   const { fs, db } = await carregarFirebase();
   await fs.deleteDoc(fs.doc(db, 'empreses', uid));
@@ -519,13 +520,14 @@ async function buidarColleccio(nom) {
 export async function novaPartida() {
   const c = await getConfig();
   if (modeProva) {
-    localStorage.removeItem(CLAU_MERCAT); localStorage.removeItem(CLAU_XAT); localStorage.removeItem(CLAU_AVISOS);
+    localStorage.removeItem(CLAU_MERCAT); localStorage.removeItem(CLAU_XAT); localStorage.removeItem(CLAU_AVISOS); localStorage.removeItem('fem-empresa-locals');
     await setConfig({ partida: (c.partida || 1) + 1, reptes: [], anunci: '' });
     return;
   }
   await buidarColleccio('mercat');
   await buidarColleccio('xat');
   await buidarColleccio('avisos');
+  await buidarColleccio('locals');
   const { fs, db } = await carregarFirebase();
   await fs.setDoc(fs.doc(db, 'mon', 'comptador'), { n: 0 });
   await setConfig({ partida: (c.partida || 1) + 1, reptes: [], anunci: '' });
@@ -533,4 +535,77 @@ export async function novaPartida() {
 export async function buidarXat() {
   if (modeProva) { localStorage.removeItem(CLAU_XAT); return; }
   await buidarColleccio('xat');
+}
+
+// =============================================================
+//  LOCALS DE LA CIUTAT (col·lecció "locals", un document per local)
+//  { uid, nom, logo, sector, fase, estat, faseObra }
+//  Un local només el pot ocupar una empresa.
+// =============================================================
+const CLAU_LOCALS = 'fem-empresa-locals';
+function localsProva() {
+  let m = null;
+  try { m = JSON.parse(localStorage.getItem(CLAU_LOCALS)); } catch { /* res */ }
+  if (!m) {
+    m = {
+      L12: { uid: 'bot-1', nom: 'Forn de la Plaça SL', logo: 6, sector: 'fleca', fase: 2, estat: 'obert' },
+      L20: { uid: 'bot-2', nom: 'Bicis La Mola', logo: 14, sector: 'bicis', fase: 1, estat: 'obert' },
+      L4: { uid: 'bot-3', nom: 'Cafè del Casal SCCL', logo: 16, sector: 'cafeteria', fase: 3, estat: 'obert' },
+    };
+    localStorage.setItem(CLAU_LOCALS, JSON.stringify(m));
+  }
+  return m;
+}
+
+export async function carregarLocals() {
+  if (modeProva) return localsProva();
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDocs(fs.collection(db, 'locals'));
+  return Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]));
+}
+
+// Reserva un local lliure (falla si ja és d'algú)
+export async function reservarLocal(uid, id, dades) {
+  const doc = { uid, ...dades, actualitzat: Date.now() };
+  if (modeProva) {
+    const m = localsProva();
+    if (m[id] && m[id].uid !== uid) throw new Error('Aquest local ja l\'ha agafat una altra empresa.');
+    m[id] = doc; localStorage.setItem(CLAU_LOCALS, JSON.stringify(m)); return;
+  }
+  const { fs, db } = await carregarFirebase();
+  const ref = fs.doc(db, 'locals', id);
+  await fs.runTransaction(db, async (tx) => {
+    const s = await tx.get(ref);
+    if (s.exists() && s.data().uid !== uid) throw new Error('Aquest local ja l\'ha agafat una altra empresa.');
+    tx.set(ref, doc);
+  });
+}
+
+export async function actualitzarLocal(uid, id, dades) {
+  if (modeProva) {
+    const m = localsProva();
+    if (m[id]?.uid === uid) { m[id] = { ...m[id], ...dades, actualitzat: Date.now() }; localStorage.setItem(CLAU_LOCALS, JSON.stringify(m)); }
+    return;
+  }
+  const { fs, db } = await carregarFirebase();
+  await fs.updateDoc(fs.doc(db, 'locals', id), { ...dades, actualitzat: Date.now() });
+}
+
+export async function alliberarLocal(id) {
+  if (!id) return;
+  if (modeProva) { const m = localsProva(); delete m[id]; localStorage.setItem(CLAU_LOCALS, JSON.stringify(m)); return; }
+  const { fs, db } = await carregarFirebase();
+  await fs.deleteDoc(fs.doc(db, 'locals', id));
+}
+
+// Allibera tots els locals d'una empresa (reinici o esborrat)
+export async function alliberarLocalsDe(uid) {
+  if (modeProva) {
+    const m = localsProva();
+    for (const [k, v] of Object.entries(m)) if (v.uid === uid) delete m[k];
+    localStorage.setItem(CLAU_LOCALS, JSON.stringify(m)); return;
+  }
+  const { fs, db } = await carregarFirebase();
+  const snap = await fs.getDocs(fs.query(fs.collection(db, 'locals'), fs.where('uid', '==', uid)));
+  await Promise.all(snap.docs.map((d) => fs.deleteDoc(d.ref)));
 }

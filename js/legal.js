@@ -198,6 +198,12 @@ export const TRAMITS = {
     que: 'Qui treballa a la seva empresa com a autònom/a s\'hi ha de donar d\'alta abans de començar. Els nous autònoms poden demanar la tarifa plana.',
     cost: 0, real: 'el mateix dia', segonsJoc: 4,
   },
+  bancAutonom: {
+    nom: 'Compte bancari del negoci',
+    on: 'Una entitat bancària',
+    que: 'Com a autònom/a no és obligatori, però és molt recomanable tenir un compte només per al negoci: hi poses els diners que hi destines i així separes les finances personals de les de l\'empresa.',
+    cost: 0, real: '1 dia', segonsJoc: 5,
+  },
   comunicacio: {
     nom: 'Comunicació d\'inici d\'activitat',
     on: 'Ajuntament, a través de la Finestreta Única Empresarial (FUE)',
@@ -223,7 +229,7 @@ export const OFICINES = {
 // Personal. Imports mensuals bruts (14 pagues prorratejades) i cotització de l'empresa.
 export const SS_EMPRESA = 0.32; // ≈ contingències comunes, atur, FOGASA, formació, MEI i accidents
 export const PERSONAL = {
-  operari: { nom: 'Operari/ària de producció', sou: 1650, text: 'Fa funcionar els edificis. Cada edifici necessita 1 persona per nivell per produir.' },
+  treballadors: { nom: 'Treballador/a', sou: 1650, text: 'Treballa al negoci: amb més gent es pot atendre més clients i produir més.' },
   rrhh: { nom: 'Tècnic/a de recursos humans', sou: 2300, text: 'Porta les nòmines, contractes i la Seguretat Social del personal. Substitueix la gestoria laboral.' },
 };
 
@@ -238,13 +244,6 @@ export const RISC_SANCIO = { probabilitat: 0.2, import: 200, text: 'Sanció d\'H
 
 export const COST_ALTA_OCUPADOR = 0; // inscripció de l'empresa a la Seguretat Social (gratuïta)
 
-// Sectors per triar l'activitat (epígraf IAE orientatiu)
-export const SECTORS = {
-  agro: { nom: 'Agroalimentari (pa, vi, oli...)', iae: 'Epígraf 419 - Indústries de pa, brioixeria i pastisseria (orientatiu)' },
-  energia: { nom: 'Energia i aigua', iae: 'Epígraf 151 - Producció d\'energia elèctrica (orientatiu)' },
-  construccio: { nom: 'Materials de construcció', iae: 'Epígraf 241 - Fabricació de maons i materials de construcció (orientatiu)' },
-};
-
 export function costTramit(id, forma, capital, estatutsTipus) {
   const c = TRAMITS[id].cost;
   return typeof c === 'function' ? c(forma, capital, estatutsTipus) : c;
@@ -258,3 +257,57 @@ const ICONES_TRAMIT = {
   reta: 'seguretat-social', comunicacio: 'ajuntament',
 };
 export const iconaTramit = (id) => `img/tramits/${ICONES_TRAMIT[id] || 'notari'}.webp`;
+
+// =============================================================
+//  RECORREGUT PER LA CIUTAT
+//  On es fa cada tràmit, qui t'atén i quin document et donen.
+// =============================================================
+export const SERVEIS = {
+  gestoria: { nom: 'Gestoria', persona: 'gestor', personaNom: 'en Jordi, gestor', interior: 'gestoria',
+    text: 'Som assessors d\'empreses: t\'ajudem a triar la forma jurídica, preparem papers i, si vols, et portem els impostos i les nòmines.' },
+  notaria: { nom: 'Notaria', persona: 'notaria', personaNom: 'la notària Montse', interior: 'notaria',
+    text: 'Els notaris donen fe pública: signem escriptures perquè tinguin plena validesa legal.' },
+  registre: { nom: 'Registre Mercantil', persona: 'funcionari-registre', personaNom: 'en Pere, del Registre', interior: 'registre',
+    text: 'Al Registre Mercantil s\'inscriuen les societats i es comprova que no hi hagi dos noms iguals.' },
+  banc: { nom: 'Banc', persona: 'empleada-banc', personaNom: 'la Laura, del banc', interior: 'banc',
+    text: 'Obrim comptes, guardem els diners de l\'empresa i donem préstecs.' },
+  hisenda: { nom: 'Agència Tributària', persona: 'funcionari-hisenda', personaNom: 'en Marc, d\'Hisenda', interior: 'hisenda',
+    text: 'Aquí es demana el NIF i es comuniquen els impostos que pagarà l\'empresa (IVA, IRPF o Impost de Societats).' },
+  'seguretat-social': { nom: 'Seguretat Social', persona: 'funcionaria-ss', personaNom: 'la Rosa, de la Seguretat Social', interior: 'seguretat-social',
+    text: 'Gestionem les altes dels autònoms i dels treballadors, i les cotitzacions per a pensions, atur i salut.' },
+  ajuntament: { nom: 'Ajuntament', persona: 'tecnic-ajuntament', personaNom: 'l\'Àlex, tècnic municipal', interior: 'ajuntament',
+    text: 'L\'Ajuntament controla que les activitats i les obres compleixin les normes del municipi.' },
+};
+
+// Edifici on es fa cada pas i document que en surt
+export const PAS_SERVEI = {
+  gestoria: 'gestoria', certificacio: 'registre', certificacioCoop: 'registre', assemblea: 'gestoria', banc: 'banc', bancAutonom: 'banc',
+  estatuts: 'gestoria', notari: 'notaria', nif: 'notaria', itpExempt: 'hisenda', itp: 'hisenda', contracte: 'gestoria',
+  registre: 'registre', registreCoop: 'registre', qualificacio: 'registre', nif036: 'hisenda', hisenda036: 'hisenda', censal: 'hisenda',
+  reta: 'seguretat-social', comunicacio: 'ajuntament', llicencia: 'ajuntament',
+};
+export const DOC_PAS = {
+  certificacio: 'doc-certificacio-negativa', certificacioCoop: 'doc-certificacio-negativa', banc: 'doc-certificat-banc', bancAutonom: 'doc-certificat-banc',
+  estatuts: 'doc-estatuts', assemblea: 'doc-estatuts', contracte: 'doc-estatuts', notari: 'doc-escriptura', registre: 'doc-escriptura',
+  registreCoop: 'doc-escriptura', qualificacio: 'doc-escriptura', nif: 'doc-nif', nif036: 'doc-nif', hisenda036: 'doc-036', censal: 'doc-036',
+  itp: 'doc-036', itpExempt: 'doc-036', reta: 'doc-alta-reta', comunicacio: 'doc-comunicacio-activitat', llicencia: 'doc-llicencia-obres',
+  local: 'doc-contracte-lloguer',
+};
+TRAMITS.llicencia = {
+  nom: 'Permís d\'obres per adequar el local',
+  on: 'Ajuntament (Finestreta Única Empresarial)',
+  que: 'Per fer obres al local cal comunicar-les a l\'Ajuntament i pagar l\'impost d\'obres (ICIO), que és un percentatge del pressupost.',
+  cost: 250, real: '1-15 dies', segonsJoc: 6,
+};
+
+// Passos de la constitució segons la forma jurídica:
+// idea (Marta) → gestoria → tràmits... amb el local abans del notari, i al final permís d'obres, obres i obertura.
+export function passosConstitucio(forma) {
+  const f = FORMES[forma];
+  const t = [...(f ? f.tramits : [])];
+  if (!t.includes('banc')) t.unshift('bancAutonom');
+  const iLocal = t.includes('notari') ? t.indexOf('notari') : t.indexOf('comunicacio');
+  t.splice(iLocal, 0, 'local');
+  t.push('llicencia', 'obres', 'obertura');
+  return ['idea', 'gestoria', ...t];
+}

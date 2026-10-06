@@ -65,6 +65,7 @@
         <span id="barra-nom"></span>
       </div>
       <div class="barra-dreta">
+        <button id="btn-panell-prof" class="barra-nivell btn-panell-prof" hidden title="Tornar al panell del professorat">👩‍🏫 Panell</button>
         <div class="barra-diners" title="Diners">
           <img src="img/recursos/recurs-diners.webp" alt="" width="28" height="28">
           <span id="barra-diners"></span>
@@ -91,16 +92,16 @@
     <div class="zoom">
       <button id="zoom-mes" aria-label="Apropa">+</button>
       <button id="zoom-menys" aria-label="Allunya">−</button>
-      <button id="zoom-mon" class="zoom-text" title="Veure tot el món">Món</button>
-      <button id="zoom-ciutat" class="zoom-text" title="Tornar a la meva ciutat">Ciutat</button>
+      <button id="zoom-mon" class="zoom-text" title="Veure Matadepera i Terrassa">Tot</button>
+      <button id="zoom-ciutat" class="zoom-text" title="Tornar al centre del poble">Poble</button>
     </div>
 
     <nav class="navegacio" aria-label="Seccions">
-      <button data-seccio="mapa" class="actiu"><img src="img/mapa/parcela-buida.webp" alt=""><span>Mapa</span></button>
-      <button data-seccio="magatzem"><img src="img/recursos/recurs-productes.webp" alt=""><span>Magatzem</span></button>
-      <button data-seccio="mercat"><img src="img/avatars/logo-empresa-15.webp" alt=""><span>Mercat</span></button>
+      <button data-seccio="mapa" class="actiu"><img src="img/ciutat/ajuntament.webp" alt=""><span>Ciutat</span></button>
+      <button data-seccio="negoci"><img src="img/negocis/fleca-1.webp" alt=""><span>Negoci</span></button>
+      <button data-seccio="carpeta"><img src="img/documents/doc-escriptura.webp" alt=""><span>Carpeta</span></button>
       <button data-seccio="empresa"><img src="img/interficie/boto-estadistiques.webp" alt=""><span>Empresa</span></button>
-      <button data-seccio="cerca"><img src="img/interficie/icona-info.webp" alt=""><span>Cerca</span></button>
+      <button data-seccio="cerca"><img src="img/interficie/icona-info.webp" alt=""><span>Empreses</span></button>
       <button data-seccio="xat" id="nav-xat"><img src="img/avatars/logo-empresa-20.webp" alt=""><span>Xat</span><b id="xat-nous" hidden></b></button>
     </nav>
 
@@ -113,6 +114,23 @@
       </header>
       <div id="panell-cos" class="panell-cos"></div>
     </aside>
+
+    <div id="escena" class="escena" hidden role="dialog" aria-modal="true" aria-labelledby="escena-titol">
+      <div class="escena-caixa">
+        <header class="escena-cap"><h2 id="escena-titol"></h2><button id="escena-tancar" class="btn-tancar" aria-label="Tanca">×</button></header>
+        <div class="escena-cos-principal">
+          <div class="escena-imatge">
+            <img id="escena-fons" class="escena-fons" alt="">
+            <img id="escena-persona" class="escena-persona" alt="">
+          </div>
+          <div class="escena-dialeg">
+            <strong id="escena-qui" class="escena-qui"></strong>
+            <p id="escena-text" class="escena-text"></p>
+            <div id="escena-cos" class="escena-accions"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div id="guia" class="guia" hidden>
       <img id="guia-img" alt="" width="256" height="256">

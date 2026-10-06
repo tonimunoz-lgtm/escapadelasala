@@ -5,7 +5,7 @@
 import { $, h, avis, mostrarPantalla } from './ui.js';
 import * as desa from './desa.js';
 import * as joc from './joc.js';
-import { RECURSOS, EDIFICIS, FASES, TIPUS_REPTE, imgLogo } from './dades.js';
+import { FASES, TIPUS_REPTE, SECTORS_NEGOCI, imgLogo } from './dades.js';
 import { FORMES } from './legal.js';
 
 let ctx = null;      // { usuari, config, jugar }
@@ -87,16 +87,16 @@ function pEmpreses() {
   const zonaForm = h('div', {});
   const files = [...empreses].sort((a, b) => (b.valor || 0) - (a.valor || 0)).map((e, k) => {
     const f = FORMES[e.forma];
-    const valor = e.valor ?? (e.parceles ? joc.valorEmpresa(e) : 0);
+    const valor = e.valor ?? joc.valorEmpresa(e);
     return h('tr', {},
       h('td', {}, k + 1),
       h('td', {}, h('div', { class: 'prof-emp' }, h('img', { src: imgLogo(e.logo || 1), alt: '', width: 32, height: 32 }),
-        h('div', {}, h('strong', {}, e.nom || '(sense nom)'), h('span', { class: 'nota' }, e.constitucio?.constituida ? `${f?.curt || '—'} · NIF ${e.nif || '—'}` : `Constituint-se (${e.constitucio?.pas || '—'})`)))),
+        h('div', {}, h('strong', {}, e.nom || '(sense nom)'), h('span', { class: 'nota' }, `${SECTORS_NEGOCI[e.sector]?.nom || 'Sense sector'} · ${f?.curt || '—'} · ${e.constitucio?.constituida ? `NIF ${e.nif || '—'}` : `constituint-se (pas ${(e.constitucio?.pas ?? 0) + 1})`}`)))),
       h('td', {}, String(joc.nivellDeValor(valor))),
       h('td', { class: 'num' }, joc.diners(valor)),
       h('td', { class: 'num' }, joc.diners(e.diners || 0)),
       h('td', { class: 'num' }, joc.diners(Math.round(e.deute || 0))),
-      h('td', { class: 'num' }, String((e.plantilla?.operari || 0) + (e.plantilla?.rrhh || 0))),
+      h('td', { class: 'num' }, String((e.plantilla?.treballadors || 0) + (e.plantilla?.rrhh || 0))),
       h('td', {}, haFa(e.actualitzada)),
       h('td', {}, h('div', { class: 'fila-botons' },
         h('button', { class: 'btn btn-petit', onclick: () => zonaForm.replaceChildren(formulariAvis(e.uid, e.nom, () => zonaForm.replaceChildren())) }, 'Ajut / missatge'),
@@ -132,11 +132,13 @@ function pEmpreses() {
 }
 
 function descarregarCsv() {
-  const cap = ['empresa', 'forma', 'nif', 'nivell', 'valor', 'diners', 'deute', 'operaris', 'capital', 'estalvis_personals', 'missions', 'reptes_cobrats', 'sancions'];
+  const cap = ['empresa', 'sector', 'forma', 'nif', 'constituida', 'fase_negoci', 'nivell', 'valor', 'diners', 'deute', 'treballadors', 'capital', 'estalvis_personals', 'unitats_venudes', 'ingressos', 'setmanes_amb_benefici', 'missions', 'reptes_cobrats', 'sancions'];
   const files = empreses.map((e) => {
-    const valor = e.valor ?? (e.parceles ? joc.valorEmpresa(e) : 0);
-    return [e.nom, FORMES[e.forma]?.curt || '', e.nif || '', joc.nivellDeValor(valor), Math.round(valor), Math.round(e.diners || 0), Math.round(e.deute || 0),
-      e.plantilla?.operari || 0, e.capital || 0, Math.round(e.estalvis || 0), e.missio || 0, (e.reptesCobrats || []).length, e.sancions || 0];
+    const valor = e.valor ?? joc.valorEmpresa(e);
+    return [e.nom, SECTORS_NEGOCI[e.sector]?.nom || '', FORMES[e.forma]?.curt || '', e.nif || '', e.constitucio?.constituida ? 'sí' : 'no', e.local?.fase || 0,
+      joc.nivellDeValor(valor), Math.round(valor), Math.round(e.diners || 0), Math.round(e.deute || 0), e.plantilla?.treballadors || 0, e.capital || 0,
+      Math.round(e.estalvis || 0), Math.round(e.stats?.unitatsVenudes || 0), Math.round(e.stats?.ingressos || 0), e.stats?.setmanesAmbBenefici || 0,
+      e.missio || 0, (e.reptesCobrats || []).length, e.sancions || 0];
   });
   const csv = [cap, ...files].map((f) => f.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
   const a = h('a', { href: URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' })), download: 'fem-empresa-classe.csv' });
@@ -148,8 +150,8 @@ function pReptes() {
   const reptes = ctx.config.reptes || [];
   const tipus = h('select', { class: 'camp-select' }, ...Object.entries(TIPUS_REPTE).map(([id, t]) => h('option', { value: id }, t.nom)));
   const xifra = h('input', { type: 'number', min: 1, value: 50000, class: 'input-preu' });
-  const recurs = h('select', { class: 'camp-select' }, ...Object.entries(RECURSOS).filter(([, r]) => !r.intern).map(([id, r]) => h('option', { value: id }, r.nom)));
-  const edifici = h('select', { class: 'camp-select' }, ...Object.entries(EDIFICIS).filter(([, d]) => !d.aviat && !d.inicial).map(([id, d]) => h('option', { value: id }, d.nom)));
+  const recurs = h('select', { class: 'camp-select' });
+  const edifici = h('select', { class: 'camp-select' });
   const premi = h('input', { type: 'number', min: 0, value: 3000, class: 'input-preu' });
   const hores = h('input', { type: 'number', min: 0, value: 0, class: 'input-preu' });
   const text = h('input', { class: 'camp-text', maxlength: 120, placeholder: 'Text del repte (opcional: si el deixes buit es fa sol)' });

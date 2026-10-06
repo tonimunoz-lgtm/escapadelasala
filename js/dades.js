@@ -1,209 +1,125 @@
 // =============================================================
-//  DADES DEL JOC — aquí és on el professorat pot ajustar l'economia
+//  DADES DEL JOC (versió 2: negocis en una ciutat comuna)
+//  El professorat pot ajustar l'economia en aquest fitxer.
+//  Temps del joc: 1 hora real = 1 setmana a l'empresa.
 // =============================================================
 
-// 1 = velocitat normal. 2 = tot va el doble de ràpid (construir i produir).
-export const VELOCITAT = 1;
+export const VELOCITAT = 1; // 2 = tot el doble de ràpid
 
-export const DINERS_INICIALS = 12000;
-// Mapa: MIDA_MAPA x MIDA_MAPA parcel·les, agrupades en illes de BLOC x BLOC separades per carrers
-export const MIDA_MAPA = 6;
-export const BLOC = 2;
-export const COST_CARRETERA = 250;      // construir un tros de carretera en una parcel·la pròpia
-export const PARCELES_OBERTES = [14, 15, 20, 21, 16, 22]; // illa central + 2 parcel·les de la illa del costat
-export const PARCELA_SEU = 21;           // on hi ha la seu central
-export const COST_PARCELA_BASE = 3000;   // la 1a parcel·la extra costa això, la 2a el doble...
-export const MAX_PER_ORDRE = 100;        // unitats màximes per ordre de producció
-export const NIVELL_MAX = 10;
-export const SALARI_PER_SEGON = 0.1;     // € de sou per cada segon de producció (per unitat)
-export const COMISSIO_BORSA = 0.03;      // la borsa es queda un 3% de cada venda, com a Sim Companies
-
-// preu = el que paga el mercat de l'escola per cada unitat
-export const RECURSOS = {
-  electricitat: { nom: 'Electricitat', preu: 3,   cat: 'energia' },
-  aigua:        { nom: 'Aigua',        preu: 2,   cat: 'energia' },
-  llavors:      { nom: 'Llavors',      preu: 12,  cat: 'agricultura' },
-  blat:         { nom: 'Blat',         preu: 22,  cat: 'agricultura' },
-  raim:         { nom: 'Raïm',         preu: 24,  cat: 'agricultura' },
-  olives:       { nom: 'Olives',       preu: 24,  cat: 'agricultura' },
-  ous:          { nom: 'Ous',          preu: 34,  cat: 'alimentacio' },
-  llet:         { nom: 'Llet',         preu: 62,  cat: 'alimentacio' },
-  farina:       { nom: 'Farina',       preu: 55,  cat: 'alimentacio' },
-  pa:           { nom: 'Pa',           preu: 140, cat: 'alimentacio' },
-  vi:           { nom: 'Vi',           preu: 100, cat: 'alimentacio' },
-  oli:          { nom: 'Oli',          preu: 130, cat: 'alimentacio' },
-  fusta:        { nom: 'Fusta',        preu: 14,  cat: 'construccio' },
-  pedra:        { nom: 'Pedra',        preu: 16,  cat: 'construccio' },
-  maons:        { nom: 'Maons',        preu: 55,  cat: 'construccio' },
-  // Punts de recerca: no es venen, es gasten a l'Empresa > Recerca
-  recerca:      { nom: 'Punts de recerca', preu: 0, cat: 'recerca', intern: true },
-};
-
-export const CATEGORIES = {
-  energia: 'Energia i aigua',
-  agricultura: 'Agricultura',
-  alimentacio: 'Alimentació',
-  construccio: 'Construcció',
-};
-
-// temps = segons per unitat · entrades = el que es gasta per cada unitat
-export const EDIFICIS = {
-  'central-electrica': { nom: 'Central elèctrica', cost: 2000, produeix: [
-    { recurs: 'electricitat', temps: 5, entrades: {} } ] },
-  'solar': { nom: 'Parc solar', cost: 4500, produeix: [
-    { recurs: 'electricitat', temps: 4, entrades: {} } ] },
-  'eolic': { nom: 'Parc eòlic', cost: 6500, produeix: [
-    { recurs: 'electricitat', temps: 3, entrades: {} } ] },
-  'estacio-bombeig': { nom: 'Estació de bombeig', cost: 1500, produeix: [
-    { recurs: 'aigua', temps: 4, entrades: {} } ] },
-  'viver': { nom: 'Viver', cost: 3000, produeix: [
-    { recurs: 'llavors', temps: 10, entrades: { aigua: 1, electricitat: 1 } } ] },
-  'camp-cultiu': { nom: 'Camp de cultiu', cost: 4000, produeix: [
-    { recurs: 'blat',   temps: 12, entrades: { llavors: 1, aigua: 2 } },
-    { recurs: 'raim',   temps: 15, entrades: { llavors: 1, aigua: 2 } },
-    { recurs: 'olives', temps: 15, entrades: { llavors: 1, aigua: 2 } } ] },
-  'granja': { nom: 'Granja', cost: 6000, produeix: [
-    { recurs: 'ous',  temps: 15, entrades: { blat: 1, aigua: 1 } },
-    { recurs: 'llet', temps: 18, entrades: { blat: 2, aigua: 2 } } ] },
-  'moli': { nom: 'Molí', cost: 5000, produeix: [
-    { recurs: 'farina', temps: 10, entrades: { blat: 2, electricitat: 1 } } ] },
-  'forn': { nom: 'Forn de pa', cost: 7000, produeix: [
-    { recurs: 'pa', temps: 20, entrades: { farina: 2, aigua: 1, electricitat: 1 } } ] },
-  'celler': { nom: 'Celler', cost: 8000, produeix: [
-    { recurs: 'vi', temps: 30, entrades: { raim: 3, electricitat: 1 } } ] },
-  'almassera': { nom: 'Almàssera', cost: 8000, produeix: [
-    { recurs: 'oli', temps: 30, entrades: { olives: 4, electricitat: 1 } } ] },
-  'serradora': { nom: 'Serradora', cost: 3500, produeix: [
-    { recurs: 'fusta', temps: 12, entrades: { electricitat: 1 } } ] },
-  'pedrera': { nom: 'Pedrera', cost: 3500, produeix: [
-    { recurs: 'pedra', temps: 12, entrades: { electricitat: 2 } } ] },
-  'bobinadora-maons': { nom: 'Bòbila', cost: 6000, produeix: [
-    { recurs: 'maons', temps: 20, entrades: { pedra: 2, electricitat: 2 } } ] },
-
-  // Edificis que encara no es poden construir (properes versions)
-  // La botiga ven al públic. tempsVenda = segons per unitat si el preu és el de referència.
-  // Com més car, més lenta la venda: temps x (preu / preuReferencia)^2
-  'botiga': { nom: 'Botiga', cost: 5000, produeix: [], ven: [
-    { recurs: 'pa',   tempsVenda: 8 },
-    { recurs: 'ous',  tempsVenda: 6 },
-    { recurs: 'llet', tempsVenda: 7 },
-    { recurs: 'vi',   tempsVenda: 10 },
-    { recurs: 'oli',  tempsVenda: 10 } ] },
-  'magatzem':    { nom: 'Magatzem',    cost: 0, aviat: true, produeix: [] },
-  'restaurant':  { nom: 'Restaurant',  cost: 0, aviat: true, produeix: [] },
-  'laboratori': { nom: 'Laboratori', cost: 9000, nivellMinim: 4, produeix: [
-    { recurs: 'recerca', temps: 30, entrades: { electricitat: 2 } } ] },
-  'port':        { nom: 'Port',        cost: 0, aviat: true, produeix: [] },
-
-  // Edifici inicial (no es pot construir)
-  'seu-central': { nom: 'Seu central', cost: 0, inicial: true, produeix: [] },
-};
-
-// Segons que costa construir un edifici
-export const tempsConstruccio = (tipus) =>
-  Math.max(20, Math.round(EDIFICIS[tipus].cost / 40)) / VELOCITAT;
-
-// Preu de referència a la botiga (el que paga el públic sense fer cua)
-export const preuReferencia = (recurs) => Math.round(RECURSOS[recurs].preu * 1.5);
-
-export const imgEdifici = (tipus) => `img/edificis/edifici-${tipus}.webp`;
-export const imgRecurs = (recurs) => RECURSOS[recurs]?.img || `img/recursos/recurs-${recurs}.webp`;
-export const imgLogo = (n) => `img/avatars/logo-empresa-${String(n).padStart(2, '0')}.webp`;
 export const NUM_LOGOS = 20;
+export const imgLogo = (n) => `img/avatars/logo-empresa-${String(n).padStart(2, '0')}.webp`;
 
-// =============================================================
-//  NIVELLS D'EMPRESA: es puja de nivell segons el valor de l'empresa
-//  i cada nivell desbloqueja coses noves (com a Sim Companies)
-// =============================================================
-export const NIVELLS_EMPRESA = [0, 15000, 25000, 40000, 60000, 90000, 130000, 180000, 250000, 350000];
-export const DESBLOQUEIG = {
-  contractes: 2,   // enviar contractes directes a una altra empresa
-  banc: 1,         // demanar préstecs
-  recerca: 4,      // construir el laboratori i millorar la qualitat
-  directors: 4,    // contractar directors
+// ---------- Sectors ----------
+// Imports per unitat. demanda i capacitat són "per setmana" (1 hora real).
+export const SECTORS_NEGOCI = {
+  fleca: {
+    nom: 'Fleca', iae: 'Epígraf 644.1 - Comerç al detall de pa i pastisseria',
+    materia: { nom: 'Farina i ingredients', cost: 0.45, img: 'img/recursos/recurs-farina.webp' },
+    producte: { nom: 'Pa i pastes', preuRef: 1.8, img: 'img/recursos/recurs-pa.webp' },
+    demanda: 1800, capacitat: 700, ofici: 'Forner/a',
+    text: 'Fas pa i pastes cada dia. Ven molt i barat: necessites molta gent passant i força personal.',
+  },
+  cafeteria: {
+    nom: 'Cafeteria', iae: 'Epígraf 672 - Cafeteries',
+    materia: { nom: 'Cafè, llet i pa', cost: 1.2, img: 'img/recursos/recurs-llet.webp' },
+    producte: { nom: 'Esmorzars i cafès', preuRef: 3.5, img: 'img/avatars/logo-empresa-16.webp' },
+    demanda: 1200, capacitat: 500, ofici: 'Cambrer/a',
+    text: 'Serveis esmorzars i cafès. La ubicació és clau: com més gent passa, més clients entren.',
+  },
+  roba: {
+    nom: 'Botiga de roba', iae: 'Epígraf 651.2 - Comerç al detall de peces de vestir',
+    materia: { nom: 'Roba a l\'engròs', cost: 12, img: 'img/recursos/recurs-productes.webp' },
+    producte: { nom: 'Peces de roba', preuRef: 30, img: 'img/avatars/logo-empresa-15.webp' },
+    demanda: 150, capacitat: 120, ofici: 'Dependent/a',
+    text: 'Compres roba a l\'engròs i la vens amb marge. Pocs clients però cada venda deixa més diners.',
+  },
+  bicis: {
+    nom: 'Taller de bicicletes', iae: 'Epígraf 691.9 - Reparació d\'altres béns de consum',
+    materia: { nom: 'Peces de recanvi', cost: 15, img: 'img/avatars/logo-empresa-14.webp' },
+    producte: { nom: 'Reparacions i bicis', preuRef: 45, img: 'img/negocis/bicis-1.webp' },
+    demanda: 70, capacitat: 40, ofici: 'Mecànic/a',
+    text: 'Repares i vens bicicletes. Feina especialitzada: pocs clients, tiquet alt i molta mà d\'obra.',
+  },
 };
+export const imgNegoci = (sector, fase) => `img/negocis/${sector}-${Math.min(3, Math.max(1, fase || 1))}.webp`;
 
-// =============================================================
-//  QUALITAT (Q0 a Q5): es millora amb punts de recerca, per producte
-// =============================================================
-export const QUALITAT = {
-  max: 5,
-  cost: (q) => 10 * (q + 1) * (q + 1),  // punts per passar de Q a Q+1: 10, 40, 90, 160, 250
-  bonusEscola: 0.08,                    // l'escola paga un 8% més per cada nivell de qualitat
-  bonusBotiga: 0.15,                    // a la botiga, el preu habitual puja un 15% per nivell
+// ---------- Zones de la ciutat ----------
+// gent: multiplicador de clients. Imports mensuals.
+export const ZONES = {
+  centre:  { nom: 'Centre', gent: 1.0, lloguerLocal: 1300, lloguerNau: 0, preuSolar: 0 },
+  barri:   { nom: 'Barri', gent: 0.7, lloguerLocal: 750, lloguerNau: 0, preuSolar: 45000 },
+  poligon: { nom: 'Polígon industrial', gent: 0.35, lloguerLocal: 0, lloguerNau: 1100, preuSolar: 30000 },
 };
+export const FIANCA_MESOS = 2;
 
-// =============================================================
-//  DIRECTORS: cobren un sou cada hora real i milloren l'empresa
-// =============================================================
-export const DIRECTORS = {
-  operacions: { nom: 'Directora d\'operacions', logo: 14, fitxatge: 3000, souHora: 400,
-    efecte: 'Tots els edificis produeixen un 15% més ràpid.', produccio: 1.15 },
-  marqueting: { nom: 'Director de màrqueting', logo: 15, fitxatge: 3000, souHora: 350,
-    efecte: 'Les botigues venen un 20% més ràpid.', vendes: 1.2 },
-  tecnologia: { nom: 'Directora de tecnologia', logo: 17, fitxatge: 4000, souHora: 300,
-    efecte: 'El laboratori investiga un 30% més ràpid.', recerca: 1.3 },
-  financer:   { nom: 'Director financer', logo: 19, fitxatge: 2500, souHora: 250,
-    efecte: 'Els préstecs del banc paguen la meitat d\'interès.', interes: 0.5 },
+// ---------- Obres i fases del negoci ----------
+export const OBRES_ADEQUACIO = {
+  basica:   { nom: 'Reforma bàsica', cost: 4000, segons: 60, atractiu: 1.0, text: 'Pintura, llum i mobiliari senzill.' },
+  completa: { nom: 'Reforma completa', cost: 11000, segons: 120, atractiu: 1.2, text: 'Disseny cuidat i equipament nou: atreu un 20% més de clients.' },
 };
-
-// =============================================================
-//  FASES ECONÒMIQUES: canvien soles cada FASE_MINUTS, iguals per a tothom
-//  produccio / vendes: com més alt, més ràpid
-// =============================================================
-export const FASE_MINUTS = 20;
-export const FASES = {
-  normal:    { nom: 'Normalitat', produccio: 1,    vendes: 1,    text: 'L\'economia va com sempre.' },
-  expansio:  { nom: 'Expansió',   produccio: 1,    vendes: 1.3,  text: 'La gent compra més: les botigues venen més ràpid.' },
-  recessio:  { nom: 'Recessió',   produccio: 1.2,  vendes: 0.75, text: 'Es ven més lent, però produir és més ràpid.' },
-};
-
-// =============================================================
-//  BANC
-// =============================================================
-export const BANC = {
-  maxPercentValor: 0.3,   // pots demanar fins al 30% del valor de l'empresa
-  interesHora: 0.02,      // 2% d'interès cada hora real
-};
-
-export const HISTORIAL_MINUTS = 5;   // cada quan es desa un punt del gràfic de valor
-export const XAT_ACTIU = true;       // posa false per amagar el xat de la classe
-
-// =============================================================
-//  MISSIONS (tutorial guiat). La condició rep l'empresa (e).
-// =============================================================
-const teEdifici = (e, tipus) => e.parceles.some((p) => p.tipus === tipus && p.estat === 'edifici');
-const stat = (e, clau) => (e.stats && e.stats[clau]) || 0;
-export const MISSIONS = [
-  { text: 'Dona\'t d\'alta com a ocupador i tria qui et porta les nòmines', premi: 300, fet: (e) => e.altaOcupador && (e.gestoria || (e.plantilla?.rrhh || 0) > 0) },
-  { text: 'Contracta 2 operaris', premi: 300, fet: (e) => (e.plantilla?.operari || 0) >= 2 },
-  { text: 'Construeix una central elèctrica', premi: 500, fet: (e) => teEdifici(e, 'central-electrica') },
-  { text: 'Construeix una estació de bombeig', premi: 500, fet: (e) => teEdifici(e, 'estacio-bombeig') },
-  { text: 'Produeix i recull 20 unitats d\'aigua', premi: 300, fet: (e) => stat(e, 'produit_aigua') >= 20 },
-  { text: 'Construeix un viver', premi: 800, fet: (e) => teEdifici(e, 'viver') },
-  { text: 'Recull 10 llavors', premi: 500, fet: (e) => stat(e, 'produit_llavors') >= 10 },
-  { text: 'Ven alguna cosa al mercat de l\'escola', premi: 300, fet: (e) => stat(e, 'vendesEscola') >= 1 },
-  { text: 'Construeix un camp de cultiu', premi: 1000, fet: (e) => teEdifici(e, 'camp-cultiu') },
-  { text: 'Publica una oferta a la borsa', premi: 500, fet: (e) => stat(e, 'ofertesBorsa') >= 1 },
-  { text: 'Millora un edifici a nivell 2', premi: 1000, fet: (e) => e.parceles.some((p) => (p.nivell || 1) >= 2) },
-  { text: 'Construeix una botiga i ven-hi alguna cosa', premi: 1500, fet: (e) => stat(e, 'vendesBotiga') >= 1 },
-  { text: 'Arriba al nivell 3 d\'empresa', premi: 2000, fet: (e) => e.nivellMax >= 3 },
+export const CONSTRUCCIO = { cost: 60000, faseSegons: [90, 120, 120], text: 'Edifici propi en un solar: fonaments, estructura i acabats.' };
+// Ampliacions: multiplicador de demanda (més espai, més visibilitat) i de capacitat
+export const FASES_NEGOCI = [
+  null,
+  { nom: 'Local petit', demanda: 1, capacitat: 1, subministraments: 180 },
+  { nom: 'Local ampliat', demanda: 1.7, capacitat: 1.6, subministraments: 320, cost: 25000, segons: 120 },
+  { nom: 'Gran establiment', demanda: 2.6, capacitat: 2.4, subministraments: 600, cost: 70000, segons: 180 },
 ];
 
-// =============================================================
-//  REPTES QUE POT CREAR EL PROFESSORAT (des del seu panell)
-//  params: quins camps cal omplir. El text es genera sol.
-// =============================================================
+export const PUBLICITAT = [
+  { nom: 'Cap', mensual: 0, efecte: 1 },
+  { nom: 'Xarxes socials', mensual: 150, efecte: 1.12 },
+  { nom: 'Cartells i xarxes', mensual: 450, efecte: 1.25 },
+  { nom: 'Campanya forta', mensual: 1200, efecte: 1.4 },
+];
+export const ASSEGURANCA_MENSUAL = 60;
+
+// ---------- Fases econòmiques ----------
+export const FASE_MINUTS = 20;
+export const FASES = {
+  normal:   { nom: 'Normalitat', produccio: 1, vendes: 1, text: 'L\'economia va com sempre.' },
+  expansio: { nom: 'Expansió', produccio: 1, vendes: 1.25, text: 'La gent gasta més: entren més clients.' },
+  recessio: { nom: 'Recessió', produccio: 1, vendes: 0.75, text: 'La gent gasta menys: entren menys clients.' },
+};
+
+// ---------- Nivells d'empresa i desbloquejos ----------
+export const NIVELLS_EMPRESA = [0, 25000, 40000, 60000, 90000, 130000, 180000, 250000, 350000, 500000];
+export const DESBLOQUEIG = { banc: 1, directors: 4 };
+export const BANC = { maxPercentValor: 0.4, interesHora: 0.01 };
+export const HISTORIAL_MINUTS = 5;
+export const XAT_ACTIU = true;
+
+export const DIRECTORS = {
+  operacions: { nom: 'Directora d\'operacions', logo: 14, fitxatge: 3000, souHora: 400, efecte: 'L\'equip treballa un 15% més ràpid.', produccio: 1.15 },
+  marqueting: { nom: 'Director de màrqueting', logo: 15, fitxatge: 3000, souHora: 350, efecte: 'Entren un 20% més de clients.', vendes: 1.2 },
+  financer:   { nom: 'Director financer', logo: 19, fitxatge: 2500, souHora: 250, efecte: 'Els préstecs paguen la meitat d\'interès.', interes: 0.5 },
+};
+
+// ---------- Missions després d'obrir ----------
+const st = (e, k) => (e.stats && e.stats[k]) || 0;
+export const MISSIONS = [
+  { text: 'Compra matèria primera al proveïdor', premi: 300, fet: (e) => st(e, 'comprat') >= 1 },
+  { text: 'Contracta la primera persona', premi: 300, fet: (e) => (e.plantilla?.treballadors || 0) >= 1 },
+  { text: 'Ven 100 unitats', premi: 500, fet: (e) => st(e, 'unitatsVenudes') >= 100 },
+  { text: 'Tanca una setmana amb benefici', premi: 800, fet: (e) => st(e, 'setmanesAmbBenefici') >= 1 },
+  { text: 'Fes publicitat del negoci', premi: 300, fet: (e) => (e.negoci?.publicitat || 0) >= 1 },
+  { text: 'Amplia el negoci a la fase 2', premi: 2000, fet: (e) => (e.local?.fase || 0) >= 2 },
+  { text: 'Arriba al nivell 4 d\'empresa', premi: 3000, fet: (e) => (e.nivellMax || 1) >= 4 },
+];
+
+// ---------- Reptes que pot crear el professorat ----------
 export const TIPUS_REPTE = {
-  valor:        { nom: 'Valor de l\'empresa', params: ['xifra'], text: (r) => `Arriba a ${r.xifra.toLocaleString('ca-ES')} € de valor d'empresa` },
-  diners:       { nom: 'Diners a la caixa', params: ['xifra'], text: (r) => `Tingues ${r.xifra.toLocaleString('ca-ES')} € a la caixa` },
+  valor:        { nom: 'Valor de l\'empresa', params: ['xifra'], text: (r) => `Arriba a ${Number(r.xifra).toLocaleString('ca-ES')} € de valor d'empresa` },
+  diners:       { nom: 'Diners a la caixa', params: ['xifra'], text: (r) => `Tingues ${Number(r.xifra).toLocaleString('ca-ES')} € a la caixa` },
   nivell:       { nom: 'Nivell d\'empresa', params: ['xifra'], text: (r) => `Arriba al nivell ${r.xifra} d'empresa` },
-  produir:      { nom: 'Produir un producte', params: ['recurs', 'xifra'], text: (r) => `Produeix ${r.xifra} unitats de ${RECURSOS[r.recurs]?.nom || r.recurs}` },
-  edifici:      { nom: 'Tenir un edifici', params: ['edifici'], text: (r) => `Construeix: ${EDIFICIS[r.edifici]?.nom || r.edifici}` },
-  qualitat:     { nom: 'Qualitat d\'un producte', params: ['recurs', 'xifra'], text: (r) => `Aconsegueix ${RECURSOS[r.recurs]?.nom || r.recurs} de qualitat Q${r.xifra}` },
+  vendes:       { nom: 'Unitats venudes', params: ['xifra'], text: (r) => `Ven ${Number(r.xifra).toLocaleString('ca-ES')} unitats` },
+  ingressos:    { nom: 'Ingressos totals', params: ['xifra'], text: (r) => `Factura ${Number(r.xifra).toLocaleString('ca-ES')} € en total` },
+  benefici:     { nom: 'Setmanes amb benefici', params: ['xifra'], text: (r) => `Tanca ${r.xifra} setmanes amb benefici` },
+  fase:         { nom: 'Fase del negoci', params: ['xifra'], text: (r) => `Amplia el negoci fins a la fase ${r.xifra}` },
   treballadors: { nom: 'Plantilla', params: ['xifra'], text: (r) => `Tingues ${r.xifra} persones contractades` },
-  vendesBotiga: { nom: 'Vendes a la botiga', params: ['xifra'], text: (r) => `Fes ${r.xifra} vendes a la botiga` },
-  ofertesBorsa: { nom: 'Ofertes a la borsa', params: ['xifra'], text: (r) => `Publica ${r.xifra} ofertes a la borsa` },
-  carreteres:   { nom: 'Carreteres al món', params: ['xifra'], text: (r) => `Construeix ${r.xifra} trossos de carretera al camp` },
   senseDeute:   { nom: 'Sense deutes', params: [], text: () => 'Torna tots els préstecs del banc' },
 };
+
+// Compatibilitat amb la borsa de la versió anterior (desactivada en aquesta versió)
+export const COMISSIO_BORSA = 0.03;
+export const RECURSOS = {};

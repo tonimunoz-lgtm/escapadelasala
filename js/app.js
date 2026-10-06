@@ -1,877 +1,157 @@
-import {
-  EDIFICIS, RECURSOS, MIDA_MAPA, BLOC, COST_CARRETERA, NUM_LOGOS, MAX_PER_ORDRE, NIVELL_MAX,
-  COMISSIO_BORSA, CATEGORIES, DESBLOQUEIG, BANC, HISTORIAL_MINUTS, XAT_ACTIU, DIRECTORS, QUALITAT,
-  imgEdifici, imgRecurs, imgLogo, tempsConstruccio, preuReferencia,
-} from './dades.js';
+// =============================================================
+//  FEM EMPRESA · versió 2: munta el teu negoci a Matadepera
+// =============================================================
+import { $, h, svg, avis, mostrarPantalla } from './ui.js';
 import * as joc from './joc.js';
 import * as desa from './desa.js';
 import {
-  FORMES, TRAMITS, OPCIONS_ESTATUTS, OFICINES, PERSONAL, SS_EMPRESA, GESTORIA, SECTORS, SETMANES_PER_MES, RISC_SANCIO,
-  iconaTramit,
+  SECTORS_NEGOCI, ZONES, OBRES_ADEQUACIO, FASES_NEGOCI, PUBLICITAT, CONSTRUCCIO, DIRECTORS, DESBLOQUEIG,
+  HISTORIAL_MINUTS, XAT_ACTIU, NUM_LOGOS, BANC, FIANCA_MESOS, imgLogo, imgNegoci,
+} from './dades.js';
+import {
+  FORMES, TRAMITS, OPCIONS_ESTATUTS, SERVEIS, PAS_SERVEI, DOC_PAS, PERSONAL, SS_EMPRESA, GESTORIA, RISC_SANCIO, SETMANES_PER_MES,
 } from './legal.js';
-import { crearMon, casellaParcela, origenSlot } from './mon.js';
+import { crearCiutat, localsPerId, nomCarrerDe, EDIFICIS_CIUTAT } from './ciutat.js';
 
-import { $, h, svg, avis, mostrarPantalla } from './ui.js';
+// append que ignora els buits (null/false) en lloc d'escriure "null"
+const ap = (el, ...xs) => el.append(...xs.flat().filter((x) => x != null && x !== false));
 
 // ---------- estat ----------
 let usuari = null;
 let estat = null;
+let config = { ...desa.CONFIG_INICIAL };
+let ciutat = null;
+let locals = {};
 
 async function desar() {
-  try { await desa.desarEmpresa(usuari.uid, estat); }
-  catch (err) { console.error(err); avis('No s\'ha pogut desar. Revisa la connexió.', 'error'); }
+  try { await desa.desarEmpresa(usuari.uid, estat); } catch (err) { console.error(err); avis('No s\'ha pogut desar. Revisa la connexió.', 'error'); }
 }
-
-// Executa una acció del joc, mostra l'error si n'hi ha, desa i redibuixa
 function accio(fn) {
-  try {
-    const r = fn();
-    desar();
-    dibuixarTot();
-    return r;
-  } catch (err) {
-    avis(err.message, 'error');
-    return undefined;
-  }
+  try { const r = fn(); desar(); dibuixarTot(); return r; } catch (err) { avis(err.message, 'error'); return undefined; }
 }
 
 // ---------- arrencada ----------
-if (desa.modeProva) {
-  $('#avis-prova').hidden = false;
-  $('#btn-entrar').textContent = 'Prova el joc';
-}
-$('#btn-entrar').addEventListener('click', async () => {
-  try { await desa.entrar(); }
-  catch (err) { avis(`No s'ha pogut entrar: ${err.message}`, 'error'); }
-});
-
-let config = { ...desa.CONFIG_INICIAL };
+if (desa.modeProva) { $('#avis-prova').hidden = false; $('#btn-entrar').textContent = 'Prova el joc'; }
+$('#btn-entrar').addEventListener('click', async () => { try { await desa.entrar(); } catch (err) { avis(`No s'ha pogut entrar: ${err.message}`, 'error'); } });
 $('#btn-prof-prova').addEventListener('click', () => desa.entrarComProfessorProva());
+$('#btn-panell-prof').addEventListener('click', () => tornarAlPanell());
 
 desa.escoltarSessio(async (u) => {
   usuari = u;
   if (!u) { mostrarPantalla('pantalla-inici'); return; }
   try { config = await desa.getConfig(); } catch (err) { console.error(err); }
-  // El professorat entra al seu panell (pot jugar també com a alumne)
   if (desa.esProfessor(u, config) && !sessionStorage.getItem('fem-empresa-jugar')) {
     const m = await import('./professor.js');
     m.iniciar({ usuari: u, config, jugar: () => { sessionStorage.setItem('fem-empresa-jugar', '1'); entrarAlumne(); } });
     return;
   }
   entrarAlumne();
-}).catch((err) => {
-  console.error(err);
-  avis('No s\'ha pogut connectar amb Firebase. Revisa js/firebase-config.js.', 'error');
-  mostrarPantalla('pantalla-inici');
-});
+}).catch((err) => { console.error(err); avis('No s\'ha pogut connectar amb Firebase.', 'error'); mostrarPantalla('pantalla-inici'); });
 
 async function entrarAlumne() {
-  try {
-    estat = await desa.carregarEmpresa(usuari.uid);
-  } catch (err) {
-    console.error(err);
-    avis('No s\'han pogut carregar les dades.', 'error');
-    mostrarPantalla('pantalla-inici');
-    return;
-  }
-  // Partida nova del professorat: es torna a començar
+  try { estat = await desa.carregarEmpresa(usuari.uid); } catch (err) { console.error(err); avis('No s\'han pogut carregar les dades.', 'error'); return; }
   if (estat && config.partida && estat.partida != null && estat.partida !== config.partida) estat = null;
-  if (!estat) { estat = joc.estatInicial('', 1); estat.partida = config.partida; await desar(); }
-  if (estat.partida == null) estat.partida = config.partida;
+  if (joc.esVersioAntiga(estat)) {
+    if (estat) avis('El joc s\'ha renovat: ara muntaràs el teu negoci a Matadepera. Comences de nou!', 'ok');
+    estat = joc.estatInicial();
+    estat.partida = config.partida;
+    await desar();
+  }
+  estat.partida ??= config.partida;
   joc.migrar(estat);
-  aplicarConfig();
-  if (!estat.constitucio.constituida) { obrirConstitucio(); return; }
   iniciarJoc();
 }
 
-// ---------- ordres del professorat (config/joc i avisos) ----------
-function aplicarConfig() {
-  joc.setFaseForcada(config.fase && config.fase !== 'auto' ? config.fase : null);
-  $('#nav-xat').hidden = !(XAT_ACTIU && config.xatActiu !== false);
-  $('#anunci').hidden = !config.anunci;
-  $('#anunci').textContent = config.anunci || '';
-  if (estat) {
-    estat.reptesVistos ??= [];
-    for (const r of config.reptes || []) {
-      if (estat.reptesVistos.includes(r.id)) continue;
-      estat.reptesVistos.push(r.id);
-      if (estat.constitucio?.constituida) avis(`Nou repte del professorat: ${joc.textRepte(r)} (+${joc.diners(r.premi)})`, 'ok');
-    }
-  }
-}
-
-function missatgeProfessor(text) {
-  const el = h('button', { class: 'notificacio prof-notif', onclick: () => el.remove() },
-    h('img', { src: 'img/personatges/guia-explica.webp', alt: '', width: 40, height: 40 }),
-    h('span', {}, h('strong', {}, 'Professorat'), h('span', { class: 'prof-text' }, text)));
-  $('#notificacions').append(el);
-}
-
-async function reiniciarEmpresa() {
-  await desa.esborrarMevesOfertes(usuari.uid).catch(() => {});
-  const slot = estat.slot;
-  estat = joc.estatInicial('', 1);
-  estat.slot = slot;
-  estat.partida = config.partida;
-  await desar();
-  location.reload();
-}
-
-async function comprovarProfessorat() {
-  try {
-    const c = await desa.getConfig();
-    if (estat.partida != null && c.partida && c.partida !== estat.partida) {
-      config = c;
-      estat = joc.estatInicial('', 1);
-      estat.partida = c.partida;
-      await desar();
-      location.reload();
-      return;
-    }
-    config = c;
-    aplicarConfig();
-    const avisos = await desa.avisosPendents(usuari.uid);
-    for (const a of avisos) {
-      await desa.marcarLlegit(a.id);
-      if (a.tipus === 'ajut') {
-        estat.diners += a.import;
-        missatgeProfessor(`${a.import >= 0 ? 'Has rebut una subvenció' : 'Has rebut una sanció'} de ${joc.diners(Math.abs(a.import))}. ${a.text || ''}`);
-      } else if (a.tipus === 'missatge') {
-        missatgeProfessor(a.text);
-      } else if (a.tipus === 'reinici') {
-        await reiniciarEmpresa();
-        return;
-      }
-    }
-    if (avisos.length) { await desar(); dibuixarTot(); }
-  } catch (err) { console.error(err); }
-}
-
-// ---------- constitució de l'empresa (primer pas del joc) ----------
-let rellotgeTramit = null;
-
-function nomComplet(e) {
-  const f = FORMES[e.forma];
-  return f && f.sufix ? `${e.nomBase} ${f.sufix}` : (e.nomBase || 'La meva empresa');
-}
-
-function obrirConstitucio() {
-  mostrarPantalla('pantalla-crear');
-  dibuixarConstitucio();
-  clearInterval(rellotgeTramit);
-  rellotgeTramit = setInterval(() => {
-    const c = estat?.constitucio;
-    if (!c || c.constituida) { clearInterval(rellotgeTramit); return; }
-    if (c.enCurs && c.enCurs.fi <= Date.now()) {
-      c.fets.push(c.enCurs.id);
-      avis(`Tràmit fet: ${TRAMITS[c.enCurs.id].nom}`, 'ok');
-      delete c.enCurs;
-      desar();
-      dibuixarConstitucio();
-    } else if (c.enCurs) {
-      const el = document.querySelector('#constitucio [data-fi]');
-      if (el) el.textContent = joc.temps((Number(el.dataset.fi) - Date.now()) / 1000);
-      const b = document.querySelector('#constitucio [data-inici]');
-      if (b) b.style.width = `${Math.min(100, ((Date.now() - c.enCurs.inici) / (c.enCurs.fi - c.enCurs.inici)) * 100)}%`;
-    }
-  }, 500);
-}
-
-const PASSOS = [['forma', 'Forma jurídica'], ['socis', 'Socis i capital'], ['nom', 'Nom'], ['oficina', 'Domicili'], ['tramits', 'Tràmits'], ['fet', 'A punt!']];
-
-function dibuixarConstitucio() {
-  const c = estat.constitucio;
-  const cont = $('#constitucio');
-  const idx = PASSOS.findIndex(([p]) => p === c.pas);
-  const progres = h('ol', { class: 'passos' }, ...PASSOS.map(([p, t], k) => h('li', { class: k < idx ? 'fet' : k === idx ? 'actiu' : '' }, h('span', {}, k + 1), t)));
-  const cap = h('div', { class: 'cons-cap' },
-    h('img', { src: 'img/personatges/guia-explica.webp', alt: '', width: 110, height: 110 }),
-    h('div', {}, h('h2', {}, 'Crea la teva empresa'),
-      h('p', { class: 'nota' }, `Tens ${joc.diners(estat.estalvis)} d'estalvis. Seguiràs els mateixos passos que a la vida real per crear una empresa a Catalunya.`)));
-  const cos = {
-    forma: pasForma, socis: pasSocis, nom: pasNom, oficina: pasOficina, tramits: pasTramits, fet: pasFet,
-  }[c.pas]();
-  cont.replaceChildren(cap, progres, cos);
-  cont.scrollTop = 0;
-}
-
-function anarA(pas) { estat.constitucio.pas = pas; desar(); dibuixarConstitucio(); }
-const botoTornar = (pas) => h('button', { class: 'btn', type: 'button', onclick: () => anarA(pas) }, '← Enrere');
-
-function pasForma() {
-  const sector = h('select', { class: 'camp-select', 'aria-label': 'Sector' },
-    ...Object.entries(SECTORS).map(([id, s]) => h('option', { value: id, selected: estat.sector === id }, s.nom)));
-  const graella = h('div', { class: 'formes' });
-  for (const [id, f] of Object.entries(FORMES)) {
-    graella.append(h('button', {
-      class: `forma${estat.forma === id ? ' triada' : ''}`, type: 'button',
-      onclick: () => { estat.forma = id; estat.sector = sector.value; anarA('socis'); },
-    },
-    h('strong', {}, f.nom),
-    h('dl', {},
-      h('dt', {}, 'Socis'), h('dd', {}, f.socisMin === f.socisMax ? `${f.socisMin}` : `${f.socisMin} o més`),
-      h('dt', {}, 'Capital mínim'), h('dd', {}, f.capitalMin ? joc.diners(f.capitalMin) + (f.desemborsMin < 1 ? ` (${f.desemborsMin * 100}% a l'inici)` : '') : 'No cal'),
-      h('dt', {}, 'Responsabilitat'), h('dd', {}, f.limitada ? 'Limitada' : 'Il·limitada'),
-      h('dt', {}, 'Impostos'), h('dd', {}, f.tributacio)),
-    h('p', { class: 'nota' }, f.avantatges),
-    h('p', { class: 'nota falta' }, f.inconvenients)));
-  }
-  return h('div', { class: 'bloc' },
-    h('p', {}, 'Primer de tot: a què et dedicaràs i quina forma jurídica tindrà la teva empresa? La forma jurídica decideix qui respon dels deutes, quins impostos pagues, quant capital cal i quins tràmits has de fer.'),
-    h('label', { class: 'camp' }, h('span', {}, 'Sector de l\'activitat'), sector),
-    graella);
-}
-
-function pasSocis() {
-  const f = FORMES[estat.forma];
-  const socis = h('input', { type: 'number', min: f.socisMin, max: f.socisMax, value: Math.max(f.socisMin, estat.socis || f.socisMin), class: 'input-preu' });
-  const meva = h('input', { type: 'number', min: 0, max: estat.estalvis, value: estat.aportacioMeva ?? Math.min(15000, estat.estalvis), class: 'input-preu' });
-  const altres = h('input', { type: 'number', min: 0, max: 200000, value: estat.aportacioAltres ?? (f.socisMin > 1 ? 5000 : 0), class: 'input-preu' });
-  const capital = h('input', { type: 'number', min: f.capitalMin, value: estat.capital ?? Math.max(f.capitalMin, 15000), class: 'input-preu' });
-  const info = h('div', { class: 'avis-bloqueig' });
-  const filaAltres = h('label', { class: 'fila-preu' }, 'Aportació dels altres socis (€)', altres);
-  const filaCapital = h('label', { class: 'fila-preu' }, 'Capital social subscrit (€)', capital);
-  const calcula = () => {
-    const n = Number(socis.value) || 1, m = Number(meva.value) || 0, a = n > 1 ? Number(altres.value) || 0 : 0;
-    filaAltres.hidden = n <= 1;
-    const desemb = m + a;
-    const cap = f.capitalMin ? Math.max(Number(capital.value) || 0, desemb) : desemb;
-    filaCapital.hidden = !f.capitalMin || f.desemborsMin >= 1;
-    const errors = [];
-    if (n < f.socisMin) errors.push(`Aquesta forma necessita com a mínim ${f.socisMin} socis.`);
-    if (m > estat.estalvis) errors.push('No pots aportar més del que tens d\'estalvis.');
-    if (f.capitalMin && cap < f.capitalMin) errors.push(`El capital mínim és ${joc.diners(f.capitalMin)}.`);
-    if (f.desemborsMin < 1 && desemb < cap * f.desemborsMin) errors.push(`Cal desemborsar com a mínim el ${f.desemborsMin * 100}% (${joc.diners(cap * f.desemborsMin)}).`);
-    if (estat.forma === 'sll' && m > desemb / 3 + 0.5) errors.push('En una societat laboral cap soci pot tenir més d\'un terç del capital.');
-    const avisos = [];
-    if (estat.forma === 'sl' && cap < 3000) avisos.push('Amb menys de 3.000 € de capital, el 20% dels beneficis anirà a reserva legal i en cas de liquidació respondries fins a 3.000 €.');
-    if (!f.limitada) avisos.push('Recorda: amb aquesta forma, si l\'empresa no pot pagar, es faran servir els teus estalvis personals.');
-    info.replaceChildren(
-      h('strong', {}, `Diners que tindrà l'empresa per començar: ${joc.diners(desemb)}`),
-      h('span', {}, `Et quedaran ${joc.diners(estat.estalvis - m)} d'estalvis personals per pagar els tràmits i per si de cas.`),
-      ...avisos.map((t) => h('span', { class: 'nota' }, t)),
-      ...errors.map((t) => h('span', { class: 'nota falta' }, t)));
-    seguent.disabled = errors.length > 0;
-    return { n, m, a, desemb, cap };
-  };
-  const seguent = h('button', {
-    class: 'btn btn-principal', type: 'button',
-    onclick: () => {
-      const r = calcula();
-      Object.assign(estat, { socis: r.n, aportacioMeva: r.m, aportacioAltres: r.a, desemborsat: r.desemb, capital: r.cap });
-      anarA('nom');
-    },
-  }, 'Següent');
-  for (const el of [socis, meva, altres, capital]) el.addEventListener('input', calcula);
-  const r = h('div', { class: 'bloc' },
-    h('h3', { class: 'subtitol' }, f.nom),
-    h('p', {}, f.capitalMin
-      ? 'El capital social són els diners que els socis posen a l\'empresa. No és una despesa: queden al compte de l\'empresa per invertir. A canvi, cada soci rep participacions o accions.'
-      : 'Com a autònom/a no hi ha capital social: decideixes quants dels teus estalvis poses al negoci.'),
-    h('label', { class: 'fila-preu' }, 'Nombre de socis (comptant-te a tu)', socis),
-    h('label', { class: 'fila-preu' }, f.capitalMin ? 'La teva aportació (€)' : 'Diners que poses al negoci (€)', meva),
-    filaAltres, filaCapital, info,
-    h('div', { class: 'fila-botons' }, botoTornar('forma'), seguent));
-  calcula();
-  return r;
-}
-
-function pasNom() {
-  const f = FORMES[estat.forma];
-  const nom = h('input', { maxlength: 24, value: estat.nomBase || '', placeholder: 'Per exemple: Forn de Sabadell', class: 'camp-text', 'aria-label': 'Nom' });
-  const mostra = h('p', { class: 'nom-final' });
-  const pinta = () => { mostra.textContent = f.sufix ? `${nom.value.trim() || '...'} ${f.sufix}` : (nom.value.trim() || '...'); };
-  nom.addEventListener('input', pinta); pinta();
-  const graella = h('div', { class: 'graella-logos' });
-  for (let n = 1; n <= NUM_LOGOS; n++) {
-    graella.append(h('label', { class: 'logo-opcio' },
-      h('input', { type: 'radio', name: 'logo', value: n, checked: (estat.logo || 1) === n }),
-      h('img', { src: imgLogo(n), alt: `Logo ${n}`, width: 64, height: 64 })));
-  }
-  const necessitaCert = f.tramits.includes('certificacio') || f.tramits.includes('certificacioCoop');
-  return h('div', { class: 'bloc' },
-    h('p', {}, necessitaCert
-      ? `La denominació social ha de ser única. Quan facis el tràmit de certificació negativa, el registre comprovarà que cap altra empresa no la té. La forma jurídica ha d'aparèixer al nom: "${f.sufix}".`
-      : 'Com a autònom/a factures amb el teu nom, però pots fer servir un nom comercial. Si el vols protegir, el pots registrar com a marca a l\'Oficina Espanyola de Patents i Marques.'),
-    h('label', { class: 'camp' }, h('span', {}, necessitaCert ? 'Denominació social' : 'Nom comercial'), nom),
-    mostra,
-    h('fieldset', { class: 'camp' }, h('legend', {}, 'Tria un logo'), graella),
-    h('div', { class: 'fila-botons' }, botoTornar('socis'), h('button', {
-      class: 'btn btn-principal', type: 'button',
-      onclick: async () => {
-        const t = nom.value.trim();
-        if (t.length < 3) { avis('Escriu un nom de 3 lletres o més.', 'error'); return; }
-        estat.nomBase = t;
-        estat.logo = Number(graella.querySelector('input:checked')?.value) || 1;
-        estat.nom = nomComplet(estat);
-        anarA('oficina');
-      },
-    }, 'Següent')));
-}
-
-function pasOficina() {
-  const llista = h('div', { class: 'formes' });
-  for (const [id, o] of Object.entries(OFICINES)) {
-    llista.append(h('button', {
-      class: `forma${estat.oficina === id ? ' triada' : ''}`, type: 'button',
-      onclick: () => { estat.oficina = id; anarA('tramits'); },
-    }, h('img', { src: o.img, alt: '', width: 120, height: 120, class: 'forma-img' }), h('strong', {}, o.nom),
-    h('dl', {}, h('dt', {}, 'Lloguer'), h('dd', {}, `${joc.diners(o.mensual)} al mes`), h('dt', {}, 'Fiança'), h('dd', {}, o.fianca ? joc.diners(o.fianca) : 'No cal')),
-    h('p', { class: 'nota' }, o.text)));
-  }
-  return h('div', { class: 'bloc' },
-    h('p', {}, 'Tota empresa necessita un domicili social, que surt als estatuts i a les factures. Pots llogar des d\'una simple adreça fins a un local. El lloguer es paga cada mes i la fiança la recuperes si te\'n vas.'),
-    h('p', { class: 'nota' }, 'Al joc, 1 hora real equival a 1 setmana de l\'empresa: les despeses mensuals es van cobrant a poc a poc.'),
-    llista, botoTornar('nom'));
-}
-
-function pasTramits() {
-  const c = estat.constitucio;
-  const f = FORMES[estat.forma];
-  const llista = h('ol', { class: 'tramits' });
-  let total = 0;
-  const seguent = f.tramits.find((t) => !c.fets.includes(t));
-  for (const id of f.tramits) {
-    const t = TRAMITS[id];
-    const cost = joc.dinersCost(id, estat);
-    total += cost;
-    const fet = c.fets.includes(id);
-    const actual = id === seguent;
-    const item = h('li', { class: fet ? 'fet' : actual ? 'actual' : '' },
-      h('div', { class: 'tram-cap' }, h('img', { src: iconaTramit(id), alt: '', width: 48, height: 48, class: 'tram-icona' }), h('strong', {}, t.nom), h('span', { class: 'tram-cost' }, cost ? joc.diners(cost) : 'Gratuït')),
-      h('span', { class: 'nota' }, `${t.on}. Temps real: ${t.real}.`));
-    if (actual || fet) item.append(h('p', {}, t.que));
-    if (actual) {
-      if (c.enCurs) {
-        item.append(h('div', { class: 'progres gran' }, h('span', { class: 'progres-ple', 'data-inici': c.enCurs.inici, style: 'width:0%' })),
-          h('p', { class: 'nota' }, 'En tràmit… falten ', h('strong', { 'data-fi': c.enCurs.fi }, joc.temps((c.enCurs.fi - Date.now()) / 1000))));
-      } else {
-        if (t.opcions) {
-          item.append(h('div', { class: 'opcions-estatuts' }, ...Object.entries(OPCIONS_ESTATUTS).map(([oid, o]) => h('label', { class: 'opcio-radio' },
-            h('input', { type: 'radio', name: 'estatuts', value: oid, checked: (estat.estatuts || 'tipus') === oid, onchange: () => { estat.estatuts = oid; dibuixarConstitucio(); } }),
-            h('span', {}, h('strong', {}, `${o.nom}${o.cost ? ` (${joc.diners(o.cost)})` : ''}`), h('span', { class: 'nota' }, o.text))))));
-        }
-        item.append(h('button', {
-          class: 'btn btn-principal', type: 'button',
-          onclick: async () => {
-            let cost2 = joc.dinersCost(id, estat);
-            if (t.nom_) {
-              const lliure = await desa.nomDisponible(usuari.uid, estat.nomBase).catch(() => true);
-              if (!lliure) {
-                estat.constitucio.pas = 'nom';
-                avis(`Certificació denegada: ja existeix una empresa que es diu "${estat.nomBase}". Tria un altre nom.`, 'error');
-                desar(); dibuixarConstitucio(); return;
-              }
-            }
-            if (estat.estalvis < cost2) { avis('No tens prou estalvis per pagar aquest tràmit.', 'error'); return; }
-            estat.estalvis -= cost2;
-            estat.costosConstitucio = (estat.costosConstitucio || 0) + cost2;
-            const ara = Date.now();
-            c.enCurs = { id, inici: ara, fi: ara + t.segonsJoc * 1000 };
-            desar(); dibuixarConstitucio();
-          },
-        }, `Fes el tràmit${cost ? ` (${joc.diners(cost)})` : ''}`));
-      }
-    }
-    llista.append(item);
-  }
-  const acabat = !seguent && !c.enCurs;
-  return h('div', { class: 'bloc' },
-    h('p', {}, `Aquests són els tràmits per crear una empresa com a ${f.nom.toLowerCase()} a Catalunya, en ordre. Els costos els pagues dels teus estalvis (són despeses de constitució). Cost total aproximat: ${joc.diners(total)}.`),
-    h('p', { class: 'nota' }, 'Truc real: als Punts d\'Atenció a l\'Emprenedor (PAE) i amb el sistema CIRCE pots fer molts d\'aquests tràmits en línia i d\'una sola vegada.'),
-    llista,
-    h('div', { class: 'fila-botons' }, c.fets.length ? null : botoTornar('oficina'),
-      h('button', { class: 'btn btn-principal', type: 'button', disabled: !acabat, onclick: () => anarA('fet') }, 'Veure el resultat')));
-}
-
-function pasFet() {
-  const f = FORMES[estat.forma];
-  if (!estat.nif) {
-    const xifres = String(Math.floor(10000000 + Math.random() * 89999999));
-    estat.nif = f.lletraNif ? `${f.lletraNif}${xifres}` : `${xifres}${'TRWAGMYFPDXBNJZSQVHLCKE'[Number(xifres) % 23]}`;
-  }
-  const fianca = OFICINES[estat.oficina]?.fianca || 0;
-  const diners = estat.desemborsat - fianca;
-  return h('div', { class: 'bloc' },
-    h('div', { class: 'escriptura' },
-      h('span', { class: 'nota' }, f.lletraNif ? 'Empresa inscrita' : 'Alta d\'activitat'),
-      h('strong', { class: 'nom-final' }, estat.nom),
-      h('dl', { class: 'dades' },
-        h('dt', {}, 'Forma jurídica'), h('dd', {}, f.nom),
-        h('dt', {}, f.lletraNif ? 'NIF' : 'NIF (el teu DNI)'), h('dd', {}, estat.nif),
-        h('dt', {}, 'Socis'), h('dd', {}, String(estat.socis)),
-        h('dt', {}, f.capitalMin ? 'Capital social' : 'Diners al negoci'), h('dd', {}, joc.diners(estat.capital)),
-        h('dt', {}, 'Desemborsat'), h('dd', {}, joc.diners(estat.desemborsat)),
-        h('dt', {}, 'Domicili'), h('dd', {}, OFICINES[estat.oficina].nom),
-        h('dt', {}, 'Despeses de constitució'), h('dd', {}, joc.diners(estat.costosConstitucio || 0)),
-        h('dt', {}, 'Fiança de l\'oficina'), h('dd', {}, joc.diners(fianca)),
-        h('dt', {}, 'Diners al compte de l\'empresa'), h('dd', {}, joc.diners(diners)),
-        h('dt', {}, 'Els teus estalvis'), h('dd', {}, joc.diners(estat.estalvis - estat.aportacioMeva)))),
-    h('p', {}, 'Ara comença la feina de veritat: donar-te d\'alta com a ocupador, triar qui et porta les nòmines i els impostos, contractar personal i construir. Cada setmana (1 hora real) pagaràs el lloguer, la quota d\'autònom i les nòmines.'),
-    h('div', { class: 'fila-botons' }, h('button', {
-      class: 'btn btn-principal btn-gran', type: 'button',
-      onclick: async () => {
-        try {
-          if (estat.slot == null) estat.slot = await desa.assignarSlot();
-          estat.estalvis -= estat.aportacioMeva;
-          estat.diners = diners;
-          estat.constitucio = { ...estat.constitucio, constituida: true, pas: 'fet', data: Date.now() };
-          estat.despesesT = Date.now();
-          await desar();
-          iniciarJoc();
-        } catch (err) { console.error(err); avis('No s\'ha pogut acabar. Torna-ho a provar.', 'error'); }
-      },
-    }, 'Comença a treballar!')));
-}
+function tornarAlPanell() { sessionStorage.removeItem('fem-empresa-jugar'); location.reload(); }
 
 // ---------- joc ----------
-let rellotge = null, rellotgeBorsa = null, rellotgeMon = null, rellotgeProf = null;
-
+let rellotge = null;
 async function iniciarJoc() {
-  joc.migrar(estat);
-  clearInterval(rellotgeTramit);
   mostrarPantalla('pantalla-joc');
-  if (estat.slot == null) {
-    try { estat.slot = await desa.assignarSlot(); await desar(); } catch (err) { console.error(err); estat.slot = 0; }
-  }
-  if (joc.actualitzar(estat)) desar();
-  construirMapa();
+  aplicarConfig();
+  ciutat = crearCiutat({ canvas: $('#mon-canvas'), onClic: clicCiutat });
+  ciutat.vistaPoble();
+  await carregarLocals();
+  joc.simular(estat); joc.actualitzar(estat); joc.aplicarDespeses(estat); joc.aplicarInteressos(estat);
   dibuixarTot();
-  centrarMapa();
-  carregarMon();
-  if (!rellotgeMon) rellotgeMon = setInterval(carregarMon, 60000);
-  if (!rellotgeProf) rellotgeProf = setInterval(comprovarProfessorat, 45000);
-  comprovarProfessorat();
-  { const m = joc.aplicarDespeses(estat); m.forEach((t) => setTimeout(() => avis(t, 'error'), 1200)); }
   clearInterval(rellotge);
   rellotge = setInterval(tic, 1000);
-  clearInterval(rellotgeBorsa);
-  rellotgeBorsa = setInterval(cobrarBorsa, 60000);
-  cobrarBorsa();
+  setInterval(carregarLocals, 30000);
+  setInterval(comprovarProfessorat, 45000);
+  comprovarProfessorat();
   iniciarXat();
-  joc.aplicarInteressos(estat);
-  { const m = joc.aplicarDirectors(estat); if (m) setTimeout(() => avis(m, 'error'), 1500); }
-  if (joc.registrarHistorial(estat)) desar();
-  if (!estat.tutorialVist) obrirGuia();
+  if (!estat.tutorialVist) setTimeout(() => obrirPasIdea(), 600);
 }
 
+let darrerDesat = Date.now();
 function tic() {
+  joc.simular(estat);
+  const msgs = [...joc.actualitzar(estat), ...joc.aplicarDespeses(estat)];
   joc.aplicarInteressos(estat);
-  const despeses = joc.aplicarDespeses(estat);
-  if (despeses.length) { despeses.forEach((t) => avis(t, 'error')); desar(); }
-  const marxen = joc.aplicarDirectors(estat);
-  if (marxen) { avis(marxen, 'error'); desar(); }
-  if (joc.registrarHistorial(estat)) desar();
+  if (msgs.length) {
+    msgs.forEach((m) => avis(m, 'ok'));
+    // obres d'adequació acabades durant la constitució
+    if (joc.pasActual(estat) === 'obres' && estat.local?.estat === 'llest') joc.avancarPas(estat);
+    if (estat.localAnterior) { desa.alliberarLocal(estat.localAnterior); delete estat.localAnterior; }
+    sincronitzarLocal(); desar(); dibuixarTot();
+  }
+  if (joc.registrarHistorial(estat) || Date.now() - darrerDesat > 30000) { darrerDesat = Date.now(); desar(); }
   dibuixarCapcalera();
-  const missatge = joc.actualitzar(estat);
-  if (missatge) { desar(); dibuixarTot(); avis(missatge, 'ok'); return; }
-  dibuixarMapa();
   refrescarPanell();
-}
-
-async function cobrarBorsa() {
-  try {
-    const total = await desa.cobrarVendes(usuari.uid, estat);
-    if (total) { avis(`Has venut a la borsa: +${joc.diners(total)}`, 'ok'); dibuixarTot(); }
-  } catch (err) { console.error(err); }
 }
 
 function dibuixarTot() {
   dibuixarCapcalera();
-  $('#barra-logo').src = imgLogo(estat.logo);
-  $('#barra-nom').textContent = estat.nom;
-  $('#barra-diners').textContent = joc.diners(estat.diners);
-  dibuixarMapa();
+  ciutat?.setLocals(locals, usuari.uid);
+  ciutat?.setObjectiu(objectiuActual());
   refrescarPanell(true);
 }
 
-// Accions que parlen amb el servidor (borsa)
-async function accioRemota(fn, missatgeOk) {
+async function carregarLocals() {
   try {
-    const r = await fn();
-    if (missatgeOk) avis(typeof missatgeOk === 'function' ? missatgeOk(r) : missatgeOk, 'ok');
-    dibuixarTot();
-    return r;
-  } catch (err) {
-    console.error(err);
-    avis(err.code === 'permission-denied' ? 'Operació no permesa. Torna-ho a provar.' : err.message, 'error');
-    return undefined;
-  }
-}
-
-// ---------- mapa del món (canvas, js/mon.js) ----------
-let mon = null;
-let arrossegat = false; // compatibilitat
-function construirMapa() {
-  if (!mon) {
-    mon = crearMon({ canvas: $('#mon-canvas'), onClic: clicMon });
-  }
-  mon.setJo(usuari.uid, estat);
-}
-async function carregarMon() {
-  try { mon?.setEmpreses(await desa.carregarMon(usuari.uid, estat)); } catch (err) { console.error(err); }
-}
-function centrarMapa() { mon?.vistaCiutat(estat.slot); }
-function dibuixarMapa() {
-  mon?.setJo(usuari.uid, estat);
-  $('#barra-diners').textContent = joc.diners(estat.diners);
-}
-
-function clicMon({ X, Y, cella }) {
-  if (cella && cella.emp.uid === usuari.uid) {
-    if (cella.tipus === 'parcela') return obrirParcela(cella.i);
-    if (cella.mon) return obrirCarreteraMon(X, Y, true);
-    return avis('Carrer de la teva ciutat.');
-  }
-  if (cella) {
-    if (String(cella.emp.uid).startsWith('bot')) return avis(`${cella.emp.nom}: empresa fictícia del mode de prova.`);
-    return obrirPerfil(cella.emp.uid);
-  }
-  obrirCarreteraMon(X, Y, false);
-}
-
-function obrirCarreteraMon(X, Y, meva) {
-  const cos = h('div', { class: 'bloc' },
-    h('img', { src: 'img/mapa/carretera-a.webp', alt: '', width: 140, height: 140, class: 'panell-img' }));
-  if (meva) {
-    cos.append(h('p', {}, 'Aquest tros de carretera l\'has fet tu. Si el treus, pots deixar alguna ciutat sense connexió.'),
-      h('button', { class: 'btn', onclick: () => accio(() => { joc.treureCarreteraMon(estat, X, Y); tancarPanell(); }) }, 'Treu la carretera'));
-  } else {
-    const potser = mon.teCarreteraVeina(X, Y);
-    cos.append(
-      h('p', {}, 'Camp lliure. Hi pots fer un tros de carretera per arribar a altres ciutats. Les empreses connectades per carretera no paguen transport quan es compren coses a la borsa.'),
-      potser ? null : h('p', { class: 'nota falta' }, 'Només pots construir al costat d\'una carretera que ja existeixi.'),
-      h('button', {
-        class: 'btn btn-principal', disabled: !potser || estat.diners < COST_CARRETERA,
-        onclick: () => accio(() => { joc.construirCarreteraMon(estat, X, Y); tancarPanell(); }),
-      }, `Construeix carretera (${joc.diners(COST_CARRETERA)})`));
-  }
-  obrirPanell('Carretera', cos, { tipus: 'carretera-mon' });
-}
-
-const PERCENT_TRANSPORT = 0.1;
-function percentTransport(uidVenedor) {
-  const e = mon?.empresaDeUid(uidVenedor);
-  if (!e || e.slot == null) return PERCENT_TRANSPORT;
-  return mon.connectades(estat.slot, e.slot) ? 0 : PERCENT_TRANSPORT;
-}
-
-function imatgeParcela(p) {
-  if (p.estat === 'carretera') return 'img/mapa/carretera-a.webp';
-  if (p.estat === 'bloquejada') return 'img/mapa/parcela-bloquejada.webp';
-  if (p.estat === 'buida') return 'img/mapa/parcela-buida.webp';
-  if (p.estat === 'obres') return 'img/mapa/parcela-obres.webp';
-  if (p.millora) return 'img/mapa/parcela-millora.webp';
-  if (p.tipus === 'seu-central' && OFICINES[estat.oficina]?.img) return OFICINES[estat.oficina].img;
-  return imgEdifici(p.tipus);
-}
-
-function nomParcela(p) {
-  if (p.estat === 'bloquejada') return 'Parcel·la per comprar';
-  if (p.estat === 'buida') return 'Parcel·la lliure';
-  if (p.estat === 'carretera') return 'Carretera';
-  if (p.estat === 'obres') return `${EDIFICIS[p.tipus].nom} (en obres)`;
-  return `${EDIFICIS[p.tipus].nom}, nivell ${p.nivell || 1}`;
-}
-
-$('#zoom-mes').addEventListener('click', () => mon?.zoom(1.25));
-$('#zoom-menys').addEventListener('click', () => mon?.zoom(1 / 1.25));
-$('#zoom-mon').addEventListener('click', () => mon?.centrarEnSlot(estat.slot, 0.07));
-$('#zoom-ciutat').addEventListener('click', () => centrarMapa());
-
-// ---------- panell lateral ----------
-let panell = null; // { tipus, i, firma }
-
-function obrirPanell(titol, contingut, info) {
-  $('#panell-titol').textContent = titol;
-  $('#panell-cos').replaceChildren(contingut);
-  $('#panell').hidden = false;
-  $('#panell').classList.toggle('ample', !!info.ample);
-  if (info.tipus === 'parcela') marcarNav('mapa');
-  panell = info;
-}
-function tancarPanell() { $('#panell').hidden = true; panell = null; marcarNav('mapa'); }
-$('#panell-tancar').addEventListener('click', tancarPanell);
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') tancarPanell(); });
-
-// La "firma" canvia quan cal redibuixar el panell sencer (no per cada segon)
-function firmaParcela(i) {
-  const p = estat.parceles[i];
-  const feina = p.produccio || p.venda || p.millora;
-  return JSON.stringify([p.estat, p.tipus, p.nivell, !!p.produccio, !!p.venda, !!p.millora, feina && feina.fi <= Date.now(), estat.diners, estat.inventari]);
-}
-
-function refrescarPanell(forcar = false) {
-  if (!panell) return;
-  if (panell.tipus === 'parcela') {
-    if (forcar || firmaParcela(panell.i) !== panell.firma) { obrirParcela(panell.i); return; }
-  } else if (forcar && panell.tipus === 'magatzem') { obrirMagatzem(); return; }
-  else if (panell.tipus === 'empresa' && panell.pestanya === 'resum' && document.querySelector('#panell [data-fi]') &&
-    Number(document.querySelector('#panell [data-fi]').dataset.fi) <= Date.now()) { obrirEmpresa('resum'); return; }
-  // actualitza els comptes enrere
-  for (const el of document.querySelectorAll('#panell [data-fi]')) {
-    el.textContent = joc.temps((Number(el.dataset.fi) - Date.now()) / 1000);
-  }
-  for (const el of document.querySelectorAll('#panell [data-inici]')) {
-    const ini = Number(el.dataset.inici), fi = Number(el.dataset.fiBarra);
-    el.style.width = `${Math.min(100, ((Date.now() - ini) / (fi - ini)) * 100)}%`;
-  }
-}
-
-function obrirParcela(i) {
-  const p = estat.parceles[i];
-  const info = { tipus: 'parcela', i, firma: firmaParcela(i) };
-  if (p.estat === 'bloquejada') return obrirPanell('Parcel·la per comprar', panellBloquejada(i), info);
-  if (p.estat === 'buida') return obrirPanell('Què hi vols construir?', panellConstruir(i), info);
-  if (p.estat === 'carretera') return obrirPanell('Carretera', panellCarretera(i), info);
-  if (p.estat === 'obres') return obrirPanell(EDIFICIS[p.tipus].nom, panellObres(p), info);
-  if (p.tipus === 'seu-central') return obrirPanell(estat.nom, panellSeu(), info);
-  return obrirPanell(`${EDIFICIS[p.tipus].nom}`, panellEdifici(i), info);
-}
-
-const icona = (recurs, mida = 28) => h('img', { src: imgRecurs(recurs), alt: RECURSOS[recurs].nom, title: RECURSOS[recurs].nom, width: mida, height: mida, class: 'icona' });
-
-// Selector de quantitat amb botons − i +
-function selectorQuantitat(valor, max, onCanvi, etiqueta = 'Quantitat') {
-  const input = h('input', { type: 'number', min: 1, max: Math.max(1, max), value: valor, inputmode: 'numeric', 'aria-label': etiqueta });
-  const fixa = (n) => { input.value = Math.max(1, Math.min(Math.max(1, max), n)); onCanvi(); };
-  input.addEventListener('input', onCanvi);
-  const cont = h('div', { class: 'selector' },
-    h('button', { class: 'btn-pas', type: 'button', 'aria-label': 'Menys', onclick: () => fixa((Number(input.value) || 1) - 1) }, '−'),
-    input,
-    h('button', { class: 'btn-pas', type: 'button', 'aria-label': 'Més', onclick: () => fixa((Number(input.value) || 0) + 1) }, '+'),
-    h('button', { class: 'btn-pas btn-max', type: 'button', onclick: () => fixa(max) }, 'Màx'));
-  return { input, cont };
-}
-
-function panellBloquejada(i) {
-  const cost = joc.costParcela(estat);
-  return h('div', { class: 'bloc' },
-    h('p', {}, 'Compra aquesta parcel·la per tenir més espai per construir. Cada parcel·la nova és més cara que l\'anterior.'),
-    h('button', {
-      class: 'btn btn-principal', disabled: estat.diners < cost,
-      onclick: () => accio(() => { joc.desbloquejar(estat, i); avis('Parcel·la comprada!', 'ok'); }),
-    }, `Compra-la per ${joc.diners(cost)}`),
-    estat.diners < cost ? h('p', { class: 'nota' }, `Et falten ${joc.diners(cost - estat.diners)}.`) : null);
-}
-
-function panellConstruir(i) {
-  const llista = h('ul', { class: 'llista-edificis' });
-  llista.append(h('li', { class: 'fitxa-edifici' },
-    h('img', { src: 'img/mapa/carretera-a.webp', alt: '', width: 96, height: 96, class: 'fitxa-img' }),
-    h('div', { class: 'fitxa-info' }, h('strong', {}, 'Carretera'),
-      h('span', { class: 'nota' }, 'S\'uneix sola amb les carreteres del costat. Es fa a l\'instant.')),
-    h('button', {
-      class: 'btn btn-principal', disabled: estat.diners < COST_CARRETERA,
-      onclick: () => accio(() => { joc.construirCarretera(estat, i); tancarPanell(); }),
-    }, joc.diners(COST_CARRETERA))));
-  const tipus = Object.entries(EDIFICIS).filter(([, d]) => !d.inicial);
-  tipus.sort((a, b) => (Number(!!a[1].aviat) - Number(!!b[1].aviat)) || (a[1].cost - b[1].cost));
-  for (const [id, def] of tipus) {
-    const potPagar = estat.diners >= def.cost;
-    const fa = def.ven
-      ? h('span', { class: 'fa' }, 'Ven ', ...def.ven.map((o) => icona(o.recurs, 22)))
-      : h('span', { class: 'fa' }, 'Fa ', ...def.produeix.map((o) => icona(o.recurs, 22)));
-    llista.append(h('li', { class: `fitxa-edifici${def.aviat ? ' aviat' : ''}` },
-      h('img', { src: imgEdifici(id), alt: '', width: 96, height: 96, class: 'fitxa-img' }),
-      h('div', { class: 'fitxa-info' },
-        h('strong', {}, def.nom),
-        def.aviat ? h('span', { class: 'nota' }, 'Properament') : fa,
-        def.aviat ? null : h('span', { class: 'nota' }, `Obres: ${joc.temps(tempsConstruccio(id))}`),
-        def.nivellMinim && joc.nivellEmpresa(estat) < def.nivellMinim ? h('span', { class: 'nota falta' }, `Cal el nivell ${def.nivellMinim} d'empresa`) : null),
-      def.aviat ? null : h('button', {
-        class: 'btn btn-principal', disabled: !potPagar || (def.nivellMinim && joc.nivellEmpresa(estat) < def.nivellMinim),
-        onclick: () => accio(() => { joc.construir(estat, i, id); tancarPanell(); avis(`Comencen les obres: ${def.nom}`, 'ok'); }),
-      }, joc.diners(def.cost))));
-  }
-  return llista;
-}
-
-function panellCarretera(i) {
-  return h('div', { class: 'bloc' },
-    h('img', { src: imatgeParcela(estat.parceles[i]), alt: '', width: 160, height: 160, class: 'panell-img' }),
-    h('p', {}, 'Aquest tros de carretera és teu. Pots treure\'l per tornar a tenir la parcel·la lliure (no es recuperen els diners).'),
-    h('button', { class: 'btn', onclick: () => accio(() => { joc.treureCarretera(estat, i); tancarPanell(); }) }, 'Treu la carretera'));
-}
-
-function panellObres(p) {
-  return h('div', { class: 'bloc' },
-    h('img', { src: imgEdifici(p.tipus), alt: '', width: 160, height: 160, class: 'panell-img' }),
-    h('p', {}, 'Les obres acaben d\'aquí a ', h('strong', { 'data-fi': p.fiObres }, joc.temps((p.fiObres - Date.now()) / 1000)), '.'));
-}
-
-function panellSeu() {
-  const edificis = estat.parceles.filter((p) => p.estat === 'edifici' && p.tipus !== 'seu-central').length;
-  return h('div', { class: 'bloc' },
-    h('img', { src: imgLogo(estat.logo), alt: '', width: 96, height: 96, class: 'panell-logo' }),
-    h('dl', { class: 'dades' },
-      h('dt', {}, 'Diners'), h('dd', {}, joc.diners(estat.diners)),
-      h('dt', {}, 'Valor de l\'empresa'), h('dd', {}, joc.diners(joc.valorEmpresa(estat))),
-      h('dt', {}, 'Edificis'), h('dd', {}, joc.nombre(edificis))),
-    h('button', { class: 'btn', onclick: obrirGuia }, 'Torna a veure el tutorial'));
-}
-
-function barraPanell(inici, fi) {
-  return h('div', { class: 'progres gran' }, h('span', { class: 'progres-ple', 'data-inici': inici, 'data-fi-barra': fi, style: `width:${Math.min(100, ((Date.now() - inici) / (fi - inici)) * 100)}%` }));
-}
-
-function panellEdifici(i) {
-  const p = estat.parceles[i];
-  const def = EDIFICIS[p.tipus];
-  const nivell = p.nivell || 1;
-  const cos = h('div', { class: 'bloc' },
-    h('div', { class: 'cap-edifici' },
-      h('img', { src: imatgeParcela(p), alt: '', width: 140, height: 140, class: 'panell-img' }),
-      h('span', { class: 'insignia-nivell' }, `Nivell ${nivell}`)));
-
-  // Millorant
-  if (p.millora) {
-    cos.append(h('p', { class: 'resultat' }, `Millorant fins al nivell ${nivell + 1}`),
-      barraPanell(p.millora.inici, p.millora.fi),
-      h('p', {}, 'Falten ', h('strong', { 'data-fi': p.millora.fi }, joc.temps((p.millora.fi - Date.now()) / 1000)), '.'));
-    return cos;
-  }
-
-  // Feina en marxa o acabada
-  const feina = p.produccio || p.venda;
-  if (feina) {
-    const nom = RECURSOS[feina.recurs].nom;
-    if (feina.fi <= Date.now()) {
-      cos.append(
-        p.venda
-          ? h('p', { class: 'resultat' }, icona(feina.recurs, 40), `Venudes ${joc.nombre(feina.quantitat)} unitats de ${nom}: ${joc.diners(feina.quantitat * feina.preu)}`)
-          : h('p', { class: 'resultat' }, icona(feina.recurs, 40), `${joc.nombre(feina.quantitat)} × ${nom} a punt!`),
-        h('button', {
-          class: 'btn btn-principal btn-gran',
-          onclick: () => accio(() => {
-            const r = joc.recollir(estat, i);
-            avis(r.tipus === 'venda' ? `+${joc.diners(r.ingres)}` : `+${r.quantitat} ${RECURSOS[r.recurs].nom}`, 'ok');
-          }),
-        }, p.venda ? 'Cobra les vendes' : 'Recull i porta al magatzem'));
-    } else {
-      cos.append(
-        h('p', { class: 'resultat' }, icona(feina.recurs, 40),
-          p.venda ? `Venent ${joc.nombre(feina.quantitat)} × ${nom} a ${joc.diners(feina.preu)}` : `Produint ${joc.nombre(feina.quantitat)} × ${nom}`),
-        barraPanell(feina.inici, feina.fi),
-        h('p', {}, 'Falten ', h('strong', { 'data-fi': feina.fi }, joc.temps((feina.fi - Date.now()) / 1000)), '.'));
+    locals = await desa.carregarLocals();
+    // competència: negocis oberts del mateix sector a la mateixa zona
+    if (estat.local && estat.sector) {
+      const zona = estat.local.zona;
+      const n = Object.entries(locals).filter(([id, l]) => l.sector === estat.sector && l.estat === 'obert' && localsPerId[id]?.zona === zona).length;
+      joc.setCompetencia(n || 1);
     }
-    return cos;
-  }
-
-  if (def.ven) for (const opcio of def.ven) cos.append(opcioVenda(i, opcio, nivell));
-  for (const opcio of def.produeix) cos.append(opcioProduccio(i, opcio, nivell));
-  cos.append(seccioMillora(i));
-  return cos;
+    ciutat?.setLocals(locals, usuari.uid);
+  } catch (err) { console.error(err); }
 }
 
-function opcioProduccio(i, opcio, nivell) {
-  const max = joc.maxProduible(estat, opcio);
-  const entrades = Object.entries(opcio.entrades);
-  const info = h('span', { class: 'nota' });
-  const { input, cont } = selectorQuantitat(Math.min(10, Math.max(1, max)), max, () => {
-    const q = Number(input.value) || 0;
-    info.textContent = `Temps: ${joc.temps(joc.tempsProduccio(estat, opcio, q, nivell))}. Costos variables: ${joc.diners(joc.souProduccio(opcio, q))}. Cost per unitat: ${joc.dinersDec(joc.costUnitariProduccio(estat, opcio))}.`;
-  });
-  input.dispatchEvent(new Event('input'));
-  return h('div', { class: 'opcio' },
-    h('div', { class: 'opcio-cap' }, icona(opcio.recurs, 44),
-      h('div', {}, h('strong', {}, RECURSOS[opcio.recurs].nom),
-        h('span', { class: 'nota' }, RECURSOS[opcio.recurs].intern
-          ? `Tens ${joc.nombre(estat.recerca || 0)} punts. Es fan servir a Empresa > Recerca.`
-          : `L'escola en paga ${joc.diners(joc.preuEscola(estat, opcio.recurs))} la unitat (Q${joc.qualitat(estat, opcio.recurs)})`))),
-    entrades.length
-      ? h('p', { class: 'necessita' }, 'Per unitat cal: ', ...entrades.map(([r, q]) =>
-        h('span', { class: `ingredient${joc.quantitatA(estat, r) < q ? ' falta' : ''}` }, icona(r, 22), `${q} (tens ${joc.nombre(joc.quantitatA(estat, r))})`)))
-      : h('p', { class: 'necessita' }, 'No necessita cap material.'),
-    h('div', { class: 'opcio-accio' }, cont,
-      h('button', {
-        class: 'btn btn-principal', disabled: max < 1,
-        onclick: () => accio(() => { joc.iniciarProduccio(estat, i, opcio.recurs, Number(input.value)); tancarPanell(); }),
-      }, 'Produeix')),
-    info,
-    max < 1 ? h('p', { class: 'nota falta' }, 'Et falta material: produeix-lo en un altre edifici o compra\'l a la borsa.') : null);
+function dadesLocalPublic() {
+  return { nom: estat.nom, logo: estat.logo, sector: estat.sector, fase: estat.local?.fase || 1, estat: estat.local?.estat || 'contracte', faseObra: estat.nouLocal?.faseObra || 0 };
+}
+async function sincronitzarLocal() {
+  try {
+    if (estat.local) { await desa.actualitzarLocal(usuari.uid, estat.local.id, dadesLocalPublic()); locals[estat.local.id] = { uid: usuari.uid, ...dadesLocalPublic() }; }
+    if (estat.nouLocal) { await desa.actualitzarLocal(usuari.uid, estat.nouLocal.id, { ...dadesLocalPublic(), estat: 'construint', faseObra: estat.nouLocal.faseObra }); locals[estat.nouLocal.id] = { uid: usuari.uid, ...dadesLocalPublic(), estat: 'construint', faseObra: estat.nouLocal.faseObra }; }
+    ciutat?.setLocals(locals, usuari.uid);
+  } catch (err) { console.error(err); }
 }
 
-function opcioVenda(i, opcio, nivell) {
-  const estoc = joc.quantitatA(estat, opcio.recurs);
-  const ref = joc.preuReferenciaQ(estat, opcio.recurs);
-  const info = h('span', { class: 'nota' });
-  const preu = h('input', { type: 'number', min: 1, value: ref, inputmode: 'numeric', 'aria-label': 'Preu per unitat', class: 'input-preu' });
-  const { input, cont } = selectorQuantitat(Math.max(1, Math.min(estoc, 20)), estoc, () => calcula());
-  function calcula() {
-    const q = Number(input.value) || 0, pr = Number(preu.value) || 0;
-    if (!q || !pr) { info.textContent = ''; return; }
-    info.textContent = `Temps: ${joc.temps(joc.tempsVenda(estat, opcio, q, pr, nivell))}. Ingressos: ${joc.diners(q * pr)}. Costos de la botiga: ${joc.diners(joc.souVenda(opcio, q, pr))}.`;
-  }
-  preu.addEventListener('input', calcula);
-  calcula();
-  return h('div', { class: 'opcio' },
-    h('div', { class: 'opcio-cap' }, icona(opcio.recurs, 44),
-      h('div', {}, h('strong', {}, RECURSOS[opcio.recurs].nom),
-        h('span', { class: 'nota' }, `Tens ${joc.nombre(estoc)} unitats. Preu habitual: ${joc.diners(ref)}`))),
-    h('label', { class: 'fila-preu' }, 'Preu per unitat (€)', preu),
-    h('div', { class: 'opcio-accio' }, cont,
-      h('button', {
-        class: 'btn btn-principal', disabled: estoc < 1,
-        onclick: () => accio(() => { joc.iniciarVenda(estat, i, opcio.recurs, Number(input.value), Number(preu.value)); tancarPanell(); }),
-      }, 'Posa a la venda')),
-    info,
-    estoc < 1 ? h('p', { class: 'nota' }, 'No en tens: produeix-ne o compra\'n a la borsa.') : null);
-}
-
-function seccioMillora(i) {
-  const p = estat.parceles[i];
-  const nivell = p.nivell || 1;
-  if (nivell >= NIVELL_MAX) return h('div', { class: 'opcio' }, h('p', {}, 'Aquest edifici ja és al nivell màxim.'));
-  const cost = joc.costMillora(p);
-  return h('div', { class: 'opcio millora' },
-    h('strong', {}, `Millora a nivell ${nivell + 1}`),
-    h('p', { class: 'nota' }, `Treballarà ${nivell + 1} vegades més ràpid que al nivell 1. Les obres duren ${joc.temps(joc.tempsMillora(p))} i mentrestant no pot treballar.`),
-    h('button', {
-      class: 'btn', disabled: estat.diners < cost,
-      onclick: () => accio(() => { joc.millorar(estat, i); avis('Comencen les obres de millora', 'ok'); }),
-    }, `Millora per ${joc.diners(cost)}`));
-}
-
-// ---------- navegació inferior ----------
-function marcarNav(seccio) {
-  for (const b of document.querySelectorAll('.navegacio button')) b.classList.toggle('actiu', b.dataset.seccio === seccio);
-}
-const SECCIONS = {
-  mapa: () => tancarPanell(),
-  magatzem: () => obrirMagatzem(),
-  mercat: () => obrirMercat(),
-  empresa: () => obrirEmpresa(),
-  xat: () => obrirXat(),
-  cerca: () => obrirCerca(),
-};
-for (const b of document.querySelectorAll('.navegacio button')) {
-  b.addEventListener('click', () => SECCIONS[b.dataset.seccio]());
-}
-if (!XAT_ACTIU) $('#nav-xat').hidden = true;
-
-// Pestanyes dins d'una secció (com la barra d'icones de Sim Companies)
-function pestanyes(actual, llista) {
-  return h('div', { class: 'pestanyes', role: 'tablist' },
-    ...llista.map(([id, text, fn, bloquejat]) => h('button', {
-      class: `pestanya${id === actual ? ' actiu' : ''}`, role: 'tab',
-      'aria-selected': id === actual ? 'true' : 'false', onclick: fn,
-    }, text, bloquejat ? h('span', { class: 'cadenat', title: 'Bloquejat' }, '🔒') : null)));
-}
-
-// ---------- barra de nivell i missions ----------
+// ---------- capçalera: diners, nivell i guia ----------
+const constituida = () => estat.constitucio.constituida;
 function dibuixarCapcalera() {
-  const { nivell, fraccio, falta } = joc.progresNivell(estat);
+  $('#barra-logo').src = imgLogo(estat.logo || 1);
+  $('#barra-nom').textContent = estat.nom || 'La meva futura empresa';
+  $('#barra-diners').textContent = constituida() || estat.diners > 0 ? joc.diners(estat.diners) : `${joc.diners(estat.estalvis)} (estalvis)`;
+  $('#barra-diners').title = `Empresa: ${joc.diners(estat.diners)} · Estalvis personals: ${joc.diners(estat.estalvis)}`;
+  const { nivell, fraccio } = joc.progresNivell(estat);
   $('#nivell-text').textContent = `Nivell ${nivell}`;
   $('#nivell-ple').style.width = `${Math.round(fraccio * 100)}%`;
-  $('#barra-nivell').title = falta ? `Et falten ${joc.diners(falta)} de valor per pujar de nivell` : 'Nivell màxim';
-  if (nivell > (estat.nivellMax || 1)) {
-    estat.nivellMax = nivell;
-    desar();
-    avis(`Has pujat al nivell ${nivell}!`, 'ok');
+  if (constituida() && nivell > (estat.nivellMax || 1)) { estat.nivellMax = nivell; avis(`Has pujat al nivell ${nivell}!`, 'ok'); desar(); }
+  const boto = $('#missio');
+  if (!constituida()) {
+    const t = textGuia();
+    boto.hidden = false;
+    $('#missio-text').textContent = `→ ${t}`;
+    $('#missio-premi').textContent = `Pas ${estat.constitucio.pas + 1} de ${joc.passos(estat).length}`;
+    boto.classList.remove('feta');
+    return;
   }
   const m = joc.missioActual(estat);
-  const boto = $('#missio');
   boto.hidden = !m;
   if (m) {
     const fet = m.fet(estat);
@@ -881,478 +161,653 @@ function dibuixarCapcalera() {
   }
 }
 $('#missio').addEventListener('click', () => {
+  if (!constituida()) {
+    const obj = objectiuActual();
+    if (obj) ciutat.centrarEn(obj);
+    if (joc.pasActual(estat) === 'idea') obrirPasIdea();
+    else avis(textGuia());
+    return;
+  }
   const m = joc.missioActual(estat);
-  if (!m) return;
-  if (m.fet(estat)) accio(() => { joc.cobrarMissio(estat); avis(`Missió completada: +${joc.diners(m.premi)}`, 'ok'); });
-  else avis(`Missió: ${m.text}. Premi: ${joc.diners(m.premi)}.`);
+  if (m?.fet(estat)) accio(() => { joc.cobrarMissio(estat); avis(`Missió completada: +${joc.diners(m.premi)}`, 'ok'); });
+  else if (m) avis(`Missió: ${m.text}. Premi: ${joc.diners(m.premi)}.`);
 });
-$('#barra-nivell').addEventListener('click', () => obrirEmpresa('resum'));
 
-// ---------- magatzem (estil Sim Companies) ----------
-function obrirMagatzem() {
-  marcarNav('magatzem');
-  const items = Object.entries(estat.inventari).filter(([r, q]) => q > 0 && RECURSOS[r] && !RECURSOS[r].intern);
-  const cos = h('div', { class: 'bloc' });
-  if (!items.length) {
-    cos.append(h('img', { src: 'img/personatges/guia-pensa.webp', alt: '', width: 160, height: 160, class: 'panell-img' }),
-      h('p', {}, 'El magatzem és buit. Toca un edifici teu i posa\'l a produir, o compra al Mercat.'));
-  } else {
-    let total = 0;
-    for (const [cat, nomCat] of Object.entries(CATEGORIES)) {
-      const delaCat = items.filter(([r]) => RECURSOS[r].cat === cat);
-      if (!delaCat.length) continue;
-      const graella = h('div', { class: 'graella-estoc' });
-      for (const [r, q] of delaCat) {
-        total += q * joc.costMitja(estat, r);
-        graella.append(h('button', { class: 'carta-estoc', onclick: () => obrirProducte(r) },
-          h('span', { class: 'carta-preu' }, joc.dinersDec(joc.costMitja(estat, r))),
-          h('span', { class: 'carta-q' }, joc.nombre(q)),
-          h('span', { class: 'carta-qual' }, `Q${joc.qualitat(estat, r)}`),
-          icona(r, 52),
-          h('span', { class: 'carta-nom' }, RECURSOS[r].nom)));
-      }
-      cos.append(h('h3', { class: 'subtitol' }, nomCat), graella);
-    }
-    if (estat.recerca) cos.prepend(h('div', { class: 'total-estoc' }, h('span', {}, icona('recerca', 28), ' Punts de recerca'), h('strong', {}, joc.nombre(estat.recerca))));
-    cos.prepend(h('div', { class: 'total-estoc' }, h('span', {}, 'Valor de l\'estoc (a cost)'), h('strong', {}, joc.diners(total))));
-    cos.append(h('p', { class: 'nota' }, 'El preu petit de cada carta és el que t\'ha costat cada unitat de mitjana. Toca un producte per vendre\'l.'));
-  }
-  obrirPanell('Magatzem', cos, { tipus: 'magatzem', ample: true });
+// Què ha de fer ara l'alumne i on
+function textGuia() {
+  const p = joc.pasActual(estat);
+  if (!p) return '';
+  if (p === 'idea') return 'Parla amb la Marta: tria el nom i el sector del teu negoci';
+  if (p === 'gestoria') return 'Ves a la Gestoria (al costat de l\'Ajuntament) per triar la forma jurídica';
+  if (p === 'local') return 'Busca un local amb el cartell ES LLOGA i signa el contracte';
+  if (p === 'obres') return estat.local?.estat === 'obres' ? 'Les obres estan en marxa...' : 'Ves al teu local i encarrega les obres d\'adequació';
+  if (p === 'obertura') return 'Ves al teu local i obre les portes!';
+  const servei = SERVEIS[PAS_SERVEI[p]];
+  const ed = EDIFICIS_CIUTAT.find((e) => e[6] === PAS_SERVEI[p]);
+  const lloc = ed && ed[2] >= 20 ? ' (a Terrassa, per la Carretera de Terrassa)' : '';
+  return `Ves a ${servei?.nom || '?'}${lloc}: ${TRAMITS[p]?.nom || p}`;
+}
+function objectiuActual() {
+  if (constituida()) return null;
+  const p = joc.pasActual(estat);
+  if (p === 'gestoria') return 'gestoria';
+  if (p === 'obres' || p === 'obertura') return estat.local?.id || null;
+  if (p === 'local' || p === 'idea') return null;
+  return PAS_SERVEI[p] || null;
 }
 
-function obrirProducte(r) {
-  const q = joc.quantitatA(estat, r);
-  if (!q) { obrirMagatzem(); return; }
-  const cost = joc.costMitja(estat, r);
-  const quant = h('input', { type: 'number', min: 1, max: q, value: q, inputmode: 'numeric', 'aria-label': 'Unitats', class: 'input-preu' });
-  const preu = h('input', { type: 'number', min: 1, value: Math.max(1, Math.round(RECURSOS[r].preu * 1.2)), inputmode: 'numeric', 'aria-label': 'Preu per unitat', class: 'input-preu' });
-  const desti = h('select', { class: 'input-preu ample', 'aria-label': 'Empresa destinatària' }, h('option', { value: '' }, 'Carregant empreses…'));
-  const potContractes = joc.nivellEmpresa(estat) >= DESBLOQUEIG.contractes;
-  if (potContractes) {
-    desa.classificacio(usuari.uid, estat).then((files) => {
-      const altres = files.filter((f) => f.uid !== usuari.uid);
-      desti.replaceChildren(...(altres.length
-        ? altres.map((f) => h('option', { value: f.uid, 'data-nom': f.nom }, f.nom))
-        : [h('option', { value: '' }, 'Encara no hi ha altres empreses')]));
-    }).catch(() => desti.replaceChildren(h('option', { value: '' }, 'No s\'han pogut carregar')));
-  }
-  const cos = h('div', { class: 'bloc' },
-    h('button', { class: 'btn-tornar', onclick: obrirMagatzem }, '← Magatzem'),
-    h('div', { class: 'opcio-cap' }, icona(r, 56),
-      h('div', {}, h('strong', {}, RECURSOS[r].nom),
-        h('span', { class: 'nota' }, `Tens ${joc.nombre(q)} unitats. Cost mitjà: ${joc.dinersDec(cost)}`))),
-    h('label', { class: 'fila-preu' }, 'Unitats', quant),
-
-    h('div', { class: 'opcio' },
-      h('strong', {}, 'Mercat de l\'escola'),
-      h('p', { class: 'nota' }, `Paga ${joc.diners(joc.preuEscola(estat, r))} per unitat (qualitat Q${joc.qualitat(estat, r)}), sempre i a l'instant.`),
-      h('button', {
-        class: 'btn btn-principal',
-        onclick: () => accio(() => { const ing = joc.vendre(estat, r, Number(quant.value)); avis(`Venut per ${joc.diners(ing)}`, 'ok'); obrirProducte(r); }),
-      }, 'Ven a l\'escola')),
-
-    h('div', { class: 'opcio' },
-      h('strong', {}, 'Borsa'),
-      h('p', { class: 'nota' }, `Hi poses el preu tu. Quan algú compra, la borsa es queda un ${Math.round(COMISSIO_BORSA * 100)}%.`),
-      h('label', { class: 'fila-preu' }, 'Preu per unitat (€)', preu),
-      h('button', {
-        class: 'btn btn-principal',
-        onclick: () => accioRemota(async () => {
-          await desa.publicarOferta(usuari.uid, estat, r, Number(quant.value), Number(preu.value));
-          joc.sumaStat(estat, 'ofertesBorsa', 1); await desar();
-        }, 'Oferta publicada a la borsa').then(() => obrirProducte(r)),
-      }, 'Publica a la borsa')),
-
-    h('div', { class: 'opcio' },
-      h('strong', {}, 'Contracte directe'),
-      potContractes
-        ? [h('p', { class: 'nota' }, 'Ofereix-ho a una empresa concreta. Sense comissió: només ella el pot acceptar. Fa servir el mateix preu de dalt.'),
-          desti,
-          h('button', {
-            class: 'btn',
-            onclick: () => {
-              const opt = desti.selectedOptions[0];
-              if (!desti.value) { avis('Tria una empresa.', 'error'); return; }
-              accioRemota(() => desa.publicarOferta(usuari.uid, estat, r, Number(quant.value), Number(preu.value), desti.value, opt.dataset.nom),
-                `Contracte enviat a ${opt.dataset.nom}`).then(() => obrirProducte(r));
-            },
-          }, 'Envia el contracte')]
-        : h('p', { class: 'nota' }, `Es desbloqueja al nivell ${DESBLOQUEIG.contractes} d'empresa.`)));
-  obrirPanell(RECURSOS[r].nom, cos, { tipus: 'producte', ample: true });
-}
-
-// ---------- mercat: borsa i contractes ----------
-async function cintaPreus() {
-  const cinta = h('div', { class: 'cinta' }, h('span', { class: 'nota' }, 'Carregant preus…'));
-  desa.preusMinims().then((preus) => {
-    const elems = Object.keys(RECURSOS).filter((r) => preus[r] != null).map((r) => {
-      const amunt = preus[r] >= RECURSOS[r].preu;
-      return h('span', { class: 'cinta-item' }, icona(r, 22), joc.diners(preus[r]), h('b', { class: amunt ? 'amunt' : 'avall' }, amunt ? '↑' : '↓'));
-    });
-    cinta.replaceChildren(h('div', { class: 'cinta-pista' }, ...elems, ...elems.map((e) => e.cloneNode(true))));
-  }).catch(() => cinta.replaceChildren());
-  return cinta;
-}
-
-async function obrirMercat(pestanya = 'borsa') {
-  marcarNav('mercat');
-  const tabs = pestanyes(pestanya, [
-    ['borsa', 'Borsa', () => obrirMercat('borsa')],
-    ['contractes', 'Contractes', () => obrirMercat('contractes'), joc.nivellEmpresa(estat) < DESBLOQUEIG.contractes],
-  ]);
-  if (pestanya === 'contractes') return obrirContractes(tabs);
-  const cos = h('div', { class: 'bloc' }, tabs, await cintaPreus());
-  for (const [cat, nomCat] of Object.entries(CATEGORIES)) {
-    cos.append(h('h3', { class: 'subtitol' }, nomCat),
-      h('div', { class: 'graella-mercat' }, ...Object.keys(RECURSOS).filter((r) => RECURSOS[r].cat === cat).map((r) =>
-        h('button', { class: 'btn-recurs', title: RECURSOS[r].nom, onclick: () => obrirBorsa(r) }, icona(r, 40), h('span', {}, RECURSOS[r].nom)))));
-  }
-  obrirPanell('Mercat', cos, { tipus: 'mercat', ample: true });
-}
-
-async function obrirContractes(tabs) {
-  const entrants = h('div', { class: 'llista-ofertes' }, h('p', { class: 'nota' }, 'Carregant…'));
-  const sortints = h('div', { class: 'llista-ofertes' });
-  obrirPanell('Mercat', h('div', { class: 'bloc' }, tabs,
-    joc.nivellEmpresa(estat) < DESBLOQUEIG.contractes ? h('p', { class: 'avis-bloqueig' }, `Els contractes es desbloquegen al nivell ${DESBLOQUEIG.contractes}. Encara pots acceptar els que t'enviïn.`) : null,
-    h('h3', { class: 'subtitol' }, 'Contractes que has rebut'), entrants,
-    h('h3', { class: 'subtitol' }, 'Contractes que has enviat'), sortints,
-    h('p', { class: 'nota' }, 'Els contractes no paguen comissió. Per enviar-ne un, ves al Magatzem i toca un producte.')), { tipus: 'mercat', ample: true });
-  try {
-    const [ent, meves] = await Promise.all([desa.contractesEntrants(usuari.uid), desa.mevesOfertes(usuari.uid)]);
-    entrants.replaceChildren(...(ent.length ? ent.map((o) => h('div', { class: 'fila-oferta' },
-      h('img', { src: imgLogo(o.logo || 1), alt: '', width: 34, height: 34 }),
-      h('span', { class: 'of-info' }, h('strong', {}, o.nomVenedor), h('span', { class: 'nota' }, `${joc.nombre(o.quantitat)} × ${RECURSOS[o.recurs].nom} a ${joc.diners(o.preu)} (total ${joc.diners(o.quantitat * o.preu)})`)),
-      h('div', { class: 'of-compra' }, icona(o.recurs, 30), h('button', {
-        class: 'btn btn-principal',
-        onclick: () => accioRemota(() => desa.comprar(usuari.uid, estat, o.id, o.quantitat, percentTransport(o.venedor)), (r) => `Contracte acceptat: ${joc.diners(r.cost)}${r.transport ? ` + ${joc.diners(r.transport)} de transport` : ''}`).then(() => obrirMercat('contractes')),
-      }, 'Accepta')))) : [h('p', { class: 'nota' }, 'No tens cap contracte pendent.')]));
-    const env = meves.filter((o) => o.perA);
-    sortints.replaceChildren(...(env.length ? env.map((o) => h('div', { class: 'fila-oferta propia' },
-      icona(o.recurs, 30),
-      h('span', { class: 'of-info' }, `${joc.nombre(o.quantitat)} a ${joc.diners(o.preu)} per a ${o.nomPerA || 'una empresa'}`,
-        o.pendent ? h('span', { class: 'nota' }, `Per cobrar: ${joc.diners(o.pendent)}`) : null),
-      h('button', { class: 'btn', onclick: () => accioRemota(() => desa.retirarOferta(usuari.uid, estat, o.id), 'Contracte retirat').then(() => obrirMercat('contractes')) }, 'Retira'))) : [h('p', { class: 'nota' }, 'No has enviat cap contracte.')]));
-  } catch (err) {
-    console.error(err);
-    entrants.replaceChildren(h('p', { class: 'nota falta' }, 'No s\'han pogut carregar els contractes.'));
+// ---------- clics a la ciutat ----------
+function clicCiutat({ cella, local }) {
+  if (!cella) return;
+  if (cella.tipus === 'edifici' && cella.servei) return obrirServei(cella.servei, cella);
+  if (cella.tipus === 'edifici') return avis(cella.nom);
+  if (cella.tipus === 'local') {
+    const info = localsPerId[cella.id];
+    if ((estat.local && estat.local.id === cella.id) || (estat.nouLocal && estat.nouLocal.id === cella.id)) return obrirNegoci();
+    if (local) return obrirLocalOcupat(info, local);
+    return obrirLocalLliure(info);
   }
 }
 
-// ---------- empresa: resum, banc, classificació, recerca ----------
-function obrirEmpresa(pestanya = 'resum') {
-  marcarNav('empresa');
-  const n = joc.nivellEmpresa(estat);
-  const tabs = pestanyes(pestanya, [
-    ['resum', 'Resum', () => obrirEmpresa('resum')],
-    ['personal', 'Personal i despeses', () => obrirEmpresa('personal')],
-    ['reptes', 'Reptes', () => obrirEmpresa('reptes')],
-    ['banc', 'Banc', () => obrirEmpresa('banc'), n < DESBLOQUEIG.banc],
-    ['classificacio', 'Classificació', () => obrirEmpresa('classificacio')],
-    ['recerca', 'Recerca', () => obrirEmpresa('recerca'), n < DESBLOQUEIG.recerca],
-    ['directors', 'Directors', () => obrirEmpresa('directors'), n < DESBLOQUEIG.directors],
-  ]);
-  const cos = h('div', { class: 'bloc' }, tabs);
-  if (pestanya === 'resum') cos.append(...seccioResum());
-  if (pestanya === 'personal') cos.append(...seccioPersonal());
-  if (pestanya === 'reptes') cos.append(...seccioReptes());
-  if (pestanya === 'banc') cos.append(...seccioBanc(n));
-  if (pestanya === 'classificacio') cos.append(seccioClassificacio());
-  if (pestanya === 'recerca') cos.append(...seccioRecerca(n));
-  if (pestanya === 'directors') cos.append(...seccioDirectors(n));
-  obrirPanell(estat.nom, cos, { tipus: 'empresa', pestanya, ample: true });
+// ---------- escenes dins dels edificis ----------
+let escenaTimer = null;
+function obrirEscena({ servei, persona, interior, nomPersona, text, cos }) {
+  const sv = SERVEIS[servei];
+  $('#escena-fons').src = `img/interiors/${interior || sv?.interior || 'gestoria'}.webp`;
+  $('#escena-persona').src = persona || `img/personatges/${sv?.persona || 'guia-explica'}.webp`;
+  $('#escena-titol').textContent = sv?.nom || nomPersona || '';
+  $('#escena-qui').textContent = nomPersona || sv?.personaNom || '';
+  $('#escena-text').textContent = text || '';
+  $('#escena-cos').replaceChildren(...[].concat(cos || []).flat().filter((x) => x != null && x !== false));
+  $('#escena').hidden = false;
+}
+function tancarEscena() { $('#escena').hidden = true; clearInterval(escenaTimer); }
+$('#escena-tancar').addEventListener('click', tancarEscena);
+$('#escena').addEventListener('click', (ev) => { if (ev.target.id === 'escena') tancarEscena(); });
+
+function obrirServei(servei, cella) {
+  const pas = joc.pasActual(estat);
+  const sv = SERVEIS[servei];
+  // Pas de la constitució que toca aquí
+  if (!constituida() && pas === 'gestoria' && servei === 'gestoria') return escenaGestoria();
+  if (!constituida() && PAS_SERVEI[pas] === servei) return escenaTramit(pas);
+  if (!constituida() && estat.constitucio.enCurs && PAS_SERVEI[estat.constitucio.enCurs.id] === servei) return escenaTramit(estat.constitucio.enCurs.id);
+  // Serveis quan l'empresa ja funciona
+  if (constituida()) {
+    if (servei === 'banc') return escenaBanc();
+    if (servei === 'gestoria') return escenaGestoriaServeis();
+    if (servei === 'seguretat-social') return escenaSS();
+  }
+  const ara = textGuia();
+  obrirEscena({ servei, text: `${sv.text}${!constituida() && ara ? `\n\nAra mateix t'has d'ocupar d'això: ${ara}.` : ''}`, cos: [] });
 }
 
-function seccioRecerca(n) {
-  if (n < DESBLOQUEIG.recerca) {
-    return [h('div', { class: 'avis-bloqueig' }, h('strong', {}, 'La teva empresa encara és massa petita per investigar'),
-      h('p', {}, `Al nivell ${DESBLOQUEIG.recerca} podràs construir un laboratori. Els punts de recerca milloren la qualitat (Q) dels teus productes: l'escola te'ls paga més i a la botiga es venen més cars.`))];
-  }
-  const graella = h('div', { class: 'graella-recerca' });
-  for (const r of Object.keys(RECURSOS).filter((x) => !RECURSOS[x].intern)) {
-    const q = joc.qualitat(estat, r);
-    const cost = QUALITAT.cost(q);
-    graella.append(h('div', { class: 'fila-recerca' },
-      icona(r, 36),
-      h('span', { class: 'of-info' }, h('strong', {}, `${RECURSOS[r].nom} Q${q}`),
-        h('span', { class: 'nota' }, `Escola: ${joc.diners(joc.preuEscola(estat, r))}`)),
-      q >= QUALITAT.max ? h('span', { class: 'nota' }, 'Màxim') : h('button', {
-        class: 'btn', disabled: (estat.recerca || 0) < cost,
-        onclick: () => accio(() => { joc.investigar(estat, r); avis(`${RECURSOS[r].nom} ara és Q${q + 1}`, 'ok'); obrirEmpresa('recerca'); }),
-      }, `Q${q + 1} per ${cost} punts`)));
-  }
-  return [
-    h('div', { class: 'total-estoc' }, h('span', {}, icona('recerca', 28), ' Punts de recerca'), h('strong', {}, joc.nombre(estat.recerca || 0))),
-    h('p', { class: 'nota' }, `Els punts els fa el laboratori. Cada nivell de qualitat fa que l'escola pagui un ${Math.round(QUALITAT.bonusEscola * 100)}% més i que a la botiga el preu habitual pugi un ${Math.round(QUALITAT.bonusBotiga * 100)}%.`),
-    graella,
-  ];
-}
-
-function seccioDirectors(n) {
-  if (n < DESBLOQUEIG.directors) {
-    return [h('div', { class: 'avis-bloqueig' }, h('strong', {}, 'Els directors estan disponibles a partir del nivell ' + DESBLOQUEIG.directors),
-      h('p', {}, 'Cada director cobra un sou cada hora, però fa que l\'empresa funcioni millor. Si un dia no els pots pagar, marxen.'))];
-  }
-  const sou = joc.souDirectorsHora(estat);
-  return [
-    h('div', { class: 'total-estoc' }, h('span', {}, 'Sous dels directors'), h('strong', {}, `${joc.diners(sou)} / hora`)),
-    ...Object.entries(DIRECTORS).map(([id, d]) => {
-      const te = !!estat.directors?.[id];
-      return h('div', { class: `fila-director${te ? ' contractat' : ''}` },
-        h('img', { src: imgLogo(d.logo), alt: '', width: 52, height: 52 }),
-        h('div', { class: 'of-info' }, h('strong', {}, d.nom), h('span', {}, d.efecte),
-          h('span', { class: 'nota' }, `Fitxatge ${joc.diners(d.fitxatge)}. Sou ${joc.diners(d.souHora)} cada hora.`)),
-        te
-          ? h('button', { class: 'btn', onclick: () => accio(() => { joc.acomiadarDirector(estat, id); avis(`${d.nom} ja no treballa per tu`); obrirEmpresa('directors'); }) }, 'Acomiada')
-          : h('button', { class: 'btn btn-principal', disabled: estat.diners < d.fitxatge, onclick: () => accio(() => { joc.contractarDirector(estat, id); avis(`Has contractat: ${d.nom}`, 'ok'); obrirEmpresa('directors'); }) }, 'Contracta'));
-    }),
-    h('p', { class: 'nota' }, 'Els sous es descompten sols mentre tens el joc obert i quan hi tornes a entrar.'),
-  ];
-}
-
-function seccioReptes() {
-  const reptes = config.reptes || [];
-  if (!reptes.length) return [h('div', { class: 'avis-bloqueig' }, h('strong', {}, 'Ara mateix no hi ha reptes'), h('p', {}, 'Quan el professorat en publiqui, els veuràs aquí amb el seu premi.'))];
-  return reptes.map((r) => {
-    const [a, b] = joc.progresRepte(estat, r);
-    const cobrat = (estat.reptesCobrats || []).includes(r.id);
-    const caducat = r.fins && Date.now() > r.fins;
-    const fet = a >= b;
-    return h('div', { class: `fila-director${cobrat ? ' contractat' : ''}` },
-      h('span', { class: 'trofeu' }, '🏆'),
-      h('div', { class: 'of-info' }, h('strong', {}, joc.textRepte(r)),
-        h('span', {}, `Premi: ${joc.diners(r.premi)}`),
-        h('span', { class: 'nota' }, `Progrés: ${joc.nombre(Math.min(a, b))} de ${joc.nombre(b)}${r.fins ? `. Acaba ${new Date(r.fins).toLocaleString('ca-ES', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}`)),
-      cobrat ? h('span', { class: 'nota' }, 'Cobrat ✔')
-        : h('button', { class: 'btn btn-principal', disabled: !fet || caducat, onclick: () => accio(() => { joc.cobrarRepte(estat, r); avis(`Repte aconseguit: +${joc.diners(r.premi)}`, 'ok'); obrirEmpresa('reptes'); }) }, caducat ? 'Caducat' : 'Cobra'));
+// Pas 1: la Marta et rep
+function obrirPasIdea() {
+  if (joc.pasActual(estat) !== 'idea') { avis(textGuia()); return; }
+  const nom = h('input', { class: 'camp-text', maxlength: 24, placeholder: 'Ex.: Forn Sant Joan', value: estat.nomBase || '' });
+  let sectorTriat = estat.sector || null;
+  let logo = estat.logo || 1;
+  const sectors = h('div', { class: 'triar-sector' }, ...Object.entries(SECTORS_NEGOCI).map(([id, s]) => {
+    const b = h('button', { type: 'button', class: `carta-sector${sectorTriat === id ? ' triada' : ''}`, onclick: () => {
+      sectorTriat = id; for (const x of sectors.children) x.classList.toggle('triada', x === b);
+    } }, h('img', { src: imgNegoci(id, 1), alt: '', width: 96, height: 96 }), h('strong', {}, s.nom), h('span', { class: 'nota' }, s.text));
+    return b;
+  }));
+  const logos = h('div', { class: 'graella-logos petita' }, ...Array.from({ length: NUM_LOGOS }, (_, k) => {
+    const n = k + 1;
+    const b = h('button', { type: 'button', class: `logo-boto${logo === n ? ' triat' : ''}`, onclick: () => { logo = n; for (const x of logos.children) x.classList.toggle('triat', x === b); } }, h('img', { src: imgLogo(n), alt: '', width: 44, height: 44 }));
+    return b;
+  }));
+  obrirEscena({
+    persona: 'img/personatges/guia-explica.webp', interior: 'ajuntament', nomPersona: 'La Marta, la teva mentora',
+    text: `Benvingut/da a Matadepera! Tens ${joc.diners(estat.estalvis)} d'estalvis i una idea de negoci. Primer de tot: com es dirà i a què es dedicarà? Després t'acompanyaré pels llocs on es fan els tràmits, com a la vida real.`,
+    cos: [
+      h('label', { class: 'camp' }, h('span', {}, 'Nom del negoci'), nom),
+      h('strong', {}, 'Sector'), sectors,
+      h('strong', {}, 'Logo'), logos,
+      h('button', { class: 'btn btn-principal btn-gran', onclick: () => {
+        const t = nom.value.trim();
+        if (t.length < 3) return avis('Escriu un nom de 3 lletres o més.', 'error');
+        if (!sectorTriat) return avis('Tria un sector.', 'error');
+        Object.assign(estat, { nomBase: t, nom: t, sector: sectorTriat, logo, tutorialVist: true });
+        joc.avancarPas(estat); desar(); dibuixarTot(); tancarEscena();
+        avis('Molt bé! Ara ves a la Gestoria: et diran quina forma jurídica et convé.', 'ok');
+        ciutat.centrarEn('gestoria');
+      } }, 'Som-hi!'),
+    ],
   });
 }
 
-function seccioPersonal() {
-  const files = joc.despesesMensuals(estat);
-  const total = joc.totalMensual(estat);
-  const lliures = joc.operarisLliures(estat);
-  const filaRol = (rol) => {
-    const d = PERSONAL[rol];
-    const n = estat.plantilla?.[rol] || 0;
-    return h('div', { class: 'fila-director' },
-      h('img', { src: `img/personal/${rol}.webp`, alt: '', width: 52, height: 52, class: 'foto-personal' }),
-      h('div', { class: 'of-info' }, h('strong', {}, `${d.nom}: ${n}`),
-        h('span', {}, d.text),
-        h('span', { class: 'nota' }, `Sou brut ${joc.diners(d.sou)}/mes + Seguretat Social de l'empresa (~${Math.round(SS_EMPRESA * 100)}%) = ${joc.diners(joc.costPersona(rol))}/mes per persona.`),
-        rol === 'operari' ? h('span', { class: 'nota' }, `Ara en tens ${Math.max(0, lliures)} de lliures.`) : null),
-      h('div', { class: 'fila-botons' },
-        h('button', { class: 'btn', disabled: n < 1, onclick: () => accio(() => { joc.acomiadar(estat, rol); obrirEmpresa('personal'); }) }, '−1'),
-        h('button', { class: 'btn btn-principal', onclick: () => accio(() => { joc.contractar(estat, rol); avis(`Contracte signat: ${d.nom}`, 'ok'); obrirEmpresa('personal'); }) }, '+1')));
+// Pas 2: a la gestoria es tria la forma jurídica i el capital
+function escenaGestoria() {
+  const formes = h('div', { class: 'formes petites' }, ...Object.entries(FORMES).map(([id, f]) => h('button', {
+    type: 'button', class: `forma${estat.forma === id ? ' triada' : ''}`,
+    onclick: () => { estat.forma = id; escenaCapital(); },
+  }, h('strong', {}, f.nom),
+  h('span', { class: 'nota' }, `${f.socisMin === f.socisMax ? '1 persona' : `${f.socisMin} socis o més`} · ${f.capitalMin ? `capital mínim ${joc.diners(f.capitalMin)}` : 'sense capital mínim'} · responsabilitat ${f.limitada ? 'limitada' : 'il·limitada'}`),
+  h('span', { class: 'nota' }, f.avantatges))));
+  obrirEscena({ servei: 'gestoria', text: `Hola! Així que vols obrir ${SECTORS_NEGOCI[estat.sector].nom.toLowerCase()}... Primer hem de decidir la forma jurídica: d'això depèn qui paga si les coses van malament, quins impostos pagaràs i quins tràmits caldrà fer. Mira-les i tria'n una.`, cos: formes });
+}
+function escenaCapital() {
+  const f = FORMES[estat.forma];
+  const socis = h('input', { type: 'number', min: f.socisMin, max: f.socisMax, value: Math.max(f.socisMin, estat.socis || f.socisMin), class: 'input-preu' });
+  const meva = h('input', { type: 'number', min: 0, max: estat.estalvis, value: estat.aportacioMeva ?? Math.min(18000, estat.estalvis), class: 'input-preu' });
+  const altres = h('input', { type: 'number', min: 0, value: estat.aportacioAltres ?? (f.socisMin > 1 ? 8000 : 0), class: 'input-preu' });
+  const capital = h('input', { type: 'number', min: f.capitalMin, value: Math.max(f.capitalMin, 20000), class: 'input-preu' });
+  const fAltres = h('label', { class: 'fila-preu' }, 'Aportació dels altres socis (€)', altres);
+  const fCap = h('label', { class: 'fila-preu' }, 'Capital subscrit (€)', capital);
+  const info = h('div', { class: 'avis-bloqueig' });
+  const boto = h('button', { class: 'btn btn-principal' }, 'D\'acord, endavant');
+  const calc = () => {
+    const n = Number(socis.value) || 1, m = Number(meva.value) || 0, a = n > 1 ? Number(altres.value) || 0 : 0, des = m + a;
+    const cap = f.capitalMin && f.desemborsMin < 1 ? Math.max(Number(capital.value) || 0, des) : des;
+    fAltres.hidden = n <= 1; fCap.hidden = !(f.capitalMin && f.desemborsMin < 1);
+    const err = [];
+    if (n < f.socisMin) err.push(`Calen com a mínim ${f.socisMin} socis.`);
+    if (m > estat.estalvis) err.push('No pots posar més del que tens.');
+    if (f.capitalMin && cap < f.capitalMin) err.push(`El capital mínim és ${joc.diners(f.capitalMin)}.`);
+    if (f.desemborsMin < 1 && des < cap * f.desemborsMin) err.push(`Cal desemborsar com a mínim el ${f.desemborsMin * 100}%.`);
+    if (estat.forma === 'sll' && m > des / 3 + 0.5) err.push('En una societat laboral cap soci pot tenir més d\'un terç del capital.');
+    info.replaceChildren(...[h('strong', {}, `L'empresa començarà amb ${joc.diners(des)}`),
+      h('span', { class: 'nota' }, `Amb aquests diners pagaràs la fiança del local, les obres i la primera matèria primera. Et quedaran ${joc.diners(estat.estalvis - m)} d'estalvis per als tràmits.`),
+      estat.forma === 'sl' && cap < 3000 ? h('span', { class: 'nota' }, 'Amb menys de 3.000 € de capital, el 20% dels beneficis va a reserva legal.') : null,
+      !f.limitada ? h('span', { class: 'nota falta' }, 'Atenció: amb aquesta forma, si l\'empresa deu diners, en respons amb el teu patrimoni.') : null,
+      ...err.map((t) => h('span', { class: 'nota falta' }, t))].filter(Boolean));
+    boto.disabled = err.length > 0;
+    return { n, m, a, des, cap };
   };
-  return [
-    h('div', { class: 'opcio' },
-      h('strong', {}, 'Despeses fixes cada mes'),
-      h('dl', { class: 'dades balanc' }, ...files.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, joc.diners(v))]),
-        h('dt', { class: 'total' }, 'Total al mes'), h('dd', { class: 'total' }, joc.diners(total))),
-      h('p', { class: 'nota' }, `Al joc, 1 hora real és 1 setmana: pagues uns ${joc.diners(total / SETMANES_PER_MES)} cada hora.`)),
-
-    h('div', { class: 'opcio' },
-      h('strong', {}, '1. Alta com a empresa ocupadora'),
-      estat.altaOcupador
-        ? h('p', {}, '✔ Feta. L\'empresa ja té codi de compte de cotització a la Seguretat Social.')
-        : [h('p', {}, 'Abans de contractar ningú, l\'empresa s\'ha d\'inscriure a la Tresoreria General de la Seguretat Social (es fa per Internet amb el sistema RED o la gestoria). És gratuït.'),
-          h('button', { class: 'btn btn-principal', onclick: () => accio(() => { estat.altaOcupador = true; avis('Empresa inscrita a la Seguretat Social', 'ok'); obrirEmpresa('personal'); }) }, 'Inscriu l\'empresa')]),
-
-    h('div', { class: 'opcio' },
-      h('div', { class: 'cap-amb-foto' }, h('img', { src: 'img/personal/gestoria.webp', alt: '', width: 64, height: 64, class: 'foto-personal' }), h('strong', {}, '2. Qui et porta els papers?')),
-      h('p', { class: 'nota' }, GESTORIA.text),
-      h('p', {}, estat.gestoria
-        ? `Tens gestoria contractada: ${joc.diners(GESTORIA.fixe)}/mes + ${joc.diners(GESTORIA.perTreballador)} per cada nòmina.`
-        : `No tens gestoria. Si no tens un/a tècnic/a de RRHH no podràs contractar operaris, i cada setmana hi ha un ${Math.round(RISC_SANCIO.probabilitat * 100)}% de risc de sanció d'Hisenda (${joc.diners(RISC_SANCIO.import)}).`),
-      h('button', { class: estat.gestoria ? 'btn' : 'btn btn-principal', onclick: () => accio(() => { estat.gestoria = !estat.gestoria; obrirEmpresa('personal'); }) },
-        estat.gestoria ? 'Dona de baixa la gestoria' : 'Contracta una gestoria')),
-
-    h('div', { class: 'opcio' }, h('strong', {}, '3. Plantilla'), filaRol('operari'), filaRol('rrhh')),
-
-    h('div', { class: 'opcio' },
-      h('strong', {}, 'Seu de l\'empresa'),
-      h('p', {}, `Ara: ${OFICINES[estat.oficina]?.nom || 'cap'}. Una seu millor dona més confiança al banc.`),
-      h('div', { class: 'fila-botons' }, ...Object.entries(OFICINES).filter(([id]) => id !== estat.oficina).map(([id, o]) =>
-        h('button', { class: 'btn', onclick: () => accio(() => { joc.canviarOficina(estat, id); avis(`Ens traslladem: ${o.nom}`, 'ok'); obrirEmpresa('personal'); }) }, `${o.nom} (${joc.diners(o.mensual)}/mes)`)))),
-  ];
+  for (const el of [socis, meva, altres, capital]) el.addEventListener('input', calc);
+  boto.onclick = () => {
+    const r = calc();
+    Object.assign(estat, { socis: r.n, aportacioMeva: r.m, aportacioAltres: r.a, desemborsat: r.des, capital: r.cap });
+    estat.nom = f.sufix ? `${estat.nomBase} ${f.sufix}` : estat.nomBase;
+    estat.gestoria = true; // la gestoria t'acompanya des del principi
+    joc.avancarPas(estat); desar(); dibuixarTot(); tancarEscena();
+    avis(`Perfecte: ${estat.nom}. ${textGuia()}.`, 'ok');
+    const o = objectiuActual(); if (o) ciutat.centrarEn(o);
+  };
+  obrirEscena({ servei: 'gestoria', text: `${f.nom}. ${f.responsabilitat} Ara decidim quants socis sou i quants diners hi poseu. Jo us portaré els papers d'ara endavant (${joc.diners(GESTORIA.fixe)} al mes).`,
+    cos: [h('label', { class: 'fila-preu' }, 'Socis (comptant-te a tu)', socis), h('label', { class: 'fila-preu' }, f.capitalMin ? 'La teva aportació (€)' : 'Diners que poses al negoci (€)', meva), fAltres, fCap, info,
+      h('div', { class: 'fila-botons' }, h('button', { class: 'btn', onclick: escenaGestoria }, '← Una altra forma'), boto)] });
+  calc();
 }
 
-function seccioResum() {
+// Tràmit genèric en un edifici
+function escenaTramit(id) {
+  const t = TRAMITS[id];
+  const servei = PAS_SERVEI[id];
+  const c = estat.constitucio;
+  const pinta = () => {
+    const cos = [];
+    cos.push(h('div', { class: 'tramit-fitxa' },
+      h('img', { src: `img/documents/${DOC_PAS[id] || 'doc-estatuts'}.webp`, alt: '', width: 72, height: 72 }),
+      h('div', {}, h('strong', {}, t.nom), h('span', { class: 'nota' }, `Cost: ${joc.dinersCost(id, estat) ? joc.diners(joc.dinersCost(id, estat)) : 'gratuït'} · Temps real: ${t.real}`))));
+    if (c.enCurs?.id === id) {
+      cos.push(h('div', { class: 'progres gran' }, h('span', { class: 'progres-ple', id: 'escena-barra', style: 'width:0%' })),
+        h('p', { class: 'nota' }, 'En tràmit... ', h('strong', { id: 'escena-temps' }, '')));
+    } else {
+      if (id === 'estatuts') {
+        cos.push(...Object.entries(OPCIONS_ESTATUTS).map(([oid, o]) => h('label', { class: 'opcio-radio' },
+          h('input', { type: 'radio', name: 'estatuts', checked: (estat.estatuts || 'tipus') === oid, onchange: () => { estat.estatuts = oid; pinta(); } }),
+          h('span', {}, h('strong', {}, `${o.nom}${o.cost ? ` (${joc.diners(o.cost)})` : ''}`), h('span', { class: 'nota' }, o.text)))));
+      }
+      cos.push(h('button', { class: 'btn btn-principal btn-gran', onclick: () => ferTramit(id) }, `Fes el tràmit${joc.dinersCost(id, estat) ? ` (${joc.diners(joc.dinersCost(id, estat))})` : ''}`));
+    }
+    obrirEscena({ servei, text: t.que, cos });
+  };
+  pinta();
+  clearInterval(escenaTimer);
+  escenaTimer = setInterval(() => {
+    if (!c.enCurs) return;
+    const b = document.getElementById('escena-barra');
+    if (b) b.style.width = `${Math.min(100, ((Date.now() - c.enCurs.inici) / (c.enCurs.fi - c.enCurs.inici)) * 100)}%`;
+    const tx = document.getElementById('escena-temps');
+    if (tx) tx.textContent = joc.temps((c.enCurs.fi - Date.now()) / 1000);
+    if (c.enCurs.fi <= Date.now()) acabarTramit();
+  }, 300);
+}
+
+async function ferTramit(id) {
+  const t = TRAMITS[id];
+  const cost = joc.dinersCost(id, estat);
+  if ((id === 'certificacio' || id === 'certificacioCoop')) {
+    const lliure = await desa.nomDisponible(usuari.uid, estat.nomBase).catch(() => true);
+    if (!lliure) {
+      const nom = prompt(`Certificació denegada: ja hi ha una empresa que es diu "${estat.nomBase}". Proposa un altre nom:`, `${estat.nomBase} 2`);
+      if (!nom || nom.trim().length < 3) return;
+      estat.nomBase = nom.trim();
+      const f = FORMES[estat.forma];
+      estat.nom = f.sufix ? `${estat.nomBase} ${f.sufix}` : estat.nomBase;
+      return ferTramit(id);
+    }
+  }
+  if (estat.estalvis < cost) { avis('No tens prou estalvis per pagar aquest tràmit.', 'error'); return; }
+  estat.estalvis -= cost;
+  estat.costosConstitucio = (estat.costosConstitucio || 0) + cost;
+  const ara = Date.now();
+  estat.constitucio.enCurs = { id, inici: ara, fi: ara + t.segonsJoc * 1000 };
+  desar(); escenaTramit(id);
+}
+
+function acabarTramit() {
+  const c = estat.constitucio;
+  const id = c.enCurs.id;
+  delete c.enCurs;
+  c.fets.push(id);
+  const doc = DOC_PAS[id];
+  if (doc && !c.docs.includes(doc)) c.docs.push(doc);
+  // efectes de cada tràmit
+  if (id === 'banc' || id === 'bancAutonom') { estat.estalvis -= estat.aportacioMeva; estat.diners += estat.desemborsat; }
+  if ((id === 'nif' || id === 'nif036' || id === 'hisenda036') && !estat.nif) {
+    const f = FORMES[estat.forma];
+    const x = String(Math.floor(10000000 + Math.random() * 89999999));
+    estat.nif = f.lletraNif ? `${f.lletraNif}${x}` : `${x}${'TRWAGMYFPDXBNJZSQVHLCKE'[Number(x) % 23]}`;
+  }
+  if (id === 'reta') estat.altaOcupador = true; // al joc, l'alta d'ocupador es fa alhora
+  joc.avancarPas(estat);
+  desar(); dibuixarTot();
+  clearInterval(escenaTimer);
+  const seguent = textGuia();
+  obrirEscena({ servei: PAS_SERVEI[id], text: `Fet! Aquí tens el document: ${TRAMITS[id].nom}. L'he posat a la teva carpeta.\n\nSegüent pas: ${seguent}.`,
+    cos: [h('img', { src: `img/documents/${doc || 'doc-estatuts'}.webp`, alt: '', width: 110, height: 110, class: 'doc-gran' }),
+      h('button', { class: 'btn btn-principal', onclick: () => { tancarEscena(); const o = objectiuActual(); if (o) ciutat.centrarEn(o); } }, 'D\'acord')] });
+}
+
+// ---------- locals ----------
+function obrirLocalLliure(info) {
+  const z = ZONES[info.zona];
+  const carrer = nomCarrerDe(info.X, info.Y);
+  const cos = h('div', { class: 'bloc' });
+  if (info.sub === 'solar') {
+    const preu = joc.preuSolar(info);
+    ap(cos, 
+      h('img', { src: 'img/locals/solar-en-venda.webp', alt: '', width: 150, height: 150, class: 'panell-img' }),
+      h('p', {}, `Solar en venda a ${carrer} (${z.nom}). Hi pots construir un edifici propi per al teu negoci: no pagaràs lloguer, però és una inversió gran.`),
+      h('dl', { class: 'dades' }, h('dt', {}, 'Preu del solar'), h('dd', {}, joc.diners(preu)), h('dt', {}, 'Construcció'), h('dd', {}, joc.diners(CONSTRUCCIO.cost)), h('dt', {}, 'Clients que passen'), h('dd', {}, `${Math.round(z.gent * 100)}%`)),
+      constituida() && joc.obert(estat) && !estat.nouLocal
+        ? h('button', { class: 'btn btn-principal', onclick: async () => {
+          try {
+            await desa.reservarLocal(usuari.uid, info.id, { ...dadesLocalPublic(), estat: 'construint', faseObra: 1 });
+            joc.comprarSolar(estat, info); await sincronitzarLocal(); desar(); dibuixarTot(); tancarPanell(); avis('Comencen les obres de l\'edifici nou!', 'ok');
+          } catch (err) { avis(err.message, 'error'); desa.alliberarLocal(info.id).catch(() => {}); }
+        } }, `Compra i construeix (${joc.diners(preu + CONSTRUCCIO.cost)})`)
+        : h('p', { class: 'nota' }, 'Podràs comprar un solar quan el teu negoci ja funcioni.'));
+    return obrirPanell('Solar en venda', cos, { tipus: 'local' });
+  }
+  const mensual = joc.lloguerMensual(info);
+  const potLlogar = !estat.local && joc.pasActual(estat) === 'local';
+  ap(cos, 
+    h('img', { src: info.sub === 'nau' ? 'img/locals/nau-es-lloga.webp' : 'img/locals/local-es-lloga.webp', alt: '', width: 150, height: 150, class: 'panell-img' }),
+    h('p', {}, `${info.sub === 'nau' ? 'Nau industrial' : 'Local'} en lloguer a ${carrer} (${z.nom}).`),
+    h('dl', { class: 'dades' },
+      h('dt', {}, 'Lloguer'), h('dd', {}, `${joc.diners(mensual)} al mes`),
+      h('dt', {}, 'Fiança'), h('dd', {}, `${joc.diners(mensual * FIANCA_MESOS)} (${FIANCA_MESOS} mesos)`),
+      h('dt', {}, 'Gent que hi passa'), h('dd', {}, z.gent >= 1 ? 'Molta' : z.gent >= 0.6 ? 'Normal' : 'Poca')),
+    h('p', { class: 'nota' }, info.zona === 'centre' ? 'Al centre hi passa molta gent: ideal per a botigues i cafeteries, però el lloguer és car.' : info.zona === 'poligon' ? 'Al polígon el lloguer per metre és barat, però hi passa poca gent.' : 'Un barri tranquil: lloguer moderat i clients de proximitat.'),
+    potLlogar ? h('button', { class: 'btn btn-principal btn-gran', onclick: async () => {
+      try {
+        await desa.reservarLocal(usuari.uid, info.id, dadesLocalPublic());
+        joc.signarLloguer(estat, info);
+        estat.constitucio.docs.push('doc-contracte-lloguer');
+        joc.avancarPas(estat);
+        locals[info.id] = { uid: usuari.uid, ...dadesLocalPublic() };
+        await sincronitzarLocal(); desar(); dibuixarTot(); tancarPanell();
+        avis(`Contracte signat! ${textGuia()}.`, 'ok');
+        const o = objectiuActual(); if (o) ciutat.centrarEn(o);
+      } catch (err) { avis(err.message, 'error'); }
+    } }, 'Signa el contracte de lloguer') : h('p', { class: 'nota' }, estat.local ? 'Ja tens un local.' : 'Encara no toca: primer segueix els passos que et diu la Marta.'));
+  obrirPanell(info.sub === 'nau' ? 'Nau en lloguer' : 'Local en lloguer', cos, { tipus: 'local' });
+}
+
+function obrirLocalOcupat(info, l) {
+  const s = SECTORS_NEGOCI[l.sector];
+  obrirPanell(l.nom || 'Empresa', h('div', { class: 'bloc' },
+    h('img', { src: imgNegoci(l.sector, l.fase), alt: '', width: 150, height: 150, class: 'panell-img' }),
+    h('p', {}, `${s?.nom || 'Negoci'} a ${nomCarrerDe(info.X, info.Y)}. ${l.estat === 'obert' ? 'Obert al públic.' : l.estat === 'construint' ? 'En construcció.' : 'Preparant l\'obertura.'}`),
+    l.uid && !String(l.uid).startsWith('bot') ? h('button', { class: 'btn', onclick: () => obrirPerfil(l.uid) }, 'Veure l\'empresa') : h('p', { class: 'nota' }, 'Empresa del poble (fictícia).')), { tipus: 'local' });
+}
+
+// ---------- el meu negoci ----------
+function obrirNegoci() {
+  const l = estat.local;
+  const s = SECTORS_NEGOCI[estat.sector];
+  const pas = joc.pasActual(estat);
+  const cos = h('div', { class: 'bloc' });
+  const imatge = !l ? null : l.estat === 'obert' ? imgNegoci(estat.sector, l.fase) : l.estat === 'obres' ? 'img/locals/local-obres.webp' : 'img/locals/local-es-lloga.webp';
+  if (imatge) ap(cos, h('div', { class: 'cap-edifici' }, h('img', { src: imatge, alt: '', width: 140, height: 140, class: 'panell-img' }), l?.estat === 'obert' ? h('span', { class: 'insignia-nivell' }, FASES_NEGOCI[l.fase].nom) : null));
+  if (!l) { ap(cos, h('p', {}, 'Encara no tens local. Busca un local amb el cartell ES LLOGA.')); return obrirPanell('El meu negoci', cos, { tipus: 'negoci' }); }
+
+  // Obres d'adequació (pas de la constitució)
+  if (pas === 'obres' && l.estat === 'contracte') {
+    ap(cos, h('p', {}, 'Abans d\'obrir has d\'adequar el local al teu negoci. Tria el tipus de reforma (es paga amb els diners de l\'empresa):'),
+      ...Object.entries(OBRES_ADEQUACIO).map(([id, o]) => h('div', { class: 'opcio' },
+        h('strong', {}, `${o.nom}: ${joc.diners(o.cost)}`), h('span', { class: 'nota' }, o.text),
+        h('button', { class: 'btn btn-principal', disabled: estat.diners < o.cost, onclick: () => accio(() => { joc.iniciarObres(estat, id); sincronitzarLocal(); tancarPanell(); avis('Comencen les obres!', 'ok'); }) }, 'Encarrega les obres'))),
+      estat.diners < OBRES_ADEQUACIO.basica.cost ? h('p', { class: 'nota falta' }, 'L\'empresa no té prou diners. Pots demanar un préstec al banc.') : null);
+    return obrirPanell('El meu local', cos, { tipus: 'negoci' });
+  }
+  if (l.estat === 'obres') {
+    ap(cos, h('p', {}, l.obra === 'ampliacio' ? 'Obres d\'ampliació en marxa: mentrestant el negoci està tancat.' : 'Obres d\'adequació en marxa.'),
+      h('div', { class: 'progres gran' }, h('span', { class: 'progres-ple', 'data-inici': l.iniciObres, 'data-fi-barra': l.fiObres, style: 'width:0%' })),
+      h('p', {}, 'Falten ', h('strong', { 'data-fi': l.fiObres }, joc.temps((l.fiObres - Date.now()) / 1000)), '.'));
+    return obrirPanell('El meu local', cos, { tipus: 'negoci' });
+  }
+  if (pas === 'obertura') {
+    ap(cos, h('p', {}, 'Tot a punt: tens els papers, el local adequat i els diners al compte. Obre les portes!'),
+      h('button', { class: 'btn btn-principal btn-gran', onclick: () => {
+        estat.local.estat = 'obert';
+        estat.constitucio.constituida = true;
+        joc.avancarPas(estat);
+        estat.negoci.preu = s.producte.preuRef;
+        estat.simT = Date.now(); estat.despesesT = Date.now();
+        sincronitzarLocal(); desar(); dibuixarTot(); tancarPanell();
+        obrirEscena({ persona: 'img/personatges/guia-celebra.webp', interior: 'ajuntament', nomPersona: 'La Marta',
+          text: `Felicitats! ${estat.nom} ja és oberta. Ara compra matèria primera, posa el preu i contracta gent si cal. Vigila les despeses de cada setmana: lloguer, sous, subministraments...`,
+          cos: [h('button', { class: 'btn btn-principal', onclick: () => { tancarEscena(); obrirNegoci(); } }, 'Anem al negoci')] });
+      } }, 'Obre les portes!'));
+    return obrirPanell('El meu local', cos, { tipus: 'negoci' });
+  }
+  if (!joc.obert(estat)) { ap(cos, h('p', {}, textGuia())); return obrirPanell('El meu negoci', cos, { tipus: 'negoci' }); }
+
+  // Negoci obert
+  const n = estat.negoci;
+  const dem = joc.demandaHora(estat), cap = joc.capacitatHora(estat);
+  const qMat = h('input', { type: 'number', min: 1, value: Math.round(cap), class: 'input-preu', 'aria-label': 'Quantitat' });
+  const preu = h('input', { type: 'number', min: 0.1, step: 0.1, value: n.preu ?? s.producte.preuRef, class: 'input-preu', 'aria-label': 'Preu' });
+  const prev = h('span', { class: 'nota' });
+  const actPrev = () => { const d = joc.demandaHora(estat, Number(preu.value) || 0); prev.textContent = `Amb aquest preu vindrien uns ${joc.nombre(d)} clients/setmana (ingressos ${joc.diners(d * (Number(preu.value) || 0))} si hi ha prou producte).`; };
+  preu.addEventListener('input', actPrev); actPrev();
+  const costMat = h('span', { class: 'nota' });
+  const actCost = () => { costMat.textContent = `Cost: ${joc.diners((Number(qMat.value) || 0) * s.materia.cost)}`; };
+  qMat.addEventListener('input', actCost); actCost();
+  const seg = FASES_NEGOCI[(l.fase || 1) + 1];
+  const setm = joc.setmanaActual(estat);
+  ap(cos, 
+    h('div', { class: 'estoc-negoci' },
+      h('div', {}, h('img', { src: s.materia.img, alt: '', width: 40, height: 40 }), h('span', { class: 'nota' }, s.materia.nom), h('strong', { 'data-viu': 'materia' }, joc.nombre(n.materia))),
+      h('div', {}, h('span', { class: 'fletxa-prod' }, '→')),
+      h('div', {}, h('img', { src: s.producte.img, alt: '', width: 40, height: 40 }), h('span', { class: 'nota' }, s.producte.nom), h('strong', { 'data-viu': 'producte' }, joc.nombre(n.producte)))),
+    h('dl', { class: 'dades' },
+      h('dt', {}, 'Capacitat de l\'equip'), h('dd', { 'data-viu': 'capacitat' }, `${joc.nombre(cap)} /setmana`),
+      h('dt', {}, 'Clients que vindrien'), h('dd', { 'data-viu': 'demanda' }, `${joc.nombre(dem)} /setmana`),
+      h('dt', {}, 'Venut aquesta setmana'), h('dd', { 'data-viu': 'venut' }, `${joc.nombre(setm.unitats)} (${joc.diners(setm.ing)})`)),
+    cap < dem ? h('p', { class: 'nota falta' }, 'Hi ha més clients dels que podeu atendre: contracta gent o amplia el negoci.') : null,
+    n.materia < cap * 0.2 ? h('p', { class: 'nota falta' }, 'Et queda poca matèria primera: sense ella no pots vendre!') : null,
+    h('div', { class: 'opcio' }, h('strong', {}, `Compra ${s.materia.nom.toLowerCase()} al proveïdor`),
+      h('span', { class: 'nota' }, `${joc.dinersDec(s.materia.cost)} per unitat.`),
+      h('div', { class: 'opcio-accio' }, qMat, h('button', { class: 'btn btn-principal', onclick: () => accio(() => { const c = joc.comprarMateria(estat, Number(qMat.value)); avis(`Comprat per ${joc.diners(c)}`, 'ok'); }) }, 'Compra')), costMat),
+    h('div', { class: 'opcio' }, h('strong', {}, 'Preu de venda'),
+      h('span', { class: 'nota' }, `Preu habitual al poble: ${joc.dinersDec(s.producte.preuRef)}. Com més car, menys clients.`),
+      h('div', { class: 'opcio-accio' }, preu, h('button', { class: 'btn', onclick: () => accio(() => { joc.fixarPreu(estat, preu.value); avis('Preu actualitzat', 'ok'); }) }, 'Desa el preu')), prev),
+    h('div', { class: 'opcio' }, h('strong', {}, 'Publicitat'),
+      h('div', { class: 'fila-botons' }, ...PUBLICITAT.map((p, k) => h('button', { class: `btn btn-petit${(n.publicitat || 0) === k ? ' btn-principal' : ''}`, onclick: () => accio(() => { joc.fixarPublicitat(estat, k); }) }, `${p.nom}${p.mensual ? ` (${joc.diners(p.mensual)}/mes)` : ''}`)))),
+    h('div', { class: 'opcio' }, h('strong', {}, 'Personal'),
+      h('span', {}, `Hi treballes tu i ${estat.plantilla.treballadors} ${s.ofici.toLowerCase()}${estat.plantilla.treballadors === 1 ? '' : 's'}.`),
+      h('button', { class: 'btn', onclick: () => obrirEmpresa('personal') }, 'Gestiona el personal')),
+    seg ? h('div', { class: 'opcio millora' }, h('strong', {}, `Amplia: ${seg.nom}`),
+      h('span', { class: 'nota' }, `Més espai i visibilitat: ×${seg.demanda} clients i ×${seg.capacitat} capacitat. Obres de ${joc.temps(seg.segons)} amb el negoci tancat.`),
+      h('button', { class: 'btn', disabled: estat.diners < seg.cost, onclick: () => accio(() => { joc.ampliar(estat); sincronitzarLocal(); tancarPanell(); avis('Comencen les obres d\'ampliació', 'ok'); }) }, `Amplia per ${joc.diners(seg.cost)}`)) : null,
+    estat.nouLocal ? h('p', { class: 'nota' }, `Estàs construint un edifici propi: fase ${estat.nouLocal.faseObra} de 3.`) : h('p', { class: 'nota' }, 'Vols deixar de pagar lloguer? Compra un solar EN VENDA i construeix-hi el teu edifici.'));
+  obrirPanell(estat.nom, cos, { tipus: 'negoci' });
+}
+
+// ---------- serveis quan l'empresa ja funciona ----------
+function escenaBanc() {
+  joc.aplicarInteressos(estat);
+  const max = joc.maxPrestec(estat), deute = Math.ceil(estat.deute || 0);
+  const imp = h('input', { type: 'number', min: 1, value: Math.min(max, 10000), class: 'input-preu' });
+  obrirEscena({ servei: 'banc', text: `El compte de ${estat.nom} té ${joc.diners(estat.diners)}. Et puc deixar fins a ${joc.diners(max)} amb un interès del ${(joc.interesHora(estat) * 100).toFixed(1).replace('.', ',')}% setmanal. Deute actual: ${joc.diners(deute)}.`,
+    cos: [h('label', { class: 'fila-preu' }, 'Import (€)', imp),
+      h('div', { class: 'fila-botons' },
+        h('button', { class: 'btn btn-principal', disabled: max < 1, onclick: () => { accio(() => { joc.demanarPrestec(estat, Number(imp.value)); avis('Préstec concedit', 'ok'); }); escenaBanc(); } }, 'Demana préstec'),
+        h('button', { class: 'btn', disabled: deute < 1, onclick: () => { accio(() => { joc.retornarPrestec(estat, Number(imp.value)); avis('Has tornat diners', 'ok'); }); escenaBanc(); } }, 'Torna diners'))] });
+}
+function escenaGestoriaServeis() {
+  obrirEscena({ servei: 'gestoria', text: estat.gestoria ? `Et portem els impostos i les nòmines per ${joc.diners(GESTORIA.fixe)} al mes + ${joc.diners(GESTORIA.perTreballador)} per nòmina.` : `Ara no et portem res: compte amb les sancions d'Hisenda (${Math.round(RISC_SANCIO.probabilitat * 100)}% de risc cada setmana).`,
+    cos: [h('button', { class: estat.gestoria ? 'btn' : 'btn btn-principal', onclick: () => { accio(() => { estat.gestoria = !estat.gestoria; }); escenaGestoriaServeis(); } }, estat.gestoria ? 'Dona de baixa la gestoria' : 'Contracta la gestoria')] });
+}
+function escenaSS() {
+  obrirEscena({ servei: 'seguretat-social', text: `L'empresa ${estat.altaOcupador ? 'ja està inscrita com a ocupadora' : 'encara no pot contractar'}. Ara tens ${estat.plantilla.treballadors} persones contractades. Cada contracte costa el sou brut més un ${Math.round(SS_EMPRESA * 100)}% de cotització a càrrec de l'empresa.`,
+    cos: [h('button', { class: 'btn btn-principal', onclick: () => { tancarEscena(); obrirEmpresa('personal'); } }, 'Gestiona el personal')] });
+}
+
+// ---------- panell lateral ----------
+let panell = null;
+function obrirPanell(titol, contingut, info) {
+  if (info.tipus === 'negoci') info.firma = firmaNegoci();
+  $('#panell-titol').textContent = titol;
+  $('#panell-cos').replaceChildren(contingut);
+  $('#panell').hidden = false;
+  $('#panell').classList.toggle('ample', !!info.ample);
+  panell = info;
+}
+function tancarPanell() { $('#panell').hidden = true; panell = null; marcarNav('mapa'); }
+$('#panell-tancar').addEventListener('click', tancarPanell);
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { tancarPanell(); tancarEscena(); } });
+function firmaNegoci() {
+  const l = estat.local;
+  return JSON.stringify([l?.estat, l?.fase, l?.id, joc.pasActual(estat), estat.plantilla, estat.negoci?.publicitat, estat.negoci?.preu, estat.nouLocal?.faseObra, estat.negoci?.materia < 1]);
+}
+function valorsVius() {
+  const n = estat.negoci, s = SECTORS_NEGOCI[estat.sector], setm = joc.setmanaActual(estat);
+  return {
+    materia: joc.nombre(n?.materia || 0), producte: joc.nombre(n?.producte || 0),
+    capacitat: `${joc.nombre(joc.capacitatHora(estat))} /setmana`, demanda: `${joc.nombre(joc.demandaHora(estat))} /setmana`,
+    venut: `${joc.nombre(setm.unitats)} (${joc.diners(setm.ing)})`, diners: joc.diners(estat.diners), s,
+  };
+}
+function refrescarPanell(forcar = false) {
+  if (!panell) return;
+  for (const el of document.querySelectorAll('#panell [data-fi]')) el.textContent = joc.temps((Number(el.dataset.fi) - Date.now()) / 1000);
+  for (const el of document.querySelectorAll('#panell [data-inici]')) {
+    const a = Number(el.dataset.inici), b = Number(el.dataset.fiBarra);
+    el.style.width = `${Math.min(100, ((Date.now() - a) / (b - a)) * 100)}%`;
+  }
+  if (panell.tipus === 'negoci') {
+    // només es torna a dibuixar quan canvia alguna cosa important; els números es posen al dia sense redibuixar
+    if (firmaNegoci() !== panell.firma && !document.activeElement?.matches('#panell input')) { obrirNegoci(); return; }
+    const viu = valorsVius();
+    for (const el of document.querySelectorAll('#panell [data-viu]')) el.textContent = viu[el.dataset.viu] ?? '';
+  }
+}
+
+// ---------- navegació ----------
+function marcarNav(s) { for (const b of document.querySelectorAll('.navegacio button')) b.classList.toggle('actiu', b.dataset.seccio === s); }
+const SECCIONS = {
+  mapa: () => { tancarPanell(); },
+  negoci: () => { marcarNav('negoci'); if (estat.local) { ciutat.centrarEn(estat.local.id); obrirNegoci(); } else avis(textGuia()); },
+  carpeta: () => { marcarNav('carpeta'); obrirCarpeta(); },
+  empresa: () => obrirEmpresa(),
+  cerca: () => obrirCerca(),
+  xat: () => obrirXat(),
+};
+for (const b of document.querySelectorAll('.navegacio button')) b.addEventListener('click', () => SECCIONS[b.dataset.seccio]());
+$('#zoom-mes').addEventListener('click', () => ciutat?.zoom(1.25));
+$('#zoom-menys').addEventListener('click', () => ciutat?.zoom(1 / 1.25));
+$('#zoom-mon').addEventListener('click', () => ciutat?.vistaTot());
+$('#zoom-ciutat').addEventListener('click', () => ciutat?.vistaPoble());
+
+function pestanyes(actual, llista) {
+  return h('div', { class: 'pestanyes', role: 'tablist' }, ...llista.map(([id, text, fn, bloq]) => h('button', {
+    class: `pestanya${id === actual ? ' actiu' : ''}`, role: 'tab', onclick: fn,
+  }, text, bloq ? h('span', { class: 'cadenat' }, '🔒') : null)));
+}
+
+// ---------- carpeta de documents ----------
+function obrirCarpeta() {
+  const c = estat.constitucio;
+  const passos = joc.passos(estat);
+  const noms = { idea: 'Nom i sector (amb la Marta)', gestoria: 'Forma jurídica i capital (Gestoria)', local: 'Contracte de lloguer del local', obres: 'Obres d\'adequació', obertura: 'Obertura del negoci' };
+  obrirPanell('La meva carpeta', h('div', { class: 'bloc' },
+    h('p', { class: 'nota' }, 'Aquí guardes els documents que et donen a cada lloc.'),
+    c.docs.length ? h('div', { class: 'carpeta' }, ...c.docs.map((d) => h('figure', {}, h('img', { src: `img/documents/${d}.webp`, alt: '', width: 90, height: 90 }), h('figcaption', {}, d.replace('doc-', '').replace(/-/g, ' '))))) : h('p', {}, 'Encara no tens cap document.'),
+    h('h3', { class: 'subtitol' }, 'Passos per crear l\'empresa'),
+    h('ol', { class: 'tramits petit' }, ...passos.map((p, k) => h('li', { class: k < c.pas ? 'fet' : k === c.pas ? 'actual' : '' },
+      h('span', {}, noms[p] || `${TRAMITS[p]?.nom || p} (${SERVEIS[PAS_SERVEI[p]]?.nom || ''})`)))),
+    estat.nif ? h('p', {}, `NIF de l'empresa: `, h('strong', {}, estat.nif)) : null), { tipus: 'carpeta' });
+}
+
+// ---------- empresa ----------
+function obrirEmpresa(p = 'resum') {
+  marcarNav('empresa');
+  const n = joc.nivellEmpresa(estat);
+  const tabs = pestanyes(p, [
+    ['resum', 'Resum', () => obrirEmpresa('resum')],
+    ['personal', 'Personal i despeses', () => obrirEmpresa('personal')],
+    ['reptes', 'Reptes', () => obrirEmpresa('reptes')],
+    ['directors', 'Directors', () => obrirEmpresa('directors'), n < DESBLOQUEIG.directors],
+    ['classificacio', 'Classificació', () => obrirEmpresa('classificacio')],
+  ]);
+  const cos = h('div', { class: 'bloc' }, tabs);
+  ({ resum: secResum, personal: secPersonal, reptes: secReptes, directors: secDirectors, classificacio: secClassificacio })[p](cos, n);
+  obrirPanell(estat.nom || 'La meva empresa', cos, { tipus: 'empresa', ample: true });
+}
+
+function secResum(cos) {
   const fase = joc.faseEconomica();
   const b = joc.balanc(estat);
-  const fila = (k, v, classe = '') => [h('dt', { class: classe }, k), h('dd', { class: classe }, v)];
+  const ant = joc.setmanaAnterior(estat), act = joc.setmanaActual(estat);
+  const fila = (k, v, cl = '') => [h('dt', { class: cl }, k), h('dd', { class: cl }, v)];
+  const pyg = (s, titol) => s ? h('div', { class: 'opcio' }, h('strong', {}, titol), h('dl', { class: 'dades balanc' },
+    ...fila('Ingressos per vendes', joc.diners(s.ing)), ...fila('Matèria primera consumida', `−${joc.diners(s.mat)}`), ...fila('Despeses fixes (lloguer, sous...)', `−${joc.diners(s.fix)}`),
+    ...fila(s.ing - s.mat - s.fix >= 0 ? 'Benefici' : 'Pèrdues', joc.diners(s.ing - s.mat - s.fix), 'total'))) : null;
   const rank = h('span', {}, '…');
-  desa.classificacio(usuari.uid, estat).then((f) => {
-    const pos = f.findIndex((x) => x.uid === usuari.uid);
-    rank.textContent = pos >= 0 ? `${pos + 1}a de ${f.length}` : 'n/d';
-  }).catch(() => { rank.textContent = 'n/d'; });
-  return [
-    h('div', { class: `fase fase-${fase.clau}` },
-      h('span', { class: 'nota' }, 'Fase econòmica actual'),
-      h('strong', {}, fase.nom),
-      h('div', { class: 'fase-efectes' },
-        h('span', {}, 'Producció ', fletxa(fase.produccio)),
-        h('span', {}, 'Vendes ', fletxa(fase.vendes))),
-      h('p', { class: 'nota' }, fase.text, ...(fase.forcada
-        ? [' Fase fixada pel professorat.']
-        : [' Canvia d\'aquí a ', h('strong', { 'data-fi': fase.fi }, joc.temps((fase.fi - Date.now()) / 1000)), '.']))),
-    targetaLegal(),
+  desa.classificacio(usuari.uid, estat).then((f) => { const k = f.findIndex((x) => x.uid === usuari.uid); rank.textContent = k >= 0 ? `${k + 1}a de ${f.length}` : 'n/d'; }).catch(() => { rank.textContent = 'n/d'; });
+  const f = FORMES[estat.forma];
+  ap(cos, 
+    h('div', { class: `fase fase-${fase.clau}` }, h('span', { class: 'nota' }, 'Fase econòmica'), h('strong', {}, fase.nom), h('p', { class: 'nota' }, fase.text, fase.forcada ? ' (fixada pel professorat)' : '')),
+    f ? h('div', { class: 'targeta-legal' }, h('div', {}, h('strong', {}, estat.nom), h('span', { class: 'nota' }, `${f.nom}${estat.nif ? `. NIF ${estat.nif}` : ''}. ${SECTORS_NEGOCI[estat.sector]?.iae || ''}`)),
+      h('dl', { class: 'dades' }, ...fila('Capital', joc.diners(estat.capital || 0)), ...fila('Responsabilitat', f.limitada ? 'Limitada' : 'Il·limitada'), ...fila('Els teus estalvis', joc.diners(estat.estalvis)))) : null,
+    pyg(act, 'Compte de resultats d\'aquesta setmana'), pyg(ant, 'Setmana passada'),
     h('div', { class: 'resum-graella' },
-      h('div', { class: 'grafic' }, h('span', { class: 'nota' }, 'Valor de l\'empresa'), graficValor()),
-      h('div', {},
-        h('p', { class: 'rank' }, 'Posició a la classe: ', rank),
-        h('dl', { class: 'dades balanc' },
-          ...fila('Diners', joc.diners(b.diners)),
-          ...fila('Estoc', joc.diners(b.estoc)),
-          ...fila('Actius corrents', joc.diners(b.corrents), 'fort'),
-          ...fila('Actius no corrents (edificis)', joc.diners(b.noCorrents), 'fort'),
-          ...fila('Passius (préstecs)', `−${joc.diners(b.passius)}`, 'fort'),
-          ...fila('Patrimoni net', joc.diners(b.net), 'total')))),
+      h('div', { class: 'grafic' }, h('span', { class: 'nota' }, 'Valor de l\'empresa'), grafic()),
+      h('div', {}, h('p', { class: 'rank' }, 'Posició: ', rank), h('dl', { class: 'dades balanc' },
+        ...fila('Diners', joc.diners(b.diners)), ...fila('Estoc', joc.diners(b.estoc)), ...fila('Actius corrents', joc.diners(b.corrents), 'fort'),
+        ...fila('Actius no corrents (obres, fiança, edificis)', joc.diners(b.noCorrents), 'fort'), ...fila('Passius (préstecs)', `−${joc.diners(b.passius)}`, 'fort'), ...fila('Patrimoni net', joc.diners(b.net), 'total')))),
     h('div', { class: 'fila-botons' },
-      h('button', { class: 'btn', onclick: obrirGuia }, 'Tutorial'),
       h('button', { class: 'btn', onclick: () => desa.sortir() }, 'Tanca la sessió'),
-      h('button', { class: 'btn btn-perill', onclick: tornarAComencar }, 'Torna a començar de zero'),
-      desa.esProfessor(usuari, config) ? h('button', { class: 'btn btn-principal', onclick: () => { sessionStorage.removeItem('fem-empresa-jugar'); location.reload(); } }, 'Torna al panell del professorat') : null),
-  ];
+      desa.esProfessor(usuari, config) ? h('button', { class: 'btn btn-perill', onclick: async () => { if (confirm('Reiniciar la teva empresa?')) await reiniciarEmpresa(); } }, 'Reinicia la meva empresa') : null,
+      desa.esProfessor(usuari, config) ? h('button', { class: 'btn btn-principal', onclick: tornarAlPanell }, 'Torna al panell del professorat') : null));
+}
+function grafic() {
+  const p = estat.historial || [];
+  if (p.length < 2) return h('p', { class: 'nota grafic-buit' }, `Es desa un punt cada ${HISTORIAL_MINUTS} minuts.`);
+  const W = 320, H = 150, P = 6, vs = p.map((x) => x.v), mn = Math.min(...vs), mx = Math.max(...vs), r = mx - mn || 1;
+  const X = (k) => P + (k / (p.length - 1)) * (W - 2 * P), Y = (v) => H - P - ((v - mn) / r) * (H - 2 * P);
+  const d = p.map((q, k) => `${k ? 'L' : 'M'}${X(k).toFixed(1)},${Y(q.v).toFixed(1)}`).join(' ');
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'grafic-svg' });
+  s.append(svg('path', { d: `${d} L${X(p.length - 1)},${H - P} L${X(0)},${H - P} Z`, fill: 'rgb(60 157 50 / .18)' }), svg('path', { d, fill: 'none', stroke: '#3c9d32', 'stroke-width': 3 }));
+  return h('div', {}, s, h('div', { class: 'grafic-eix' }, h('span', {}, joc.diners(mn)), h('span', {}, joc.diners(mx))));
 }
 
-async function tornarAComencar() {
-  if (!confirm('Segur que vols esborrar la teva empresa i tornar a començar des de la constitució? No es pot desfer.')) return;
-  try { await reiniciarEmpresa(); } catch (err) { console.error(err); avis('No s\'ha pogut reiniciar. Torna-ho a provar.', 'error'); }
-}
-
-function targetaLegal() {
-  const f = FORMES[estat.forma] || FORMES.sl;
-  return h('div', { class: 'targeta-legal' },
-    h('div', {}, h('strong', {}, estat.nom), h('span', { class: 'nota' }, `${f.nom}. NIF ${estat.nif || '—'}`)),
-    h('dl', { class: 'dades' },
-      h('dt', {}, f.capitalMin ? 'Capital social' : 'Aportació inicial'), h('dd', {}, joc.diners(estat.capital || 0)),
-      h('dt', {}, 'Responsabilitat'), h('dd', {}, f.limitada ? 'Limitada' : 'Il·limitada'),
-      h('dt', {}, 'Els teus estalvis personals'), h('dd', {}, joc.diners(estat.estalvis || 0))),
-    h('p', { class: 'nota' }, f.responsabilitat));
-}
-
-function fletxa(mult) {
-  if (mult > 1) return h('b', { class: 'amunt' }, '▲');
-  if (mult < 1) return h('b', { class: 'avall' }, '▼');
-  return h('b', { class: 'igual' }, '●');
-}
-
-function graficValor() {
-  const punts = estat.historial || [];
-  if (punts.length < 2) return h('p', { class: 'nota grafic-buit' }, `Aquí veuràs com creix la teva empresa. Es desa un punt cada ${HISTORIAL_MINUTS} minuts.`);
-  const W = 320, H = 150, P = 6;
-  const vs = punts.map((p) => p.v);
-  const min = Math.min(...vs), max = Math.max(...vs), rang = max - min || 1;
-  const x = (k) => P + (k / (punts.length - 1)) * (W - 2 * P);
-  const y = (v) => H - P - ((v - min) / rang) * (H - 2 * P);
-  const linia = punts.map((p, k) => `${k ? 'L' : 'M'}${x(k).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
-  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'grafic-svg', role: 'img', 'aria-label': `Valor de ${joc.diners(min)} a ${joc.diners(max)}` });
-  s.append(svg('path', { d: `${linia} L${x(punts.length - 1)},${H - P} L${x(0)},${H - P} Z`, fill: 'rgb(60 157 50 / .18)' }),
-    svg('path', { d: linia, fill: 'none', stroke: '#3c9d32', 'stroke-width': 3, 'stroke-linejoin': 'round' }));
-  return h('div', {}, s, h('div', { class: 'grafic-eix' }, h('span', {}, joc.diners(min)), h('span', {}, joc.diners(max))));
-}
-
-function seccioBanc(n) {
-  if (n < DESBLOQUEIG.banc) {
-    return [h('div', { class: 'avis-bloqueig' }, h('strong', {}, 'La teva empresa encara és massa petita per demanar préstecs'),
-      h('p', {}, `El banc et deixarà diners quan arribis al nivell ${DESBLOQUEIG.banc}. Fes créixer el valor de l'empresa.`))];
-  }
-  joc.aplicarInteressos(estat);
-  const max = joc.maxPrestec(estat);
-  const deute = Math.ceil(estat.deute || 0);
-  const demana = h('input', { type: 'number', min: 1, max: Math.max(1, max), value: Math.min(max, 5000), inputmode: 'numeric', class: 'input-preu', 'aria-label': 'Import del préstec' });
-  const torna = h('input', { type: 'number', min: 1, max: Math.max(1, deute), value: deute, inputmode: 'numeric', class: 'input-preu', 'aria-label': 'Import a tornar' });
-  return [
-    h('dl', { class: 'dades' },
-      h('dt', {}, 'Deute actual'), h('dd', {}, joc.diners(deute)),
-      h('dt', {}, 'Interès'), h('dd', {}, `${(joc.interesHora(estat) * 100).toFixed(1).replace('.', ',')}% cada hora`),
-      h('dt', {}, 'Encara et poden deixar'), h('dd', {}, joc.diners(max))),
-    h('div', { class: 'opcio' }, h('strong', {}, 'Demana un préstec'),
-      h('p', { class: 'nota' }, 'Els diners arriben a l\'instant. El deute creix cada hora fins que el tornis: compta que la inversió et doni més del que costa.'),
-      h('label', { class: 'fila-preu' }, 'Import (€)', demana),
-      h('button', { class: 'btn btn-principal', disabled: max < 1, onclick: () => accio(() => { joc.demanarPrestec(estat, Number(demana.value)); avis('Préstec concedit', 'ok'); obrirEmpresa('banc'); }) }, 'Demana el préstec')),
-    h('div', { class: 'opcio' }, h('strong', {}, 'Torna diners'),
-      h('label', { class: 'fila-preu' }, 'Import (€)', torna),
-      h('button', { class: 'btn', disabled: deute < 1, onclick: () => accio(() => { joc.retornarPrestec(estat, Number(torna.value)); avis('Has tornat diners al banc', 'ok'); obrirEmpresa('banc'); }) }, 'Torna')),
-  ];
-}
-
-function seccioClassificacio() {
-  const cont = h('div', {}, h('p', { class: 'nota' }, 'Carregant…'));
-  desa.classificacio(usuari.uid, estat).then((files) => {
-    const llista = h('ol', { class: 'llista-classificacio' });
-    files.forEach((f, k) => llista.append(h('li', { class: f.uid === usuari.uid ? 'jo' : '' },
-      h('span', { class: 'posicio' }, k + 1),
-      h('img', { src: imgLogo(f.logo || 1), alt: '', width: 36, height: 36 }),
-      h('span', { class: 'cl-nom' }, f.nom),
-      h('span', { class: 'cl-valor' }, joc.diners(f.valor || 0)))));
-    cont.replaceChildren(h('p', { class: 'nota' }, 'Ordenat pel valor de l\'empresa: diners, estoc i edificis, menys els préstecs.'), llista);
-  }).catch(() => cont.replaceChildren(h('p', { class: 'nota falta' }, 'No s\'ha pogut carregar la classificació.')));
-  return cont;
-}
-
-// ---------- cercador d'empreses ----------
-let empresesCerca = null;
-async function obrirCerca(text = '') {
-  marcarNav('cerca');
-  const entrada = h('input', { type: 'search', placeholder: 'Nom de l\'empresa…', value: text, 'aria-label': 'Cerca empreses', class: 'camp-cerca' });
-  const llista = h('div', { class: 'llista-ofertes' }, h('p', { class: 'nota' }, 'Carregant…'));
-  const pinta = () => {
-    const t = entrada.value.trim().toLowerCase();
-    const files = (empresesCerca || []).filter((f) => !t || (f.nom || '').toLowerCase().includes(t));
-    llista.replaceChildren(...(files.length ? files.map((f) => h('button', { class: 'fila-oferta fila-empresa', onclick: () => obrirPerfil(f.uid, entrada.value) },
-      h('img', { src: imgLogo(f.logo || 1), alt: '', width: 34, height: 34 }),
-      h('span', { class: 'of-info' }, h('strong', {}, f.nom), h('span', { class: 'nota' }, `Nivell ${joc.nivellDeValor(f.valor || 0)}. Valor ${joc.diners(f.valor || 0)}`)))) : [h('p', { class: 'nota' }, 'Cap empresa coincideix.')]));
+function secPersonal(cos) {
+  const s = SECTORS_NEGOCI[estat.sector];
+  const files = joc.despesesMensuals(estat), total = joc.totalMensual(estat);
+  const rol = (id, nom, img, text) => {
+    const nn = estat.plantilla[id] || 0;
+    return h('div', { class: 'fila-director' }, h('img', { src: img, alt: '', width: 52, height: 52, class: 'foto-personal' }),
+      h('div', { class: 'of-info' }, h('strong', {}, `${nom}: ${nn}`), h('span', {}, text),
+        h('span', { class: 'nota' }, `Sou brut ${joc.diners(PERSONAL[id].sou)}/mes + Seguretat Social (~${Math.round(SS_EMPRESA * 100)}%) = ${joc.diners(joc.costPersona(id))}/mes`)),
+      h('div', { class: 'fila-botons' },
+        h('button', { class: 'btn', disabled: nn < 1, onclick: () => { accio(() => joc.acomiadar(estat, id)); obrirEmpresa('personal'); } }, '−1'),
+        h('button', { class: 'btn btn-principal', onclick: () => { accio(() => { joc.contractar(estat, id); avis('Contracte signat', 'ok'); }); obrirEmpresa('personal'); } }, '+1')));
   };
-  entrada.addEventListener('input', pinta);
-  obrirPanell('Cerca empreses', h('div', { class: 'bloc' }, entrada, llista), { tipus: 'cerca', ample: true });
-  try { empresesCerca = await desa.classificacio(usuari.uid, estat); pinta(); }
-  catch (err) { console.error(err); llista.replaceChildren(h('p', { class: 'nota falta' }, 'No s\'han pogut carregar les empreses.')); }
+  ap(cos, 
+    h('div', { class: 'opcio' }, h('strong', {}, 'Despeses fixes cada mes'),
+      h('dl', { class: 'dades balanc' }, ...files.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, joc.diners(v))]), h('dt', { class: 'total' }, 'Total'), h('dd', { class: 'total' }, joc.diners(total))),
+      h('p', { class: 'nota' }, `1 hora real = 1 setmana: pagues uns ${joc.diners(total / SETMANES_PER_MES)} cada hora.`)),
+    estat.altaOcupador ? null : h('p', { class: 'nota falta' }, 'Per contractar, l\'empresa s\'ha d\'inscriure a la Seguretat Social (es fa al tràmit d\'alta al RETA).'),
+    rol('treballadors', s?.ofici || 'Treballador/a', 'img/personal/operari.webp', `Cada persona pot atendre ${joc.nombre(s?.capacitat || 0)} clients/setmana.`),
+    rol('rrhh', 'Tècnic/a de RRHH', 'img/personal/rrhh.webp', 'Porta les nòmines: substitueix la gestoria laboral (val la pena amb molta plantilla).'),
+    h('div', { class: 'opcio' }, h('div', { class: 'cap-amb-foto' }, h('img', { src: 'img/personal/gestoria.webp', alt: '', width: 56, height: 56, class: 'foto-personal' }), h('strong', {}, `Gestoria: ${estat.gestoria ? 'contractada' : 'no'}`)),
+      h('p', { class: 'nota' }, GESTORIA.text),
+      h('button', { class: 'btn', onclick: () => { accio(() => { estat.gestoria = !estat.gestoria; }); obrirEmpresa('personal'); } }, estat.gestoria ? 'Dona-la de baixa' : 'Contracta-la')));
 }
 
-async function obrirPerfil(uid, textCerca = '') {
-  const cos = h('div', { class: 'bloc' }, h('button', { class: 'btn-tornar', onclick: () => obrirCerca(textCerca) }, '← Cerca'), h('p', { class: 'nota' }, 'Carregant…'));
-  obrirPanell('Empresa', cos, { tipus: 'perfil', ample: true });
-  try {
-    const [e, ofertes] = await Promise.all([desa.perfilEmpresa(uid), desa.mevesOfertes(uid)]);
-    if (!e) { cos.lastChild.textContent = 'No s\'ha trobat aquesta empresa.'; return; }
-    const edificis = {};
-    for (const p of e.parceles || []) {
-      if (p.estat !== 'edifici' || !EDIFICIS[p.tipus] || EDIFICIS[p.tipus].inicial) continue;
-      edificis[p.tipus] ??= { n: 0, nivell: 0 };
-      edificis[p.tipus].n += 1;
-      edificis[p.tipus].nivell = Math.max(edificis[p.tipus].nivell, p.nivell || 1);
-    }
-    const qual = Object.entries(e.qualitat || {}).filter(([, q]) => q > 0);
-    const valor = e.valor ?? joc.valorEmpresa(e);
-    cos.lastChild.remove();
-    cos.append(
-      h('div', { class: 'cap-perfil' }, h('img', { src: imgLogo(e.logo || 1), alt: '', width: 72, height: 72 }),
-        h('div', {}, h('h3', { class: 'subtitol' }, e.nom), h('span', { class: 'nota' }, `Nivell ${joc.nivellDeValor(valor)}. Valor ${joc.diners(valor)}`))),
-      h('h3', { class: 'subtitol' }, 'Edificis'),
-      Object.keys(edificis).length
-        ? h('div', { class: 'graella-perfil' }, ...Object.entries(edificis).map(([t, d]) => h('div', { class: 'carta-estoc' },
-          h('img', { src: imgEdifici(t), alt: '', width: 64, height: 64 }),
-          h('span', { class: 'carta-q' }, `×${d.n}`),
-          h('span', { class: 'carta-nom' }, `${EDIFICIS[t].nom}`), h('span', { class: 'nota' }, `fins a Nv ${d.nivell}`))))
-        : h('p', { class: 'nota' }, 'Encara no té edificis.'),
-      qual.length ? h('p', {}, 'Qualitat: ', ...qual.map(([r, q]) => h('span', { class: 'ingredient' }, icona(r, 22), `Q${q} `))) : null,
-      h('h3', { class: 'subtitol' }, 'Ofertes a la borsa'),
-      ...(ofertes.filter((o) => !o.perA && o.quantitat > 0).map(filaOferta)),
-      ofertes.some((o) => !o.perA && o.quantitat > 0) ? null : h('p', { class: 'nota' }, 'No té cap oferta oberta.'));
-  } catch (err) {
-    console.error(err);
-    avis('No s\'ha pogut carregar l\'empresa.', 'error');
+function secReptes(cos) {
+  const reptes = config.reptes || [];
+  if (!reptes.length) { ap(cos, h('p', { class: 'nota' }, 'Ara no hi ha reptes del professorat.')); return; }
+  for (const r of reptes) {
+    const [a, b] = joc.progresRepte(estat, r), cobrat = estat.reptesCobrats.includes(r.id), cad = r.fins && Date.now() > r.fins;
+    ap(cos, h('div', { class: `fila-director${cobrat ? ' contractat' : ''}` }, h('span', { class: 'trofeu' }, '🏆'),
+      h('div', { class: 'of-info' }, h('strong', {}, joc.textRepte(r)), h('span', {}, `Premi: ${joc.diners(r.premi)}`), h('span', { class: 'nota' }, `Progrés: ${joc.nombre(Math.min(a, b))} de ${joc.nombre(b)}`)),
+      cobrat ? h('span', { class: 'nota' }, 'Cobrat ✔') : h('button', { class: 'btn btn-principal', disabled: a < b || cad, onclick: () => { accio(() => { joc.cobrarRepte(estat, r); avis('Repte aconseguit!', 'ok'); }); obrirEmpresa('reptes'); } }, cad ? 'Caducat' : 'Cobra')));
   }
 }
+function secDirectors(cos, n) {
+  if (n < DESBLOQUEIG.directors) { ap(cos, h('p', { class: 'avis-bloqueig' }, `Els directors es desbloquegen al nivell ${DESBLOQUEIG.directors}.`)); return; }
+  for (const [id, d] of Object.entries(DIRECTORS)) {
+    const te = !!estat.directors[id];
+    ap(cos, h('div', { class: `fila-director${te ? ' contractat' : ''}` }, h('img', { src: imgLogo(d.logo), alt: '', width: 52, height: 52 }),
+      h('div', { class: 'of-info' }, h('strong', {}, d.nom), h('span', {}, d.efecte), h('span', { class: 'nota' }, `Fitxatge ${joc.diners(d.fitxatge)}. Sou ${joc.diners(d.souHora)}/setmana.`)),
+      h('button', { class: te ? 'btn' : 'btn btn-principal', onclick: () => { accio(() => (te ? joc.acomiadarDirector(estat, id) : joc.contractarDirector(estat, id))); obrirEmpresa('directors'); } }, te ? 'Acomiada' : 'Contracta')));
+  }
+}
+function secClassificacio(cos) {
+  const c = h('div', {}, h('p', { class: 'nota' }, 'Carregant…'));
+  ap(cos, c);
+  desa.classificacio(usuari.uid, estat).then((f) => {
+    c.replaceChildren(h('ol', { class: 'llista-classificacio' }, ...f.map((x, k) => h('li', { class: x.uid === usuari.uid ? 'jo' : '' },
+      h('span', { class: 'posicio' }, k + 1), h('img', { src: imgLogo(x.logo || 1), alt: '', width: 36, height: 36 }), h('span', { class: 'cl-nom' }, x.nom || '—'), h('span', { class: 'cl-valor' }, joc.diners(x.valor || 0))))));
+  }).catch(() => c.replaceChildren(h('p', { class: 'nota falta' }, 'No s\'ha pogut carregar.')));
+}
 
-// ---------- xat de la classe ----------
-let missatgesXat = [];
-let xatIniciat = false;
-let ultimVist = Date.now();
+// ---------- cerca ----------
+async function obrirCerca() {
+  marcarNav('cerca');
+  const llista = h('div', { class: 'llista-ofertes' }, h('p', { class: 'nota' }, 'Carregant…'));
+  obrirPanell('Empreses de Matadepera', h('div', { class: 'bloc' }, llista), { tipus: 'cerca', ample: true });
+  const files = Object.entries(locals).filter(([, l]) => l.nom);
+  llista.replaceChildren(...(files.length ? files.map(([id, l]) => h('button', { class: 'fila-oferta fila-empresa', onclick: () => { tancarPanell(); ciutat.centrarEn(id); } },
+    h('img', { src: imgLogo(l.logo || 1), alt: '', width: 34, height: 34 }),
+    h('span', { class: 'of-info' }, h('strong', {}, l.nom), h('span', { class: 'nota' }, `${SECTORS_NEGOCI[l.sector]?.nom || ''} · ${nomCarrerDe(localsPerId[id]?.X || 0, localsPerId[id]?.Y || 0)} · ${l.estat === 'obert' ? FASES_NEGOCI[l.fase || 1].nom : 'preparant-se'}`)))) : [h('p', { class: 'nota' }, 'Encara no hi ha negocis.')]));
+}
+async function obrirPerfil(uid) {
+  const id = Object.entries(locals).find(([, l]) => l.uid === uid)?.[0];
+  if (id) { tancarPanell(); ciutat.centrarEn(id); }
+}
 
+// ---------- professorat: configuració, avisos i reptes ----------
+function aplicarConfig() {
+  joc.setFaseForcada(config.fase && config.fase !== 'auto' ? config.fase : null);
+  $('#btn-panell-prof').hidden = !desa.esProfessor(usuari, config);
+  $('#nav-xat').hidden = !(XAT_ACTIU && config.xatActiu !== false);
+  $('#anunci').hidden = !config.anunci; $('#anunci').textContent = config.anunci || '';
+  if (estat) for (const r of config.reptes || []) {
+    if (estat.reptesVistos.includes(r.id)) continue;
+    estat.reptesVistos.push(r.id);
+    if (constituida()) avis(`Nou repte: ${joc.textRepte(r)} (+${joc.diners(r.premi)})`, 'ok');
+  }
+}
+function missatgeProfessor(text) {
+  const el = h('button', { class: 'notificacio prof-notif', onclick: () => el.remove() }, h('img', { src: 'img/personatges/guia-explica.webp', alt: '', width: 40, height: 40 }), h('span', {}, h('strong', {}, 'Professorat'), h('span', { class: 'prof-text' }, text)));
+  $('#notificacions').append(el);
+}
+async function reiniciarEmpresa() {
+  await desa.esborrarMevesOfertes(usuari.uid).catch(() => {});
+  await desa.alliberarLocalsDe(usuari.uid).catch(() => {});
+  estat = joc.estatInicial(); estat.partida = config.partida;
+  await desar(); location.reload();
+}
+async function comprovarProfessorat() {
+  try {
+    const c = await desa.getConfig();
+    if (estat.partida != null && c.partida && c.partida !== estat.partida) { config = c; await reiniciarEmpresa(); return; }
+    config = c; aplicarConfig();
+    const avs = await desa.avisosPendents(usuari.uid);
+    for (const a of avs) {
+      await desa.marcarLlegit(a.id);
+      if (a.tipus === 'ajut') { estat.diners += a.import; missatgeProfessor(`${a.import >= 0 ? 'Subvenció' : 'Sanció'} de ${joc.diners(Math.abs(a.import))}. ${a.text || ''}`); }
+      else if (a.tipus === 'missatge') missatgeProfessor(a.text);
+      else if (a.tipus === 'reinici') { await reiniciarEmpresa(); return; }
+    }
+    if (avs.length) { await desar(); dibuixarTot(); }
+  } catch (err) { console.error(err); }
+}
+
+// ---------- xat ----------
+let missatgesXat = [], xatIniciat = false, ultimVist = Date.now();
 async function iniciarXat() {
   if (!XAT_ACTIU || xatIniciat) return;
   xatIniciat = true;
@@ -1361,125 +816,30 @@ async function iniciarXat() {
       const nous = llista.filter((m) => m.creada > ultimVist && m.autor !== usuari.uid);
       missatgesXat = llista;
       if (panell?.tipus === 'xat') { dibuixarXat(); ultimVist = Date.now(); return; }
-      for (const m of nous.slice(-3)) notificar(m);
-      const pendents = llista.filter((m) => m.creada > ultimVist && m.autor !== usuari.uid).length;
-      $('#xat-nous').hidden = !pendents;
-      $('#xat-nous').textContent = pendents;
+      for (const m of nous.slice(-3)) {
+        const el = h('button', { class: 'notificacio', onclick: () => { el.remove(); obrirXat(); } }, h('img', { src: imgLogo(m.logo || 1), alt: '', width: 40, height: 40 }), h('span', {}, h('strong', {}, m.nom), h('span', {}, m.text)));
+        $('#notificacions').append(el); setTimeout(() => el.remove(), 7000);
+      }
+      const pend = llista.filter((m) => m.creada > ultimVist && m.autor !== usuari.uid).length;
+      $('#xat-nous').hidden = !pend; $('#xat-nous').textContent = pend;
     });
   } catch (err) { console.error(err); }
 }
-
-function notificar(m) {
-  const el = h('button', { class: 'notificacio', onclick: () => { el.remove(); obrirXat(); } },
-    h('img', { src: imgLogo(m.logo || 1), alt: '', width: 40, height: 40 }),
-    h('span', {}, h('strong', {}, m.nom), h('span', {}, m.text)));
-  $('#notificacions').append(el);
-  setTimeout(() => el.remove(), 7000);
-}
-
 function obrirXat() {
-  marcarNav('xat');
-  ultimVist = Date.now();
-  $('#xat-nous').hidden = true;
-  const entrada = h('input', { maxlength: 200, placeholder: 'Escriu un missatge…', 'aria-label': 'Missatge', autocomplete: 'off' });
-  const envia = async (ev) => {
-    ev.preventDefault();
-    const text = entrada.value.trim();
-    if (!text) return;
-    entrada.value = '';
-    try { await desa.enviarMissatge(usuari.uid, estat, text); } catch (err) { console.error(err); avis('No s\'ha pogut enviar.', 'error'); }
-  };
-  obrirPanell('Xat de la classe', h('div', { class: 'xat' },
-    h('div', { id: 'xat-llista', class: 'xat-llista' }),
-    h('form', { class: 'xat-form', onsubmit: envia }, entrada, h('button', { class: 'btn btn-principal', type: 'submit' }, 'Envia')),
+  marcarNav('xat'); ultimVist = Date.now(); $('#xat-nous').hidden = true;
+  const entrada = h('input', { maxlength: 200, placeholder: 'Escriu un missatge…', autocomplete: 'off' });
+  obrirPanell('Xat de la classe', h('div', { class: 'xat' }, h('div', { id: 'xat-llista', class: 'xat-llista' }),
+    h('form', { class: 'xat-form', onsubmit: async (ev) => { ev.preventDefault(); const t = entrada.value.trim(); if (!t) return; entrada.value = ''; try { await desa.enviarMissatge(usuari.uid, estat, t); } catch { avis('No s\'ha pogut enviar.', 'error'); } } },
+      entrada, h('button', { class: 'btn btn-principal', type: 'submit' }, 'Envia')),
     h('p', { class: 'nota' }, 'Sigues respectuós: el professorat pot veure i esborrar els missatges.')), { tipus: 'xat', ample: true });
   dibuixarXat();
-  entrada.focus();
 }
-
 function dibuixarXat() {
-  const llista = document.getElementById('xat-llista');
-  if (!llista) return;
-  llista.replaceChildren(...(missatgesXat.length ? missatgesXat.map((m) => h('div', { class: `xat-msg${m.autor === usuari.uid ? ' meu' : ''}` },
-    h('img', { src: imgLogo(m.logo || 1), alt: '', width: 32, height: 32 }),
-    h('div', {}, h('strong', {}, m.nom), h('p', {}, m.text)))) : [h('p', { class: 'nota' }, 'Encara no hi ha missatges. Saluda la classe!')]));
-  llista.scrollTop = llista.scrollHeight;
+  const l = document.getElementById('xat-llista');
+  if (!l) return;
+  l.replaceChildren(...(missatgesXat.length ? missatgesXat.map((m) => h('div', { class: `xat-msg${m.autor === usuari.uid ? ' meu' : ''}` }, h('img', { src: imgLogo(m.logo || 1), alt: '', width: 32, height: 32 }), h('div', {}, h('strong', {}, m.nom), h('p', {}, m.text)))) : [h('p', { class: 'nota' }, 'Encara no hi ha missatges.')]));
+  l.scrollTop = l.scrollHeight;
 }
 
-// ---------- borsa entre empreses ----------
-let recursBorsa = 'electricitat';
-
-async function obrirBorsa(recurs = recursBorsa) {
-  recursBorsa = recurs;
-  marcarNav('mercat');
-  const selector = h('div', { class: 'selector-recursos', role: 'tablist' },
-    ...Object.keys(RECURSOS).filter((r) => !RECURSOS[r].intern).map((r) => h('button', {
-      class: `btn-recurs${r === recurs ? ' actiu' : ''}`, role: 'tab', 'aria-selected': r === recurs ? 'true' : 'false',
-      title: RECURSOS[r].nom, onclick: () => obrirBorsa(r),
-    }, icona(r, 30))));
-  const llista = h('div', { class: 'llista-ofertes' }, h('p', { class: 'nota' }, 'Carregant ofertes…'));
-  const meves = h('div', { class: 'meves-ofertes' });
-  obrirPanell('Borsa', h('div', { class: 'bloc' },
-    h('button', { class: 'btn-tornar', onclick: () => obrirMercat() }, '← Mercat'),
-    selector,
-    h('h3', { class: 'subtitol' }, icona(recurs, 32), `${RECURSOS[recurs].nom}`,
-      h('span', { class: 'nota' }, `L'escola en paga ${joc.diners(RECURSOS[recurs].preu)}`)),
-    llista, meves), { tipus: 'borsa', ample: true });
-
-  try {
-    const [ofs, propies] = await Promise.all([desa.ofertes(recurs), desa.mevesOfertes(usuari.uid)]);
-    if (panell?.tipus !== 'borsa' || recursBorsa !== recurs) return;
-    llista.replaceChildren(...(ofs.length ? ofs.map(filaOferta) : [h('p', { class: 'nota' }, 'Ningú en ven ara mateix. Pots ser el primer des del Magatzem.')]));
-    meves.replaceChildren(...(propies.length ? [
-      h('h3', { class: 'subtitol' }, 'Les teves ofertes'),
-      ...propies.map((o) => h('div', { class: 'fila-oferta propia' },
-        icona(o.recurs, 30),
-        h('span', { class: 'of-info' }, `${joc.nombre(o.quantitat)} a ${joc.diners(o.preu)}`,
-          o.pendent ? h('span', { class: 'nota' }, `Per cobrar: ${joc.diners(o.pendent)}`) : null),
-        h('button', {
-          class: 'btn', onclick: () => accioRemota(() => desa.retirarOferta(usuari.uid, estat, o.id), 'Oferta retirada').then(() => obrirBorsa(recursBorsa)),
-        }, 'Retira'))),
-    ] : []));
-  } catch (err) {
-    console.error(err);
-    llista.replaceChildren(h('p', { class: 'nota falta' }, 'No s\'ha pogut carregar la borsa. Revisa la connexió.'));
-  }
-}
-
-function filaOferta(o) {
-  const meva = o.venedor === usuari.uid;
-  const { input, cont } = selectorQuantitat(Math.min(o.quantitat, 10), o.quantitat, () => {});
-  return h('div', { class: `fila-oferta${meva ? ' propia' : ''}` },
-    h('img', { src: imgLogo(o.logo || 1), alt: '', width: 34, height: 34 }),
-    h('span', { class: 'of-info' }, h('strong', {}, o.nomVenedor || 'Empresa'),
-      h('span', { class: 'nota' }, `${joc.nombre(o.quantitat)} unitats a ${joc.diners(o.preu)}, qualitat Q${o.qualitat || 0}`),
-      meva ? null : h('span', { class: 'nota' }, percentTransport(o.venedor) ? `+${Math.round(PERCENT_TRANSPORT * 100)}% de transport (no hi ha carretera fins a la teva ciutat)` : 'Connectada per carretera: sense transport')),
-    meva ? h('span', { class: 'nota' }, 'La teva') : h('div', { class: 'of-compra' }, cont,
-      h('button', {
-        class: 'btn btn-principal',
-        onclick: () => accioRemota(() => desa.comprar(usuari.uid, estat, o.id, Number(input.value), percentTransport(o.venedor)),
-          (r) => `Comprat per ${joc.diners(r.cost)}${r.transport ? ` + ${joc.diners(r.transport)} de transport` : ''}`).then(() => obrirBorsa(recursBorsa)),
-      }, 'Compra')));
-}
-
-// ---------- guia / tutorial ----------
-const PASSOS_GUIA = [
-  ['guia-normal', 'Hola! Sóc la Marta i t\'ajudaré a començar. Aquest és el terreny de la teva empresa.'],
-  ['guia-explica', 'Toca la parcel·la del cartell + i construeix una central elèctrica. Gairebé totes les fàbriques necessiten electricitat.'],
-  ['guia-pensa', 'Després fes una estació de bombeig. Amb aigua i electricitat podràs fer llavors al viver, i amb llavors, blat.'],
-  ['guia-celebra', 'Ven el que produeixis des del Magatzem i fes créixer l\'empresa. Som-hi!'],
-];
-let pasGuia = 0;
-function obrirGuia() { pasGuia = 0; tancarPanell(); mostrarPas(); $('#guia').hidden = false; }
-function mostrarPas() {
-  const [img, text] = PASSOS_GUIA[pasGuia];
-  $('#guia-img').src = `img/personatges/${img}.webp`;
-  $('#guia-text').textContent = text;
-  $('#guia-seguent').textContent = pasGuia === PASSOS_GUIA.length - 1 ? 'Som-hi!' : 'Següent';
-}
-$('#guia-seguent').addEventListener('click', () => {
-  pasGuia += 1;
-  if (pasGuia < PASSOS_GUIA.length) { mostrarPas(); return; }
-  $('#guia').hidden = true;
-  if (!estat.tutorialVist) { estat.tutorialVist = true; desar(); }
-});
+// Accés per a proves automàtiques (només en mode de prova)
+if (desa.modeProva) window.__fe = { obrirServei, obrirLocalLliure: (id) => obrirLocalLliure(localsPerId[id]), obrirNegoci, obrirCarpeta, obrirEmpresa, estat: () => estat, pas: () => joc.pasActual(estat) };
