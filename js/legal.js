@@ -214,10 +214,10 @@ export const OPCIONS_ESTATUTS = {
 
 // Oficines per llogar (domicili social i seu). Preu mensual.
 export const OFICINES = {
-  domicili: { nom: 'Domiciliació virtual', mensual: 40, fianca: 0, text: 'Només una adreça on reps el correu. Barata, però el banc i els clients en desconfien una mica.', confianca: 0.9 },
-  coworking: { nom: 'Taula en un coworking', mensual: 250, fianca: 250, text: 'Un lloc de treball en un espai compartit, amb sala de reunions.', confianca: 1 },
-  oficina: { nom: 'Oficina petita (40 m²)', mensual: 700, fianca: 1400, text: 'Oficina pròpia per a un equip petit. Fiança de 2 mesos.', confianca: 1.1 },
-  local: { nom: 'Local a peu de carrer (90 m²)', mensual: 1300, fianca: 2600, text: 'Espai gran amb aparador. Fiança de 2 mesos.', confianca: 1.15 },
+  domicili: { img: 'img/edificis/edifici-seu-central.webp', nom: 'Domiciliació virtual', mensual: 40, fianca: 0, text: 'Només una adreça on reps el correu. Barata, però el banc i els clients en desconfien una mica.', confianca: 0.9 },
+  coworking: { img: 'img/edificis/edifici-oficina-coworking.webp', nom: 'Taula en un coworking', mensual: 250, fianca: 250, text: 'Un lloc de treball en un espai compartit, amb sala de reunions.', confianca: 1 },
+  oficina: { img: 'img/edificis/edifici-oficina-petita.webp', nom: 'Oficina petita (40 m²)', mensual: 700, fianca: 1400, text: 'Oficina pròpia per a un equip petit. Fiança de 2 mesos.', confianca: 1.1 },
+  local: { img: 'img/edificis/edifici-local.webp', nom: 'Local a peu de carrer (90 m²)', mensual: 1300, fianca: 2600, text: 'Espai gran amb aparador. Fiança de 2 mesos.', confianca: 1.15 },
 };
 
 // Personal. Imports mensuals bruts (14 pagues prorratejades) i cotització de l'empresa.
@@ -249,3 +249,12 @@ export function costTramit(id, forma, capital, estatutsTipus) {
   const c = TRAMITS[id].cost;
   return typeof c === 'function' ? c(forma, capital, estatutsTipus) : c;
 }
+
+// Icona de l'organisme de cada tràmit (img/tramits/)
+const ICONES_TRAMIT = {
+  certificacio: 'registre', certificacioCoop: 'registre', registre: 'registre', registreCoop: 'registre', qualificacio: 'registre',
+  banc: 'banc', estatuts: 'notari', notari: 'notari', contracte: 'notari', assemblea: 'notari',
+  nif: 'hisenda', nif036: 'hisenda', hisenda036: 'hisenda', censal: 'hisenda', itp: 'hisenda', itpExempt: 'hisenda',
+  reta: 'seguretat-social', comunicacio: 'ajuntament',
+};
+export const iconaTramit = (id) => `img/tramits/${ICONES_TRAMIT[id] || 'notari'}.webp`;

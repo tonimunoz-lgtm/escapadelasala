@@ -609,3 +609,11 @@ select.input-preu.ample { width: 100%; text-align: left; }
 .prof-notif { border-left-color: var(--taronja); }
 .prof-notif .prof-text { white-space: normal !important; }
 .trofeu { font-size: 2rem; text-align: center; }
+
+/* =============== v7: imatges noves =============== */
+.forma-img { width: 110px; height: auto; justify-self: center; }
+.tram-cap { align-items: center; }
+.tram-cap strong { flex: 1; }
+.tram-icona { width: 44px; height: auto; flex: none; }
+.foto-personal { object-fit: contain; object-position: top; background: #f3f8fc; border-radius: 12px; }
+.cap-amb-foto { display: flex; align-items: center; gap: 10px; }

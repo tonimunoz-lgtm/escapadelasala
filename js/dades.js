@@ -36,7 +36,7 @@ export const RECURSOS = {
   pedra:        { nom: 'Pedra',        preu: 16,  cat: 'construccio' },
   maons:        { nom: 'Maons',        preu: 55,  cat: 'construccio' },
   // Punts de recerca: no es venen, es gasten a l'Empresa > Recerca
-  recerca:      { nom: 'Punts de recerca', preu: 0, cat: 'recerca', intern: true, img: 'img/edificis/edifici-laboratori.webp' },
+  recerca:      { nom: 'Punts de recerca', preu: 0, cat: 'recerca', intern: true },
 };
 
 export const CATEGORIES = {

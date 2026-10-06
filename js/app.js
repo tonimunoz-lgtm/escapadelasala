@@ -7,6 +7,7 @@ import * as joc from './joc.js';
 import * as desa from './desa.js';
 import {
   FORMES, TRAMITS, OPCIONS_ESTATUTS, OFICINES, PERSONAL, SS_EMPRESA, GESTORIA, SECTORS, SETMANES_PER_MES, RISC_SANCIO,
+  iconaTramit,
 } from './legal.js';
 import { crearMon, casellaParcela, origenSlot } from './mon.js';
 
@@ -314,7 +315,7 @@ function pasOficina() {
     llista.append(h('button', {
       class: `forma${estat.oficina === id ? ' triada' : ''}`, type: 'button',
       onclick: () => { estat.oficina = id; anarA('tramits'); },
-    }, h('strong', {}, o.nom),
+    }, h('img', { src: o.img, alt: '', width: 120, height: 120, class: 'forma-img' }), h('strong', {}, o.nom),
     h('dl', {}, h('dt', {}, 'Lloguer'), h('dd', {}, `${joc.diners(o.mensual)} al mes`), h('dt', {}, 'Fiança'), h('dd', {}, o.fianca ? joc.diners(o.fianca) : 'No cal')),
     h('p', { class: 'nota' }, o.text)));
   }
@@ -337,7 +338,7 @@ function pasTramits() {
     const fet = c.fets.includes(id);
     const actual = id === seguent;
     const item = h('li', { class: fet ? 'fet' : actual ? 'actual' : '' },
-      h('div', { class: 'tram-cap' }, h('strong', {}, t.nom), h('span', { class: 'tram-cost' }, cost ? joc.diners(cost) : 'Gratuït')),
+      h('div', { class: 'tram-cap' }, h('img', { src: iconaTramit(id), alt: '', width: 48, height: 48, class: 'tram-icona' }), h('strong', {}, t.nom), h('span', { class: 'tram-cost' }, cost ? joc.diners(cost) : 'Gratuït')),
       h('span', { class: 'nota' }, `${t.on}. Temps real: ${t.real}.`));
     if (actual || fet) item.append(h('p', {}, t.que));
     if (actual) {
@@ -561,6 +562,7 @@ function imatgeParcela(p) {
   if (p.estat === 'buida') return 'img/mapa/parcela-buida.webp';
   if (p.estat === 'obres') return 'img/mapa/parcela-obres.webp';
   if (p.millora) return 'img/mapa/parcela-millora.webp';
+  if (p.tipus === 'seu-central' && OFICINES[estat.oficina]?.img) return OFICINES[estat.oficina].img;
   return imgEdifici(p.tipus);
 }
 
@@ -1134,7 +1136,7 @@ function seccioPersonal() {
     const d = PERSONAL[rol];
     const n = estat.plantilla?.[rol] || 0;
     return h('div', { class: 'fila-director' },
-      h('img', { src: rol === 'rrhh' ? imgLogo(20) : 'img/recursos/recurs-treballadors.webp', alt: '', width: 52, height: 52 }),
+      h('img', { src: `img/personal/${rol}.webp`, alt: '', width: 52, height: 52, class: 'foto-personal' }),
       h('div', { class: 'of-info' }, h('strong', {}, `${d.nom}: ${n}`),
         h('span', {}, d.text),
         h('span', { class: 'nota' }, `Sou brut ${joc.diners(d.sou)}/mes + Seguretat Social de l'empresa (~${Math.round(SS_EMPRESA * 100)}%) = ${joc.diners(joc.costPersona(rol))}/mes per persona.`),
@@ -1158,7 +1160,7 @@ function seccioPersonal() {
           h('button', { class: 'btn btn-principal', onclick: () => accio(() => { estat.altaOcupador = true; avis('Empresa inscrita a la Seguretat Social', 'ok'); obrirEmpresa('personal'); }) }, 'Inscriu l\'empresa')]),
 
     h('div', { class: 'opcio' },
-      h('strong', {}, '2. Qui et porta els papers?'),
+      h('div', { class: 'cap-amb-foto' }, h('img', { src: 'img/personal/gestoria.webp', alt: '', width: 64, height: 64, class: 'foto-personal' }), h('strong', {}, '2. Qui et porta els papers?')),
       h('p', { class: 'nota' }, GESTORIA.text),
       h('p', {}, estat.gestoria
         ? `Tens gestoria contractada: ${joc.diners(GESTORIA.fixe)}/mes + ${joc.diners(GESTORIA.perTreballador)} per cada nòmina.`

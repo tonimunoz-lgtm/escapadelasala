@@ -140,7 +140,13 @@ export function crearMon({ canvas, onClic, onCanvi }) {
     ctx.setLineDash([]); ctx.lineDashOffset = 0;
   }
 
-  function srcParcela(p) {
+  const OFICINA_IMG = {
+    coworking: 'img/edificis/edifici-oficina-coworking.webp',
+    oficina: 'img/edificis/edifici-oficina-petita.webp',
+    local: 'img/edificis/edifici-local.webp',
+  };
+  function srcParcela(p, emp) {
+    if (p.tipus === 'seu-central' && p.estat === 'edifici' && OFICINA_IMG[emp?.oficina]) return OFICINA_IMG[emp.oficina];
     if (p.estat === 'bloquejada') return 'img/mapa/parcela-bloquejada.webp';
     if (p.estat === 'buida') return 'img/mapa/parcela-buida.webp';
     if (p.estat === 'obres') return 'img/mapa/parcela-obres.webp';
@@ -161,6 +167,12 @@ export function crearMon({ canvas, onClic, onCanvi }) {
     }
     const u = X + marge, v = Y + marge, t = 1 - 2 * marge;
     if (base) { rombe(u, v, t, t, DZ); ctx.fillStyle = base; ctx.fill(); }
+    const a = iso(u, v), b0 = iso(u + t, v), c0 = iso(u + t, v + t), d0 = iso(u, v + t);
+    // vorada del darrere: es dibuixa abans de l'edifici perquè quedi per sota
+    if (marge) {
+      ctx.strokeStyle = COLORS.vorada; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(d0.x, d0.y + DZ); ctx.lineTo(a.x, a.y + DZ); ctx.lineTo(b0.x, b0.y + DZ); ctx.stroke();
+    }
     if (!im) return;
     const { x, y } = iso(X + 0.5, Y + 0.5);
     const b = iso(u + t, v), c = iso(u + t, v + t), d = iso(u, v + t);
@@ -175,9 +187,9 @@ export function crearMon({ canvas, onClic, onCanvi }) {
     ctx.drawImage(im, x - (IMG / 2) * k, y + DZ - CENTRE_Y * k, IMG * k, IMG * k);
     ctx.restore();
     if (marge) {
-      // vorada de la parcel·la
-      rombe(u, v, t, t, DZ);
-      ctx.strokeStyle = COLORS.vorada; ctx.lineWidth = 2; ctx.stroke();
+      // vorada del davant (res de la parcel·la la tapa)
+      ctx.strokeStyle = COLORS.vorada; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(d0.x, d0.y + DZ); ctx.lineTo(c0.x, c0.y + DZ); ctx.lineTo(b0.x, b0.y + DZ); ctx.stroke();
     }
   }
 
@@ -239,7 +251,7 @@ export function crearMon({ canvas, onClic, onCanvi }) {
         const c = cel.get(clau(X, Y));
         if (!c) {
           // arbres al camp (no al costat de carreteres)
-          if (!simple && escala > 0.25 && hash(X, Y) < 140 && !aprop(X, Y)) sprite('img/mapa/decor-arbres.webp', X, Y, { base: '#8cbf45' });
+          if (!simple && escala > 0.25 && hash(X, Y) < 140 && !aprop(X, Y)) sprite(['img/mapa/decor-arbres.webp', 'img/mapa/decor-arbres-2.webp', 'img/mapa/decor-arbres-3.webp'][hash(Y, X) % 3], X, Y, { base: '#8cbf45' });
           continue;
         }
         if (c.tipus === 'carretera' || c.p?.estat === 'carretera') { dibuixaCarretera(X, Y); continue; }
@@ -251,7 +263,7 @@ export function crearMon({ canvas, onClic, onCanvi }) {
           ctx.fill();
           continue;
         }
-        sprite(srcParcela(c.p), X, Y, { base: c.p.estat === 'bloquejada' ? '#a7adb3' : '#8cbf45', marge: MARGE_PARCELA });
+        sprite(srcParcela(c.p, c.emp), X, Y, { base: c.p.estat === 'bloquejada' ? '#a7adb3' : '#8cbf45', marge: MARGE_PARCELA });
         if (esMeu) meus.push([X, Y, c]);
         else if (c.p.estat === 'edifici' && escala > 0.35 && c.p.tipus !== 'seu-central') {
           const { x, y } = iso(X + 0.5, Y + 0.5 + DZ / (W / 2));
