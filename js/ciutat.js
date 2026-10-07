@@ -11,7 +11,9 @@ import { imgNegoci, imgLogo, SECTORS_NEGOCI } from './dades.js';
 
 export const W = 236;
 const DZ = 14;
-const MARGE = 0.08;
+const MARGE = 0.1;
+// Canvia aquest número quan actualitzis imatges: obliga el navegador a no fer servir les velles
+export const VERSIO_IMATGES = '3';
 export const iso = (u, v) => ({ x: (u - v) * W / 2, y: (u + v) * W / 4 });
 const clau = (X, Y) => `${X},${Y}`;
 const hash = (X, Y) => { let h = (X * 374761393 + Y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h % 1000; };
@@ -145,7 +147,7 @@ export const nomCarrerDe = (X, Y) => {
 // Vehicles i persones (img/animacions). Els cotxes surten més sovint que els camions.
 const VEHICLES = ['cotxe-1', 'cotxe-vermell', 'cotxe-blau', 'cotxe-groc', 'cotxe-blanc', 'cotxe-verd', 'cotxe-taronja', 'cotxe-gris',
   'cotxe-blau2', 'cabrio-vermell', 'cabrio-blau', 'familiar-beix', 'familiar-verd', 'furgoneta', 'furgoneta', 'camio', 'autobus'];
-const AMPLADA_VEHICLE = { autobus: 175, camio: 150, furgoneta: 120 };
+const AMPLADA_VEHICLE = { autobus: 140, camio: 120, furgoneta: 95 };
 const NUM_PERSONES = 13;
 
 // =============================================================
@@ -166,9 +168,29 @@ export function crearCiutat({ canvas, onClic }) {
 
   function img(src) {
     let im = imatges.get(src);
-    if (!im) { im = new Image(); im.onload = demana; im.src = src; imatges.set(src, im); }
-    return im.complete && im.naturalWidth ? im : null;
+    if (!im) {
+      im = new Image();
+      im.onload = () => { mesurar(im); demana(); };
+      im.src = `${src}?v=${VERSIO_IMATGES}`;
+      imatges.set(src, im);
+    }
+    return im.complete && im.naturalWidth && im._caixa ? im : null;
   }
+  // Mesura la part visible de cada imatge (sense el fons transparent)
+  function mesurar(im) {
+    const c = document.createElement('canvas');
+    c.width = im.naturalWidth; c.height = im.naturalHeight;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(im, 0, 0);
+    let dades;
+    try { dades = g.getImageData(0, 0, c.width, c.height).data; } catch { im._caixa = { x0: 0, x1: c.width, y1: c.height }; return; }
+    let x0 = c.width, x1 = 0, y1 = 0;
+    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+      if (dades[(y * c.width + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+    }
+    im._caixa = x1 > x0 ? { x0, x1, y1 } : { x0: 0, x1: c.width, y1: c.height };
+  }
+
   function demana() {
     if (pendent) return;
     pendent = true;
@@ -198,9 +220,10 @@ export function crearCiutat({ canvas, onClic }) {
     ctx.setLineDash([]); ctx.lineDashOffset = 0;
   }
 
-  // Dibuixa una imatge isomètrica plana, retallada al seu rombe.
-  // vella: imatges antigues (punta inferior del rombe a y=231, rombe 233 px)
-  function sprite(src, X, Y, { mida = 1, marge = MARGE, base = '#8cbf45', alfa = 1, vella = false } = {}) {
+  // Dibuixa una imatge isomètrica dins de la seva parcel·la:
+  // s'escala perquè la part visible ocupi l'amplada del rombe, s'alinea a la punta de baix
+  // i es retalla pels costats i per sota perquè no envaeixi els carrerons ni les veïnes.
+  function sprite(src, X, Y, { mida = 1, marge = MARGE, base = '#8cbf45' } = {}) {
     const im = img(src);
     if (marge) { rombe(X, Y, mida, mida); ctx.fillStyle = COLORS.carrero; ctx.fill(); }
     const u = X + marge, v = Y + marge, t = mida - 2 * marge;
@@ -208,16 +231,14 @@ export function crearCiutat({ canvas, onClic }) {
     const a = iso(u, v), b = iso(u + t, v), c = iso(u + t, v + t), d = iso(u, v + t);
     if (marge) { ctx.strokeStyle = COLORS.vorada; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(d.x, d.y + DZ); ctx.lineTo(a.x, a.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.stroke(); }
     if (im) {
-      const S = im.naturalWidth;
-      const cara = vella ? 233 : S * 236 / 256;          // amplada del rombe dins la imatge
-      const puntaY = vella ? 231 : S * 250 / 256;         // y de la punta inferior del rombe
-      const k = (W * t) / cara;
+      const cx = im._caixa;
+      const k = (W * t) / (cx.x1 - cx.x0 + 1);
+      const mig = (cx.x0 + cx.x1) / 2;
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(d.x - W, d.y + DZ); ctx.lineTo(d.x, d.y + DZ); ctx.lineTo(c.x, c.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.lineTo(b.x + W, b.y + DZ); ctx.lineTo(b.x + W, b.y - 900); ctx.lineTo(d.x - W, d.y - 900);
+      ctx.moveTo(d.x - 1, d.y + DZ); ctx.lineTo(c.x, c.y + DZ + 1); ctx.lineTo(b.x + 1, b.y + DZ); ctx.lineTo(b.x + 1, b.y - 1200); ctx.lineTo(d.x - 1, d.y - 1200);
       ctx.closePath(); ctx.clip();
-      if (alfa !== 1) ctx.globalAlpha = alfa;
-      ctx.drawImage(im, c.x - (S / 2) * k, c.y + DZ - puntaY * k, S * k, S * k);
+      ctx.drawImage(im, c.x - mig * k, c.y + DZ - cx.y1 * k, im.naturalWidth * k, im.naturalHeight * k);
       ctx.restore();
     }
     if (marge) { ctx.strokeStyle = COLORS.vorada; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(d.x, d.y + DZ); ctx.lineTo(c.x, c.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.stroke(); }
@@ -253,7 +274,7 @@ export function crearCiutat({ canvas, onClic }) {
     return {
       X, Y, dx, dy, t: Math.random(),
       vel: tipus === 'cotxe' ? 0.9 + Math.random() * 0.5 : 0.22 + Math.random() * 0.1,
-      costat: tipus === 'cotxe' ? 0.18 : (Math.random() < 0.5 ? 0.4 : -0.4),
+      costat: tipus === 'cotxe' ? 0.16 : (Math.random() < 0.5 ? 0.41 : -0.41),
       img: tipus === 'cotxe' ? vehicles[Math.floor(Math.random() * vehicles.length)] : `persona-${1 + Math.floor(Math.random() * NUM_PERSONES)}`,
       tipus, fade: 1,
     };
@@ -297,9 +318,9 @@ export function crearCiutat({ canvas, onClic }) {
     ctx.globalAlpha = a.entrant ? Math.max(0, a.fade) : 1;
     if (a.tipus === 'cotxe') {
       const fw = im.naturalWidth / 4, fh = im.naturalHeight;
-      const ample = AMPLADA_VEHICLE[a.img] || 120;
+      const ample = AMPLADA_VEHICLE[a.img] || 82;
       const k = ample / fw;
-      ctx.drawImage(im, dir * fw, 0, fw, fh, x - (fw * k) / 2, y + DZ - fh * k + 10, fw * k, fh * k);
+      ctx.drawImage(im, dir * fw, 0, fw, fh, x - (fw * k) / 2, y + DZ - fh * k * 0.78, fw * k, fh * k);
     } else {
       const fw = im.naturalWidth / 4, fh = im.naturalHeight / 4;
       const frame = Math.floor((performance.now() / 150 + a.X * 3) % 4);
@@ -329,7 +350,8 @@ export function crearCiutat({ canvas, onClic }) {
     // agents ordenats per diagonal per pintar-los al seu lloc
     const perDiag = new Map();
     if (escala > 0.22) for (const a of [...cotxes, ...vianants]) {
-      const d = Math.floor(a.X + a.dx * (a.t - 0.5) + a.Y + a.dy * (a.t - 0.5) + 1);
+      const u = a.X + 0.5 + a.dx * (a.t - 0.5) + (-a.dy) * a.costat, v = a.Y + 0.5 + a.dy * (a.t - 0.5) + a.dx * a.costat;
+      const d = Math.floor(u) + Math.floor(v);
       if (!perDiag.has(d)) perDiag.set(d, []);
       perDiag.get(d).push(a);
     }
@@ -342,15 +364,14 @@ export function crearCiutat({ canvas, onClic }) {
           // bosc del Parc Natural al nord i arbres pel camp
           const bosc = Y < 0 && Y > -9 && X > -6 && X < 26;
           if (escala > 0.2 && (bosc ? hash(X, Y) < 820 : hash(X, Y) < 110)) {
-            sprite(['img/mapa/decor-arbres.webp', 'img/mapa/decor-arbres-2.webp', 'img/mapa/decor-arbres-3.webp'][hash(Y, X) % 3], X, Y, { marge: 0, base: '#8cbf45', vella: true });
+            sprite(['img/mapa/decor-arbres.webp', 'img/mapa/decor-arbres-2.webp', 'img/mapa/decor-arbres-3.webp'][hash(Y, X) % 3], X, Y, { marge: 0, base: '#8cbf45' });
           }
           continue;
         }
         if (c.tipus === 'carretera') { dibuixaCarretera(X, Y); continue; }
         if (c.tipus === 'part') continue;
         if (c.tipus === 'edifici') {
-          const vell = c.img.includes('/edificis/');
-          sprite(c.img, c.X, c.Y, { mida: c.mida, vella: vell });
+          sprite(c.img, c.X, c.Y, { mida: c.mida });
           etiquetes.push(['edifici', c]);
           continue;
         }
@@ -360,7 +381,7 @@ export function crearCiutat({ canvas, onClic }) {
           etiquetes.push(['local', c, l]);
           continue;
         }
-        if (c.tipus === 'decor') sprite(c.img, X, Y, { vella: c.img.includes('/mapa/') || c.img.includes('/edificis/') });
+        if (c.tipus === 'decor') sprite(c.img, X, Y);
       }
       for (const a of perDiag.get(d) || []) dibuixaAgent(a);
     }
