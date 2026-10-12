@@ -13,7 +13,7 @@ export const W = 236;
 const DZ = 14;
 const MARGE = 0.1;
 // Canvia aquest número quan actualitzis imatges: obliga el navegador a no fer servir les velles
-export const VERSIO_IMATGES = '4';
+export const VERSIO_IMATGES = '5';
 export const iso = (u, v) => ({ x: (u - v) * W / 2, y: (u + v) * W / 4 });
 const clau = (X, Y) => `${X},${Y}`;
 const hash = (X, Y) => { let h = (X * 374761393 + Y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h % 1000; };
