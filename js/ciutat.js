@@ -147,7 +147,8 @@ export const nomCarrerDe = (X, Y) => {
 // Vehicles i persones (img/animacions). Els cotxes surten més sovint que els camions.
 const VEHICLES = ['cotxe-1', 'cotxe-vermell', 'cotxe-blau', 'cotxe-groc', 'cotxe-blanc', 'cotxe-verd', 'cotxe-taronja', 'cotxe-gris',
   'cotxe-blau2', 'cabrio-vermell', 'cabrio-blau', 'familiar-beix', 'familiar-verd', 'furgoneta', 'furgoneta', 'camio', 'autobus', 'bici', 'bici', 'moto'];
-const AMPLADA_VEHICLE = { autobus: 140, camio: 120, furgoneta: 95, bici: 46, moto: 50 };
+// Mides pensades perquè una parcel·la (236 px) faci uns 20 metres: un cotxe de 4,5 m fa uns 55 px
+const AMPLADA_VEHICLE = { autobus: 105, camio: 85, furgoneta: 68, bici: 30, moto: 34 };
 const NUM_PERSONES = 21;
 
 // =============================================================
@@ -274,7 +275,7 @@ export function crearCiutat({ canvas, onClic }) {
     return {
       X, Y, dx, dy, t: Math.random(),
       vel: tipus === 'cotxe' ? 0.9 + Math.random() * 0.5 : 0.22 + Math.random() * 0.1,
-      costat: tipus === 'cotxe' ? 0.16 : (Math.random() < 0.5 ? 0.41 : -0.41),
+      costat: tipus === 'cotxe' ? 0.14 : (Math.random() < 0.5 ? 0.42 : -0.42),
       img: tipus === 'cotxe' ? vehicles[Math.floor(Math.random() * vehicles.length)] : `persona-${1 + Math.floor(Math.random() * NUM_PERSONES)}`,
       tipus, fade: 1,
     };
@@ -318,13 +319,13 @@ export function crearCiutat({ canvas, onClic }) {
     ctx.globalAlpha = a.entrant ? Math.max(0, a.fade) : 1;
     if (a.tipus === 'cotxe') {
       const fw = im.naturalWidth / 4, fh = im.naturalHeight;
-      const ample = AMPLADA_VEHICLE[a.img] || 82;
+      const ample = AMPLADA_VEHICLE[a.img] || 56;
       const k = ample / fw;
       ctx.drawImage(im, dir * fw, 0, fw, fh, x - (fw * k) / 2, y + DZ - fh * k * 0.78, fw * k, fh * k);
     } else {
       const fw = im.naturalWidth / 4, fh = im.naturalHeight / 4;
       const frame = Math.floor((performance.now() / 150 + a.X * 3) % 4);
-      ctx.drawImage(im, frame * fw, dir * fh, fw, fh, x - 20, y + DZ - 58, 40, 60);
+      ctx.drawImage(im, frame * fw, dir * fh, fw, fh, x - 13, y + DZ - 38, 26, 39);
     }
     ctx.restore();
   }
