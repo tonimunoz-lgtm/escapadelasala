@@ -13,7 +13,7 @@ export const W = 236;
 const DZ = 14;
 const MARGE = 0.1;
 // Canvia aquest número quan actualitzis imatges: obliga el navegador a no fer servir les velles
-export const VERSIO_IMATGES = '3';
+export const VERSIO_IMATGES = '4';
 export const iso = (u, v) => ({ x: (u - v) * W / 2, y: (u + v) * W / 4 });
 const clau = (X, Y) => `${X},${Y}`;
 const hash = (X, Y) => { let h = (X * 374761393 + Y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h % 1000; };
@@ -122,7 +122,7 @@ function generarMapa() {
         if (cel.has(clau(X, Y))) continue;
         const h = hash(X, Y);
         let img;
-        if (z === TERRASSA) img = h < 450 ? 'img/edificis/edifici-magatzem.webp' : h < 750 ? `img/ciutat/bloc-baix-${1 + ((h >> 4) % 2)}.webp` : 'img/ciutat/jardi.webp';
+        if (z === TERRASSA) img = h < 450 ? 'img/ciutat/nau-industrial.webp' : h < 750 ? `img/ciutat/bloc-baix-${1 + ((h >> 4) % 2)}.webp` : 'img/ciutat/jardi.webp';
         else if (zonaDe(X, Y) === 'centre') img = h < 380 ? `img/ciutat/bloc-baix-${1 + ((h >> 4) % 2)}.webp` : h < 760 ? `img/ciutat/${CASES[h % 5]}.webp` : h < 900 ? 'img/ciutat/jardi.webp' : 'img/ciutat/gespa.webp';
         else img = h < 680 ? `img/ciutat/${CASES[h % 5]}.webp` : h < 800 ? 'img/ciutat/jardi.webp' : h < 900 ? 'img/ciutat/gespa.webp' : h < 950 ? 'img/ciutat/parc-infantil.webp' : 'img/ciutat/hort-urba.webp';
         posa(X, Y, { tipus: 'decor', img });
@@ -146,9 +146,9 @@ export const nomCarrerDe = (X, Y) => {
 
 // Vehicles i persones (img/animacions). Els cotxes surten més sovint que els camions.
 const VEHICLES = ['cotxe-1', 'cotxe-vermell', 'cotxe-blau', 'cotxe-groc', 'cotxe-blanc', 'cotxe-verd', 'cotxe-taronja', 'cotxe-gris',
-  'cotxe-blau2', 'cabrio-vermell', 'cabrio-blau', 'familiar-beix', 'familiar-verd', 'furgoneta', 'furgoneta', 'camio', 'autobus'];
-const AMPLADA_VEHICLE = { autobus: 140, camio: 120, furgoneta: 95 };
-const NUM_PERSONES = 13;
+  'cotxe-blau2', 'cabrio-vermell', 'cabrio-blau', 'familiar-beix', 'familiar-verd', 'furgoneta', 'furgoneta', 'camio', 'autobus', 'bici', 'bici', 'moto'];
+const AMPLADA_VEHICLE = { autobus: 140, camio: 120, furgoneta: 95, bici: 46, moto: 50 };
+const NUM_PERSONES = 21;
 
 // =============================================================
 //  DIBUIX

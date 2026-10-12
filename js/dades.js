@@ -47,6 +47,55 @@ export const SECTORS_NEGOCI = {
     demanda: 450, capacitat: 160, ofici: 'Cuiner/a o cambrer/a',
     text: 'Serveis menús i sopars. Marge alt per plat, però necessites cuina, sala i bon servei.',
   },
+  gelateria: {
+    nom: 'Gelateria', iae: 'Epígraf 644.4 - Comerç al detall de gelats (orientatiu)',
+    materia: { nom: 'Llet, fruita i sucre', cost: 0.7, img: 'img/productes/materia-gelateria.webp' },
+    producte: { nom: 'Gelats', preuRef: 3.5, img: 'img/productes/producte-gelateria.webp' },
+    demanda: 900, capacitat: 400, ofici: 'Gelater/a',
+    text: 'Gelats artesans: molts clients amb preus baixos. Ven molt més quan fa bon temps i l\'economia va bé.',
+  },
+  perruqueria: {
+    nom: 'Perruqueria', iae: 'Epígraf 972.1 - Serveis de perruqueria (orientatiu)',
+    materia: { nom: 'Xampús, tints i productes', cost: 4, img: 'img/productes/materia-perruqueria.webp' },
+    producte: { nom: 'Serveis de perruqueria', preuRef: 22, img: 'img/productes/producte-perruqueria.webp' },
+    demanda: 110, capacitat: 45, ofici: 'Perruquer/a',
+    text: 'Un servei: poca matèria primera i molta mà d\'obra. Cada professional atén pocs clients per setmana.',
+  },
+  floristeria: {
+    nom: 'Floristeria', iae: 'Epígraf 659.7 - Comerç al detall de llavors, flors i plantes (orientatiu)',
+    materia: { nom: 'Flors i plantes', cost: 6, img: 'img/productes/materia-floristeria.webp' },
+    producte: { nom: 'Rams i plantes', preuRef: 20, img: 'img/productes/producte-floristeria.webp' },
+    demanda: 140, capacitat: 90, ofici: 'Florista',
+    text: 'Compres flors i plantes, prepares rams i els vens. Producte delicat amb un bon marge.',
+  },
+  informatica: {
+    nom: 'Botiga d\'informàtica', iae: 'Comerç i reparació d\'equips informàtics (epígraf orientatiu)',
+    materia: { nom: 'Components i accessoris', cost: 35, img: 'img/productes/materia-informatica.webp' },
+    producte: { nom: 'Reparacions i dispositius', preuRef: 80, img: 'img/productes/producte-informatica.webp' },
+    demanda: 50, capacitat: 30, ofici: 'Tècnic/a informàtic/a',
+    text: 'Reparacions de mòbils i ordinadors i venda d\'accessoris. Pocs clients però tiquet alt.',
+  },
+  llibreria: {
+    nom: 'Llibreria', iae: 'Epígraf 659.4 - Comerç al detall de llibres i papereria (orientatiu)',
+    materia: { nom: 'Llibres i material', cost: 9, img: 'img/productes/materia-llibreria.webp' },
+    producte: { nom: 'Llibres i papereria', preuRef: 16, img: 'img/productes/producte-llibreria.webp' },
+    demanda: 260, capacitat: 180, ofici: 'Llibreter/a',
+    text: 'Llibres i material escolar. Marge petit: has de vendre molt i controlar bé les despeses.',
+  },
+  gimnas: {
+    nom: 'Gimnàs', iae: 'Epígraf 967.2 - Escoles i serveis de perfeccionament de l\'esport (orientatiu)',
+    materia: { nom: 'Material i manteniment', cost: 5, img: 'img/productes/materia-gimnas.webp' },
+    producte: { nom: 'Quotes setmanals', preuRef: 14, img: 'img/productes/producte-gimnas.webp' },
+    demanda: 200, capacitat: 150, ofici: 'Monitor/a',
+    text: 'Els socis paguen una quota. Necessites espai i monitors, i un gimnàs gran atrau molta més gent.',
+  },
+  fruiteria: {
+    nom: 'Fruiteria', iae: 'Epígraf 641 - Comerç al detall de fruites i verdures (orientatiu)',
+    materia: { nom: 'Fruita i verdura', cost: 1.1, img: 'img/productes/materia-fruiteria.webp' },
+    producte: { nom: 'Bosses de fruita', preuRef: 2.4, img: 'img/productes/producte-fruiteria.webp' },
+    demanda: 1500, capacitat: 600, ofici: 'Dependent/a',
+    text: 'Fruita fresca cada dia: molts clients i marges petits. La ubicació a prop de casa és clau.',
+  },
 };
 export const imgNegoci = (sector, fase) => `img/negocis/${sector}-${Math.min(3, Math.max(1, fase || 1))}.webp`;
 
