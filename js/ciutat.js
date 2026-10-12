@@ -11,9 +11,9 @@ import { imgNegoci, imgLogo, SECTORS_NEGOCI } from './dades.js';
 
 export const W = 236;
 const DZ = 14;
-const MARGE = 0.1;
+const MARGE = 0.07;
 // Canvia aquest número quan actualitzis imatges: obliga el navegador a no fer servir les velles
-export const VERSIO_IMATGES = '5';
+export const VERSIO_IMATGES = '6';
 export const iso = (u, v) => ({ x: (u - v) * W / 2, y: (u + v) * W / 4 });
 const clau = (X, Y) => `${X},${Y}`;
 const hash = (X, Y) => { let h = (X * 374761393 + Y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h % 1000; };
@@ -41,7 +41,7 @@ export const EDIFICIS_CIUTAT = [
   ['banc-sabadell', 11, 7, 1, 'img/ciutat/banc.webp', 'Banc (c. Sant Joan, 99)', 'banc'],
   ['caixabank', 7, 9, 1, 'img/ciutat/banc.webp', 'Banc (Ctra. de Terrassa, 23)', 'banc'],
   ['esglesia', 11, 11, 1, 'img/ciutat/esglesia.webp', 'Església', null],
-  ['aparcament', 10, 11, 1, 'img/ciutat/aparcament.webp', 'Aparcament', null],
+  ['parc-esglesia', 10, 11, 1, 'img/ciutat/parc.webp', 'Parc de l\'Església', null],
   ['cap', 5, 11, 1, 'img/ciutat/cap.webp', 'CAP Matadepera', null],
   // Casal de Cultura (c. Pere Aldavert)
   ['casal', 3, 5, 1, 'img/ciutat/casal-cultura.webp', 'Casal de Cultura', null],
@@ -49,7 +49,7 @@ export const EDIFICIS_CIUTAT = [
   ['parc-infantil-1', 2, 5, 1, 'img/ciutat/parc-infantil.webp', 'Parc infantil', null],
   // Educació i esport
   ['institut', 13, 13, 2, 'img/ciutat/institut.webp', 'Institut Matadepera', null],
-  ['escola', 13, 1, 1, 'img/ciutat/escola.webp', 'Escola', null],
+  ['escola', 13, 1, 2, 'img/ciutat/escola.webp', 'Escola', null],
   ['piscina', 17, 13, 2, 'img/ciutat/piscina-municipal.webp', 'Piscines municipals', null],
   ['pavello', 1, 13, 2, 'img/ciutat/pavello.webp', 'Pavelló esportiu', null],
   ['padel', 3, 13, 1, 'img/ciutat/pistes-padel.webp', 'Pistes municipals', null],
@@ -124,7 +124,7 @@ function generarMapa() {
         let img;
         if (z === TERRASSA) img = h < 450 ? 'img/ciutat/nau-industrial.webp' : h < 750 ? `img/ciutat/bloc-baix-${1 + ((h >> 4) % 2)}.webp` : 'img/ciutat/jardi.webp';
         else if (zonaDe(X, Y) === 'centre') img = h < 380 ? `img/ciutat/bloc-baix-${1 + ((h >> 4) % 2)}.webp` : h < 760 ? `img/ciutat/${CASES[h % 5]}.webp` : h < 900 ? 'img/ciutat/jardi.webp' : 'img/ciutat/gespa.webp';
-        else img = h < 680 ? `img/ciutat/${CASES[h % 5]}.webp` : h < 800 ? 'img/ciutat/jardi.webp' : h < 900 ? 'img/ciutat/gespa.webp' : h < 950 ? 'img/ciutat/parc-infantil.webp' : 'img/ciutat/hort-urba.webp';
+        else img = h < 680 ? `img/ciutat/${CASES[h % 5]}.webp` : h < 800 ? 'img/ciutat/jardi.webp' : h < 900 ? 'img/ciutat/gespa.webp' : h < 950 ? 'img/ciutat/parc-infantil.webp' : 'img/ciutat/parc.webp';
         posa(X, Y, { tipus: 'decor', img });
       }
     }
@@ -150,6 +150,8 @@ const VEHICLES = ['cotxe-1', 'cotxe-vermell', 'cotxe-blau', 'cotxe-groc', 'cotxe
 // Mides pensades perquè una parcel·la (236 px) faci uns 20 metres: un cotxe de 4,5 m fa uns 55 px
 const AMPLADA_VEHICLE = { autobus: 105, camio: 85, furgoneta: 68, bici: 30, moto: 34 };
 const NUM_PERSONES = 21;
+// Una persona (~1,7 m) al costat d'una casa de dues plantes (~7 m): uns 22 px d'alçada
+const MIDA_PERSONA = { w: 15, h: 22 };
 
 // =============================================================
 //  DIBUIX
@@ -177,19 +179,32 @@ export function crearCiutat({ canvas, onClic }) {
     }
     return im.complete && im.naturalWidth && im._caixa ? im : null;
   }
-  // Mesura la part visible de cada imatge (sense el fons transparent)
+  // Mesura la part visible de cada imatge (sense el fons transparent) i la forma del terra.
+  // Les il·lustracions no tenen totes la mateixa perspectiva: algunes tenen el terra més
+  // "alt" que un rombe isomètric 2:1. Calculem un factor vertical (sy) perquè el terra de
+  // totes encaixi exactament a la parcel·la i les cantonades quedin alineades amb les veïnes.
   function mesurar(im) {
     const c = document.createElement('canvas');
     c.width = im.naturalWidth; c.height = im.naturalHeight;
     const g = c.getContext('2d', { willReadFrequently: true });
     g.drawImage(im, 0, 0);
     let dades;
-    try { dades = g.getImageData(0, 0, c.width, c.height).data; } catch { im._caixa = { x0: 0, x1: c.width, y1: c.height }; return; }
+    try { dades = g.getImageData(0, 0, c.width, c.height).data; } catch { im._caixa = { x0: 0, x1: c.width, y1: c.height, sy: 1 }; return; }
+    const opac = (x, y) => dades[(y * c.width + x) * 4 + 3] > 40;
     let x0 = c.width, x1 = 0, y1 = 0;
     for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
-      if (dades[(y * c.width + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+      if (opac(x, y)) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y > y1) y1 = y; }
     }
-    im._caixa = x1 > x0 ? { x0, x1, y1 } : { x0: 0, x1: c.width, y1: c.height };
+    if (x1 <= x0) { im._caixa = { x0: 0, x1: c.width, y1: c.height, sy: 1 }; return; }
+    // punt més baix d'una franja de columnes
+    const baixDe = (xa, xb) => { for (let y = c.height - 1; y >= 0; y--) for (let x = xa; x <= xb; x++) if (opac(x, y)) return y; return -1; };
+    const f = Math.max(2, Math.round((x1 - x0) * 0.012));
+    const mig = Math.round((x0 + x1) / 2);
+    const yEsq = baixDe(x0, x0 + f), yDre = baixDe(x1 - f, x1), yMig = baixDe(mig - f, mig + f);
+    const ratio = (yMig - (yEsq + yDre) / 2) / ((x1 - x0) / 2);
+    // si la imatge té un terra reconeixible, l'aplanem a 2:1; si no, la deixem igual
+    const sy = ratio > 0.4 && ratio < 0.8 && Math.abs(yEsq - yDre) < (x1 - x0) * 0.08 ? 0.5 / ratio : 1;
+    im._caixa = { x0, x1, y1: sy === 1 ? y1 : yMig, sy };
   }
 
   function demana() {
@@ -239,7 +254,8 @@ export function crearCiutat({ canvas, onClic }) {
       ctx.beginPath();
       ctx.moveTo(d.x - 1, d.y + DZ); ctx.lineTo(c.x, c.y + DZ + 1); ctx.lineTo(b.x + 1, b.y + DZ); ctx.lineTo(b.x + 1, b.y - 1200); ctx.lineTo(d.x - 1, d.y - 1200);
       ctx.closePath(); ctx.clip();
-      ctx.drawImage(im, c.x - mig * k, c.y + DZ - cx.y1 * k, im.naturalWidth * k, im.naturalHeight * k);
+      const ky = k * cx.sy;
+      ctx.drawImage(im, c.x - mig * k, c.y + DZ - cx.y1 * ky, im.naturalWidth * k, im.naturalHeight * ky);
       ctx.restore();
     }
     if (marge) { ctx.strokeStyle = COLORS.vorada; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(d.x, d.y + DZ); ctx.lineTo(c.x, c.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.stroke(); }
@@ -325,7 +341,7 @@ export function crearCiutat({ canvas, onClic }) {
     } else {
       const fw = im.naturalWidth / 4, fh = im.naturalHeight / 4;
       const frame = Math.floor((performance.now() / 150 + a.X * 3) % 4);
-      ctx.drawImage(im, frame * fw, dir * fh, fw, fh, x - 13, y + DZ - 38, 26, 39);
+      ctx.drawImage(im, frame * fw, dir * fh, fw, fh, x - MIDA_PERSONA.w / 2, y + DZ - MIDA_PERSONA.h + 1, MIDA_PERSONA.w, MIDA_PERSONA.h);
     }
     ctx.restore();
   }
