@@ -13,7 +13,7 @@ export const W = 236;
 const DZ = 14;
 const MARGE = 0.07;
 // Canvia aquest número quan actualitzis imatges: obliga el navegador a no fer servir les velles
-export const VERSIO_IMATGES = '6';
+export const VERSIO_IMATGES = '7';
 export const iso = (u, v) => ({ x: (u - v) * W / 2, y: (u + v) * W / 4 });
 const clau = (X, Y) => `${X},${Y}`;
 const hash = (X, Y) => { let h = (X * 374761393 + Y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h % 1000; };
@@ -49,7 +49,7 @@ export const EDIFICIS_CIUTAT = [
   ['parc-infantil-1', 2, 5, 1, 'img/ciutat/parc-infantil.webp', 'Parc infantil', null],
   // Educació i esport
   ['institut', 13, 13, 2, 'img/ciutat/institut.webp', 'Institut Matadepera', null],
-  ['escola', 13, 1, 2, 'img/ciutat/escola.webp', 'Escola', null],
+  ['escola', 13, 1, 2, 'img/ciutat/escola-nova.webp', 'Escola', null],
   ['piscina', 17, 13, 2, 'img/ciutat/piscina-municipal.webp', 'Piscines municipals', null],
   ['pavello', 1, 13, 2, 'img/ciutat/pavello.webp', 'Pavelló esportiu', null],
   ['padel', 3, 13, 1, 'img/ciutat/pistes-padel.webp', 'Pistes municipals', null],
@@ -179,32 +179,59 @@ export function crearCiutat({ canvas, onClic }) {
     }
     return im.complete && im.naturalWidth && im._caixa ? im : null;
   }
-  // Mesura la part visible de cada imatge (sense el fons transparent) i la forma del terra.
-  // Les il·lustracions no tenen totes la mateixa perspectiva: algunes tenen el terra més
-  // "alt" que un rombe isomètric 2:1. Calculem un factor vertical (sy) perquè el terra de
-  // totes encaixi exactament a la parcel·la i les cantonades quedin alineades amb les veïnes.
+  // Mesura on és el terra (la base de rajola) de cada imatge.
+  // Les il·lustracions no tenen totes la mateixa perspectiva: n'hi ha amb el terra més alt
+  // que un rombe 2:1, i n'hi ha de lleugerament girades (la punta de baix no és al mig).
+  // Busquem les tres cantonades de baix de la base (esquerra, punta, dreta) ajustant una
+  // recta a cada costat del contorn inferior, i després deformem la imatge (transformació
+  // afí) perquè aquestes cantonades caiguin exactament sobre les de la parcel·la.
   function mesurar(im) {
     const c = document.createElement('canvas');
     c.width = im.naturalWidth; c.height = im.naturalHeight;
     const g = c.getContext('2d', { willReadFrequently: true });
     g.drawImage(im, 0, 0);
+    const W0 = c.width, H0 = c.height;
     let dades;
-    try { dades = g.getImageData(0, 0, c.width, c.height).data; } catch { im._caixa = { x0: 0, x1: c.width, y1: c.height, sy: 1 }; return; }
-    const opac = (x, y) => dades[(y * c.width + x) * 4 + 3] > 40;
-    let x0 = c.width, x1 = 0, y1 = 0;
-    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
-      if (opac(x, y)) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+    try { dades = g.getImageData(0, 0, W0, H0).data; } catch { im._caixa = { x0: 0, x1: W0, y1: H0 }; return; }
+    // punt opac més baix de cada columna
+    const baix = new Int32Array(W0).fill(-1);
+    let x0 = W0, x1 = -1, y1 = 0;
+    for (let x = 0; x < W0; x++) {
+      for (let y = H0 - 1; y >= 0; y--) if (dades[(y * W0 + x) * 4 + 3] > 40) { baix[x] = y; break; }
+      if (baix[x] >= 0) { if (x < x0) x0 = x; x1 = x; if (baix[x] > y1) y1 = baix[x]; }
     }
-    if (x1 <= x0) { im._caixa = { x0: 0, x1: c.width, y1: c.height, sy: 1 }; return; }
-    // punt més baix d'una franja de columnes
-    const baixDe = (xa, xb) => { for (let y = c.height - 1; y >= 0; y--) for (let x = xa; x <= xb; x++) if (opac(x, y)) return y; return -1; };
-    const f = Math.max(2, Math.round((x1 - x0) * 0.012));
-    const mig = Math.round((x0 + x1) / 2);
-    const yEsq = baixDe(x0, x0 + f), yDre = baixDe(x1 - f, x1), yMig = baixDe(mig - f, mig + f);
-    const ratio = (yMig - (yEsq + yDre) / 2) / ((x1 - x0) / 2);
-    // si la imatge té un terra reconeixible, l'aplanem a 2:1; si no, la deixem igual
-    const sy = ratio > 0.4 && ratio < 0.8 && Math.abs(yEsq - yDre) < (x1 - x0) * 0.08 ? 0.5 / ratio : 1;
-    im._caixa = { x0, x1, y1: sy === 1 ? y1 : yMig, sy };
+    if (x1 <= x0) { im._caixa = { x0: 0, x1: W0, y1: H0 }; return; }
+    im._caixa = { x0, x1, y1 };   // per si no trobem una base clara
+    // punta aproximada: la columna més baixa (mitjana de les que hi arriben)
+    let sx = 0, n = 0;
+    for (let x = x0; x <= x1; x++) if (baix[x] >= y1 - 2) { sx += x; n++; }
+    const xp = sx / n;
+    // recta per mínims quadrats, descartant punts que se n'allunyen (arbres, ombres...)
+    const recta = (xa, xb) => {
+      let pts = [];
+      for (let x = Math.round(xa); x <= xb; x++) if (baix[x] >= 0) pts.push([x, baix[x]]);
+      let m = 0, q = 0;
+      for (let it = 0; it < 4 && pts.length > 5; it++) {
+        let Sx = 0, Sy = 0, Sxx = 0, Sxy = 0;
+        for (const [x, y] of pts) { Sx += x; Sy += y; Sxx += x * x; Sxy += x * y; }
+        const k = pts.length; m = (k * Sxy - Sx * Sy) / (k * Sxx - Sx * Sx); q = (Sy - m * Sx) / k;
+        const tol = Math.max(2, (x1 - x0) * 0.008);
+        pts = pts.filter(([x, y]) => Math.abs(y - (m * x + q)) < tol * (it < 2 ? 3 : 1.5));
+      }
+      return pts.length > 5 ? { m, q } : null;
+    };
+    const esq = recta(x0 + (xp - x0) * 0.15, x0 + (xp - x0) * 0.8);
+    const dre = recta(xp + (x1 - xp) * 0.2, xp + (x1 - xp) * 0.85);
+    if (!esq || !dre) return;
+    // pendents raonables per a una base isomètrica
+    if (!(esq.m > 0.3 && esq.m < 1 && dre.m < -0.3 && dre.m > -1)) return;
+    const tx = (dre.q - esq.q) / (esq.m - dre.m), ty = esq.m * tx + esq.q;
+    if (tx < x0 + (x1 - x0) * 0.25 || tx > x1 - (x1 - x0) * 0.25) return;
+    im._base = {
+      E: [x0, esq.m * x0 + esq.q],   // cantonada esquerra
+      P: [tx, ty],                   // punta de baix
+      D: [x1, dre.m * x1 + dre.q],   // cantonada dreta
+    };
   }
 
   function demana() {
@@ -247,15 +274,31 @@ export function crearCiutat({ canvas, onClic }) {
     const a = iso(u, v), b = iso(u + t, v), c = iso(u + t, v + t), d = iso(u, v + t);
     if (marge) { ctx.strokeStyle = COLORS.vorada; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(d.x, d.y + DZ); ctx.lineTo(a.x, a.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.stroke(); }
     if (im) {
-      const cx = im._caixa;
-      const k = (W * t) / (cx.x1 - cx.x0 + 1);
-      const mig = (cx.x0 + cx.x1) / 2;
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(d.x - 1, d.y + DZ); ctx.lineTo(c.x, c.y + DZ + 1); ctx.lineTo(b.x + 1, b.y + DZ); ctx.lineTo(b.x + 1, b.y - 1200); ctx.lineTo(d.x - 1, d.y - 1200);
       ctx.closePath(); ctx.clip();
-      const ky = k * cx.sy;
-      ctx.drawImage(im, c.x - mig * k, c.y + DZ - cx.y1 * ky, im.naturalWidth * k, im.naturalHeight * ky);
+      const bs = im._base;
+      if (bs) {
+        // Cada meitat (esquerra i dreta de la punta) es deforma per separat perquè les
+        // cantonades de la base caiguin sobre les de la parcel·la, però les línies verticals
+        // de la imatge (parets, fanals, arbres) continuen sent verticals.
+        const P = bs.P, k = (b.x - d.x) / (bs.D[0] - bs.E[0]);
+        for (const [Q, q, xa, xb] of [[bs.E, d, d.x - 2, c.x], [bs.D, b, c.x, b.x + 2]]) {
+          const mx = (q.x - c.x) / (Q[0] - P[0]);
+          const sh = ((q.y - c.y) - k * (Q[1] - P[1])) / (Q[0] - P[0]);
+          ctx.save();
+          ctx.beginPath(); ctx.rect(xa, c.y - 3000, xb - xa, 3100); ctx.clip();
+          ctx.transform(mx, sh, 0, k, c.x - mx * P[0], c.y + DZ - sh * P[0] - k * P[1]);
+          ctx.drawImage(im, 0, 0);
+          ctx.restore();
+        }
+      } else {
+        const cx = im._caixa;
+        const k = (W * t) / (cx.x1 - cx.x0 + 1);
+        const mig = (cx.x0 + cx.x1) / 2;
+        ctx.drawImage(im, c.x - mig * k, c.y + DZ - cx.y1 * k, im.naturalWidth * k, im.naturalHeight * k);
+      }
       ctx.restore();
     }
     if (marge) { ctx.strokeStyle = COLORS.vorada; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(d.x, d.y + DZ); ctx.lineTo(c.x, c.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.stroke(); }
