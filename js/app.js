@@ -12,6 +12,8 @@ import {
   FORMES, TRAMITS, OPCIONS_ESTATUTS, SERVEIS, PAS_SERVEI, DOC_PAS, PERSONAL, SS_EMPRESA, GESTORIA, RISC_SANCIO, SETMANES_PER_MES,
 } from './legal.js';
 import { crearCiutat, localsPerId, nomCarrerDe, EDIFICIS_CIUTAT } from './ciutat.js';
+import { terrenyPerId, parcNou, PRESTEC_INICIAL, PREU_TERRENY } from './parc-dades.js';
+import { obrirParc } from './parc.js';
 
 // append que ignora els buits (null/false) en lloc d'escriure "null"
 const ap = (el, ...xs) => el.append(...xs.flat().filter((x) => x != null && x !== false));
@@ -199,6 +201,7 @@ function objectiuActual() {
 // ---------- clics a la ciutat ----------
 function clicCiutat({ cella, local }) {
   if (!cella) return;
+  if (cella.tipus === 'terreny') return obrirTerreny(cella.id);
   if (cella.tipus === 'edifici' && cella.servei) return obrirServei(cella.servei, cella);
   if (cella.tipus === 'edifici') return avis(cella.nom);
   if (cella.tipus === 'local') {
@@ -621,6 +624,11 @@ const SECCIONS = {
   empresa: () => obrirEmpresa(),
   cerca: () => obrirCerca(),
   xat: () => obrirXat(),
+  parc: () => {
+    if (estat.parc) return entrarAlParc();
+    tancarPanell(); ciutat.vistaTot();
+    avis('Tria un terreny en venda a les afores (els rectangles de gespa amb el rètol "Terreny en venda") per construir el teu parc d\'atraccions.', 'ok');
+  },
 };
 for (const b of document.querySelectorAll('.navegacio button')) b.addEventListener('click', () => SECCIONS[b.dataset.seccio]());
 $('#zoom-mes').addEventListener('click', () => ciutat?.zoom(1.25));
@@ -758,7 +766,7 @@ async function obrirCerca() {
   marcarNav('cerca');
   const llista = h('div', { class: 'llista-ofertes' }, h('p', { class: 'nota' }, 'Carregant…'));
   obrirPanell('Empreses de Matadepera', h('div', { class: 'bloc' }, llista), { tipus: 'cerca', ample: true });
-  const files = Object.entries(locals).filter(([, l]) => l.nom);
+  const files = Object.entries(locals).filter(([, l]) => l.nom && l.tipus !== 'parc');
   llista.replaceChildren(...(files.length ? files.map(([id, l]) => h('button', { class: 'fila-oferta fila-empresa', onclick: () => { tancarPanell(); ciutat.centrarEn(id); } },
     h('img', { src: imgLogo(l.logo || 1), alt: '', width: 34, height: 34 }),
     h('span', { class: 'of-info' }, h('strong', {}, l.nom), h('span', { class: 'nota' }, `${SECTORS_NEGOCI[l.sector]?.nom || ''} · ${nomCarrerDe(localsPerId[id]?.X || 0, localsPerId[id]?.Y || 0)} · ${l.estat === 'obert' ? FASES_NEGOCI[l.fase || 1].nom : 'preparant-se'}`)))) : [h('p', { class: 'nota' }, 'Encara no hi ha negocis.')]));
@@ -843,3 +851,56 @@ function dibuixarXat() {
 
 // Accés per a proves automàtiques (només en mode de prova)
 if (desa.modeProva) window.__fe = { obrirServei, obrirLocalLliure: (id) => obrirLocalLliure(localsPerId[id]), obrirNegoci, obrirCarpeta, obrirEmpresa, estat: () => estat, pas: () => joc.pasActual(estat) };
+
+
+// ---------- parcs d'atraccions ----------
+let parcObert = null;
+function entrarAlParc() {
+  if (!estat.parc || parcObert) return;
+  tancarPanell(); tancarEscena();
+  parcObert = obrirParc({
+    estat,
+    desar,
+    publicar: (dades) => desa.actualitzarLocal(usuari.uid, estat.parc.terreny, { tipus: 'parc', logo: estat.logo || 1, ...dades })
+      .then(() => { locals[estat.parc.terreny] = { ...(locals[estat.parc.terreny] || {}), uid: usuari.uid, tipus: 'parc', ...dades }; ciutat?.setLocals(locals, usuari.uid); })
+      .catch((err) => console.error(err)),
+    onTanca: () => { parcObert = null; ciutat?.centrarEn(estat.parc.terreny); dibuixarTot(); },
+  });
+}
+
+function obrirTerreny(id) {
+  const t = terrenyPerId(id);
+  const l = locals[id];
+  if (l && l.uid === usuari.uid) return entrarAlParc();
+  if (l) {
+    return obrirEscena({ persona: 'img/personatges/guia-explica.webp', interior: 'ajuntament', nomPersona: 'La Marta',
+      text: `Aquest terreny és el parc «${l.nom}». Té ${l.atraccions || 0} atraccions i una reputació de ${l.reputacio ?? 50} sobre 100.`, cos: [] });
+  }
+  if (estat.parc) {
+    return obrirEscena({ persona: 'img/personatges/guia-explica.webp', interior: 'ajuntament', nomPersona: 'La Marta',
+      text: 'Ja tens un parc d\'atraccions. Cada empresa en pot tenir només un.', cos: [h('button', { class: 'btn btn-principal', onclick: entrarAlParc }, 'Ves al meu parc')] });
+  }
+  const nom = h('input', { class: 'camp-text', maxlength: 28, placeholder: 'Ex.: Món Màgic', value: estat.nomBase ? `${estat.nomBase} Park` : '' });
+  obrirEscena({
+    persona: 'img/personatges/guia-explica.webp', interior: 'ajuntament', nomPersona: 'La Marta, la teva mentora',
+    text: `Terreny ${id} (${t[4]}). Aquí hi pots construir el teu propi parc d'atraccions!\n\nEl banc et presta ${joc.diners(PRESTEC_INICIAL)} per al projecte. El terreny costa ${joc.diners(PREU_TERRENY)}, així que et quedaran ${joc.diners(PRESTEC_INICIAL - PREU_TERRENY)} per construir. El préstec té interessos: com més aviat el tornis, menys pagaràs.`,
+    cos: [
+      h('label', { class: 'camp' }, h('span', {}, 'Nom del parc'), nom),
+      h('button', { class: 'btn btn-principal btn-gran', onclick: async (ev) => {
+        const n = nom.value.trim();
+        if (n.length < 3) return avis('Escriu un nom de 3 lletres o més.', 'error');
+        ev.target.disabled = true;
+        const parc = parcNou(id, n);
+        try {
+          await desa.reservarLocal(usuari.uid, id, { tipus: 'parc', nom: n, logo: estat.logo || 1, camins: parc.camins.join(';'), objectes: 'entrada,9,19', atraccions: 0, reputacio: 50 });
+        } catch (err) { ev.target.disabled = false; avis(err.message || 'Aquest terreny ja és d\'algú.', 'error'); carregarLocals(); return; }
+        estat.parc = parc;
+        locals[id] = { uid: usuari.uid, tipus: 'parc', nom: n, logo: estat.logo || 1, camins: parc.camins.join(';'), objectes: 'entrada,9,19' };
+        await desar();
+        tancarEscena();
+        avis(`Enhorabona! Ja tens el terreny per a «${n}».`, 'ok');
+        entrarAlParc();
+      } }, `Compra el terreny (${joc.diners(PREU_TERRENY)})`),
+    ],
+  });
+}

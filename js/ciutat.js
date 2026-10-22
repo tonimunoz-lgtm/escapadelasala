@@ -8,6 +8,7 @@
 //  Per moure un edifici, canvia'n les coordenades a EDIFICIS_CIUTAT.
 // =============================================================
 import { imgNegoci, imgLogo, SECTORS_NEGOCI } from './dades.js';
+import { TERRENYS_PARC, MIDA_PARC, OBJECTES, srcObjecte, giraObjecte, giraParc, dibuixaObjecte } from './parc-dades.js';
 
 export const W = 236;
 const DZ = 14;
@@ -182,6 +183,12 @@ function generarMapa() {
   for (let Y = 16; Y <= 20; Y++) carreteres.add(clau(8, Y));    // Matadepera - Terrassa
   for (let X = 20; X <= 28; X++) carreteres.add(clau(X, 12));   // Matadepera - Sabadell
   for (let X = 16; X <= 28; X++) carreteres.add(clau(X, 32));   // Terrassa - Sabadell
+  // Terrenys per a parcs d'atraccions a les afores, cadascun amb una carretera fins a la ciutat
+  for (const [id, X0, Y0, costat] of TERRENYS_PARC) {
+    for (let dx = 0; dx < 7; dx++) for (let dy = 0; dy < 7; dy++) posa(X0 + dx, Y0 + dy, { tipus: 'terreny', id, X: X0, Y: Y0 });
+    const [dx, dy, X, Y] = costat === 'E' ? [1, 0, X0 + 7, Y0 + 3] : costat === 'W' ? [-1, 0, X0 - 1, Y0 + 3] : costat === 'S' ? [0, 1, X0 + 3, Y0 + 7] : [0, -1, X0 + 3, Y0 - 1];
+    for (let k = 0, x = X, y = Y; k < 40 && !carreteres.has(clau(x, y)); k++, x += dx, y += dy) carreteres.add(clau(x, y));
+  }
   for (const k of carreteres) cel.set(k, { tipus: 'carretera' });
   // edificis singulars
   for (const [id, X, Y, mida, img, nom, servei] of EDIFICIS_CIUTAT) {
@@ -490,6 +497,44 @@ export function crearCiutat({ canvas, onClic }) {
     ctx.restore();
   }
 
+  // Terreny d'un parc d'atraccions: gespa tancada i, si és d'algú, el seu parc en miniatura
+  function dibuixaTerreny([id, X0, Y0, costat]) {
+    const parc = locals[id];
+    const vora = (u, v, mu, mv) => { const a = iso(u, v), b = iso(u + mu, v), c = iso(u + mu, v + mv), d = iso(u, v + mv);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.lineTo(c.x, c.y + DZ); ctx.lineTo(d.x, d.y + DZ); ctx.closePath(); };
+    vora(X0 + 0.1, Y0 + 0.1, 6.8, 6.8);
+    ctx.fillStyle = parc ? '#7fbf4a' : '#a8c86a'; ctx.fill();
+    ctx.lineWidth = 6; ctx.strokeStyle = parc ? '#5a3d22' : '#c9b48a'; ctx.setLineDash(parc ? [] : [18, 12]); ctx.stroke(); ctx.setLineDash([]);
+    if (!parc || escala < 0.12) return;
+    const k = 1 / 3;   // 3 caselles del parc = 1 parcel·la de la ciutat
+    // camins
+    ctx.fillStyle = '#e6d6b4';
+    for (const p of (parc.camins || '').split(';')) {
+      if (!p) continue;
+      const [px, py] = p.split(',').map(Number);
+      const [lx, ly] = giraParc(px, py, costat);
+      vora(X0 + lx * k, Y0 + ly * k, k, k); ctx.fill();
+    }
+    // objectes, de darrere cap endavant
+    const objs = (parc.objectes || '').split(';').filter(Boolean).map((o) => {
+      const [t, px, py] = o.split(','); const m = OBJECTES[t]?.mida || 1;
+      const [lx, ly] = giraObjecte(Number(px), Number(py), m, costat);
+      return { t, lx, ly, m };
+    }).filter((o) => OBJECTES[o.t]).sort((a, b) => (a.lx + a.ly + a.m) - (b.lx + b.ly + b.m));
+    for (const o of objs) {
+      const im = imgParc(srcObjecte(o.t));
+      if (!im) continue;
+      const c = iso(X0 + (o.lx + o.m / 2) * k, Y0 + (o.ly + o.m / 2) * k);
+      dibuixaObjecte(ctx, im, o.t, c.x, c.y + DZ, W * o.m * k);
+    }
+  }
+  // les imatges del parc no tenen base: no cal mesurar-les
+  function imgParc(src) {
+    let im = imatges.get(src);
+    if (!im) { im = new Image(); im.onload = demana; im.src = `${src}?v=${VERSIO_IMATGES}`; imatges.set(src, im); }
+    return im.complete && im.naturalWidth ? im : null;
+  }
+
   function dibuixa() {
     const dpr = window.devicePixelRatio || 1;
     const amp = canvas.clientWidth, alt = canvas.clientHeight;
@@ -526,8 +571,21 @@ export function crearCiutat({ canvas, onClic }) {
       if (!grans.has(dd)) grans.set(dd, []);
       grans.get(dd).push(c);
     }
+    // terrenys dels parcs d'atraccions (7x7): es pinten sencers d'una vegada, com els edificis grans
+    for (const t of TERRENYS_PARC) {
+      const dd = t[1] + t[2] + 7;
+      if (!grans.has(dd)) grans.set(dd, []);
+      grans.get(dd).push({ terreny: t });
+    }
     for (let d = minX + minY; d <= maxX + maxY; d++) {
       for (const c of grans.get(d) || []) {
+        if (c.terreny) {
+          const [id, X0, Y0] = c.terreny;
+          if (X0 + 7 < minX || X0 > maxX || Y0 + 7 < minY || Y0 > maxY) continue;
+          dibuixaTerreny(c.terreny);
+          etiquetes.push(['terreny', c.terreny, locals[id]]);
+          continue;
+        }
         if (c.X + c.mida < minX || c.X > maxX || c.Y + c.mida < minY || c.Y > maxY) continue;
         sprite(c.img, c.X, c.Y, { mida: c.mida });
         etiquetes.push(['edifici', c]);
@@ -544,6 +602,7 @@ export function crearCiutat({ canvas, onClic }) {
           continue;
         }
         if (c.tipus === 'carretera') { dibuixaCarretera(X, Y); continue; }
+        if (c.tipus === 'terreny') continue;   // ja pintat sencer
         if (c.tipus === 'part') continue;
         if (c.tipus === 'edifici') {
           if (c.mida > 1) continue;   // ja pintat al començament de la diagonal
@@ -565,6 +624,14 @@ export function crearCiutat({ canvas, onClic }) {
     // etiquetes
     const ms = Math.max(14, 14 / Math.max(escala, 0.35));
     for (const [tipus, c, l] of etiquetes) {
+      if (tipus === 'terreny') {
+        const [id, X0, Y0, , zona] = c;
+        const { x, y } = iso(X0 + 3.5, Y0 + 3.5);
+        if (l) pastilla(x, y + 60, `🎢 ${l.nom || 'Parc'}`, { fons: l.uid === jo ? '#f2891d' : '#ffffff', color: l.uid === jo ? '#fff' : '#0a3566', mida: ms * 1.1 });
+        else if (escala >= 0.2) pastilla(x, y, `Terreny en venda · ${id}`, { fons: 'rgba(255,255,255,.92)', color: '#0a3566', mida: ms * 0.9 });
+        if (objectiu === id) pastilla(x, y - 260 + Math.sin(performance.now() / 220) * 10, '▼ El teu parc', { fons: '#f2891d', color: '#fff', mida: ms * 1.15 });
+        continue;
+      }
       const mid = c.mida || 1;
       const { x, y } = iso(c.X + mid / 2, c.Y + mid / 2);
       const destacat = objectiu && (objectiu === c.id || objectiu === c.servei);
@@ -615,7 +682,7 @@ export function crearCiutat({ canvas, onClic }) {
   function zoom(factor, cx, cy) {
     const r = canvas.getBoundingClientRect();
     cx ??= r.width / 2; cy ??= r.height / 2;
-    const nova = Math.min(1.6, Math.max(0.05, escala * factor));
+    const nova = Math.min(1.6, Math.max(0.04, escala * factor));
     despl.x = cx - (cx - despl.x) * (nova / escala); despl.y = cy - (cy - despl.y) * (nova / escala);
     escala = nova; demana();
   }
@@ -683,9 +750,11 @@ export function crearCiutat({ canvas, onClic }) {
       const e = EDIFICIS_CIUTAT.find((x) => x[0] === id || x[6] === id);
       if (e) return centrar(e[1] + e[3] / 2, e[2] + e[3] / 2, Math.max(escala, 0.5));
       const l = localsPerId[id];
-      if (l) centrar(l.X + 0.5, l.Y + 0.5, Math.max(escala, 0.5));
+      if (l) return centrar(l.X + 0.5, l.Y + 0.5, Math.max(escala, 0.5));
+      const t = TERRENYS_PARC.find((x) => x[0] === id);
+      if (t) centrar(t[1] + 3.5, t[2] + 3.5, Math.max(escala, 0.3));
     },
     vistaPoble() { const r = canvas.getBoundingClientRect(); centrar(10.5, 8.5, r.width < 700 ? 0.32 : 0.45); },
-    vistaTot() { const r = canvas.getBoundingClientRect(); centrar(21, 26, Math.min(0.4, Math.max(0.05, Math.min(r.width / (W * 54), r.height / (W * 28))))); },
+    vistaTot() { const r = canvas.getBoundingClientRect(); centrar(18, 24, Math.min(0.4, Math.max(0.04, Math.min(r.width / (W * 64), r.height / (W * 36))))); },
   };
 }
