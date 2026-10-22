@@ -1,17 +1,20 @@
 // =============================================================
-//  LA CIUTAT: un Matadepera esquemàtic, comú per a tota la classe.
-//  - Carrers amb noms reals i els edificis principals al seu lloc aproximat.
-//  - Al sud, per la Carretera de Terrassa, una zona de Terrassa amb els
-//    serveis que no hi ha al poble (Notaria, Hisenda, Seguretat Social,
-//    Registre Mercantil) i un polígon industrial.
-//  - Al nord, el Parc Natural de Sant Llorenç del Munt i l'Obac.
+//  EL MAPA: Matadepera, Terrassa i Sabadell (esquemàtics), comú per a tota la classe.
+//  - Matadepera al mig, al peu del Parc Natural de Sant Llorenç del Munt i l'Obac.
+//  - Terrassa al sud-oest (per la Ctra. de Terrassa) i Sabadell al sud-est
+//    (per la Ctra. de Sabadell). Totes dues són molt més grans que Matadepera.
+//  - Els serveis on es fan tràmits (Notaria, Hisenda, Seguretat Social,
+//    Registre Mercantil) i el polígon industrial són a Terrassa.
 //  Per moure un edifici, canvia'n les coordenades a EDIFICIS_CIUTAT.
 // =============================================================
 import { imgNegoci, imgLogo, SECTORS_NEGOCI } from './dades.js';
 
 export const W = 236;
 const DZ = 14;
-const MARGE = 0.07;
+const MARGE = 0.04;
+// Parcel·les planes (sense edificis alts): es poden reprojectar a la graella sense que es noti,
+// així el seu terra encaixa exactament encara que la il·lustració estigui dibuixada girada.
+const PLANES = /(camp-futbol|gespa|solar-en-venda|pistes-padel|piscina-municipal)\.webp/;
 // Canvia aquest número quan actualitzis imatges: obliga el navegador a no fer servir les velles
 export const VERSIO_IMATGES = '7';
 export const iso = (u, v) => ({ x: (u - v) * W / 2, y: (u + v) * W / 4 });
@@ -20,16 +23,72 @@ const hash = (X, Y) => { let h = (X * 374761393 + Y * 668265263) >>> 0; h = ((h 
 
 // ---------- Plànol ----------
 // Illes de 3x3 caselles separades per carrers (cada 4 caselles).
-// Poble: illes bx 0..4, by 0..3  (caselles X 0..20, Y 0..16)
-// Terrassa: illes bx 1..3, by 5..6 (caselles X 4..16, Y 20..28), unida per la Ctra. de Terrassa (X = 8)
-const POBLE = { bx: [0, 4], by: [0, 3] };
-const TERRASSA = { bx: [1, 3], by: [5, 6] };
+// Matadepera: illes bx 0..4,   by 0..3   (X 0..20,   Y 0..16)   →  20 illes
+// Terrassa:   illes bx -3..3,  by 5..10  (X -12..16, Y 20..44)  →  42 illes
+// Sabadell:   illes bx 7..13,  by 3..9   (X 28..56,  Y 12..40)  →  49 illes
+// Polígon de Terrassa: illes bx 1..3, by 5..6 (les naus i solars de sempre)
+const MATADEPERA = { nom: 'Matadepera', bx: [0, 4], by: [0, 3] };
+const TERRASSA = { nom: 'Terrassa', bx: [-3, 3], by: [5, 10] };
+const SABADELL = { nom: 'Sabadell', bx: [7, 13], by: [3, 9] };
+const ZONES_MAPA = [MATADEPERA, TERRASSA, SABADELL];
 const esIlla = (bx, by, z) => bx >= z.bx[0] && bx <= z.bx[1] && by >= z.by[0] && by <= z.by[1];
+const zonaMapaDe = (X, Y) => ZONES_MAPA.find((z) => X >= z.bx[0] * 4 && X <= z.bx[1] * 4 + 4 && Y >= z.by[0] * 4 && Y <= z.by[1] * 4 + 4) || null;
+const esPoligonTerrassa = (X, Y) => X >= 4 && X <= 16 && Y >= 20 && Y <= 28;
+const esPoligonSabadell = (X, Y) => X >= 48 && X <= 56 && Y >= 12 && Y <= 40;
 
-export const CARRERS = {
-  h: { 0: 'Passeig d\'Àngel Guimerà', 4: 'Carrer de Sant Llorenç', 8: 'Carrer de Sant Joan', 12: 'Avinguda del Mas Sot', 16: 'Carrer de Joan Paloma', 20: 'Rambla d\'Ègara (Terrassa)', 24: 'Carrer del Polígon', 28: 'Carrer de Colom (Terrassa)' },
-  v: { 0: 'Carrer de Sant Miquel', 4: 'Carrer de Pere Aldavert', 8: 'Carretera de Terrassa', 12: 'Carrer de Jaume Faura', 16: 'Carrer de Sant Ramon', 20: 'Carrer de Can Vinyals' },
-};
+// Carrers: [h|v, coordenada, des de, fins a, nom, població]
+// 'h' = carrer a Y fix (va de X=des a X=fins); 'v' = carrer a X fix (de Y=des a Y=fins).
+// El plànol és esquemàtic: els noms són reals però la posició és aproximada.
+export const CARRERS = [
+  // Matadepera
+  ['h', 0, 0, 20, 'Passeig d\'Àngel Guimerà', 'Matadepera'],
+  ['h', 4, 0, 20, 'Carrer de Sant Llorenç', 'Matadepera'],
+  ['h', 8, 0, 20, 'Carrer de Sant Joan', 'Matadepera'],
+  ['h', 12, 0, 20, 'Avinguda del Mas Sot', 'Matadepera'],
+  ['h', 16, 0, 20, 'Carrer de Joan Paloma', 'Matadepera'],
+  ['v', 0, 0, 16, 'Carrer de Sant Miquel', 'Matadepera'],
+  ['v', 4, 0, 16, 'Carrer de Pere Aldavert', 'Matadepera'],
+  ['v', 8, 0, 19, 'Carretera de Terrassa', 'Matadepera'],
+  ['v', 12, 0, 16, 'Carrer de Jaume Faura', 'Matadepera'],
+  ['v', 16, 0, 16, 'Carrer de Sant Ramon', 'Matadepera'],
+  ['v', 20, 0, 16, 'Carrer de Can Vinyals', 'Matadepera'],
+  // carreteres entre poblacions
+  ['h', 12, 21, 27, 'Carretera de Sabadell', 'Matadepera'],
+  ['h', 32, 17, 27, 'Carretera de Terrassa a Sabadell (N-150)', null],
+  // Terrassa
+  ['h', 20, -12, 16, 'Rambla d\'Ègara', 'Terrassa'],
+  ['h', 24, -12, 16, 'Carrer del Polígon', 'Terrassa'],
+  ['h', 28, -12, 16, 'Carrer de Colom', 'Terrassa'],
+  ['h', 32, -12, 16, 'Passeig del Vint-i-dos de Juliol', 'Terrassa'],
+  ['h', 36, -12, 16, 'Carrer Major', 'Terrassa'],
+  ['h', 40, -12, 16, 'Avinguda de Barcelona', 'Terrassa'],
+  ['h', 44, -12, 16, 'Carretera de Montcada', 'Terrassa'],
+  ['v', -12, 20, 44, 'Avinguda de Jacquard', 'Terrassa'],
+  ['v', -8, 20, 44, 'Carrer de Sant Pere', 'Terrassa'],
+  ['v', -4, 20, 44, 'Carrer de la Font Vella', 'Terrassa'],
+  ['v', 0, 20, 44, 'Avinguda de l\'Abat Marcet', 'Terrassa'],
+  ['v', 4, 20, 44, 'Carrer de Sant Leopold', 'Terrassa'],
+  ['v', 8, 20, 44, 'Carretera de Matadepera', 'Terrassa'],
+  ['v', 12, 20, 44, 'Carrer de la Unió', 'Terrassa'],
+  ['v', 16, 20, 44, 'Carretera de Rubí', 'Terrassa'],
+  // Sabadell
+  ['h', 12, 28, 56, 'Avinguda de Matadepera', 'Sabadell'],
+  ['h', 16, 28, 56, 'Carrer de les Tres Creus', 'Sabadell'],
+  ['h', 20, 28, 56, 'La Rambla', 'Sabadell'],
+  ['h', 24, 28, 56, 'Passeig de la Plaça Major', 'Sabadell'],
+  ['h', 28, 28, 56, 'Carrer de Gràcia', 'Sabadell'],
+  ['h', 32, 28, 56, 'Gran Via', 'Sabadell'],
+  ['h', 36, 28, 56, 'Avinguda de Barberà', 'Sabadell'],
+  ['h', 40, 28, 56, 'Carrer de Covadonga', 'Sabadell'],
+  ['v', 28, 12, 40, 'Carretera de Terrassa', 'Sabadell'],
+  ['v', 32, 12, 40, 'Avinguda de Francesc Macià', 'Sabadell'],
+  ['v', 36, 12, 40, 'Carrer de Sant Pau', 'Sabadell'],
+  ['v', 40, 12, 40, 'Carrer de la Indústria', 'Sabadell'],
+  ['v', 44, 12, 40, 'Ronda de Zamenhof', 'Sabadell'],
+  ['v', 48, 12, 40, 'Carrer de Vilarrúbias', 'Sabadell'],
+  ['v', 52, 12, 40, 'Avinguda de l\'Onze de Setembre', 'Sabadell'],
+  ['v', 56, 12, 40, 'Ronda de Ponent', 'Sabadell'],
+];
 
 // Serveis i edificis singulars: [id, X, Y, mida, imatge, nom, servei]
 // servei = edifici on es fan tràmits (gestoria, notaria, registre, banc, hisenda, seguretat-social, ajuntament)
@@ -63,6 +122,21 @@ export const EDIFICIS_CIUTAT = [
   ['registre', 6, 21, 1, 'img/ciutat/registre-mercantil.webp', 'Registre Mercantil (Terrassa)', 'registre'],
   ['hisenda', 7, 21, 1, 'img/ciutat/hisenda.webp', 'Agència Tributària (Terrassa)', 'hisenda'],
   ['seguretat-social', 5, 22, 1, 'img/ciutat/seguretat-social.webp', 'Seguretat Social (Terrassa)', 'seguretat-social'],
+  ['ajuntament-terrassa', -3, 29, 2, 'img/ciutat/ajuntament.webp', 'Ajuntament de Terrassa', null],
+  ['seu-egara', 5, 29, 1, 'img/ciutat/esglesia.webp', 'Seu d\'Ègara', null],
+  ['vallparadis', 1, 29, 2, 'img/ciutat/placa-font.webp', 'Parc de Vallparadís', null],
+  ['mercat-terrassa', 1, 33, 2, 'img/ciutat/mercat-municipal.webp', 'Mercat de la Independència', null],
+  ['universitat-terrassa', 9, 33, 2, 'img/ciutat/institut.webp', 'Campus universitari de Terrassa', null],
+  ['estadi-terrassa', -7, 37, 2, 'img/ciutat/camp-futbol.webp', 'Estadi Olímpic de Terrassa', null],
+  ['pavello-terrassa', -11, 25, 2, 'img/ciutat/pavello.webp', 'Pavelló de Terrassa', null],
+  // Sabadell
+  ['ajuntament-sabadell', 41, 21, 2, 'img/ciutat/ajuntament.webp', 'Ajuntament de Sabadell', null],
+  ['placa-major-sabadell', 41, 25, 2, 'img/ciutat/placa-font.webp', 'Plaça Major de Sabadell', null],
+  ['nova-creu-alta', 33, 17, 2, 'img/ciutat/camp-futbol.webp', 'Estadi de la Nova Creu Alta', null],
+  ['mercat-sabadell', 45, 29, 2, 'img/ciutat/mercat-municipal.webp', 'Mercat Central de Sabadell', null],
+  ['natacio-sabadell', 37, 33, 2, 'img/ciutat/piscina-municipal.webp', 'Club Natació Sabadell', null],
+  ['parc-catalunya', 33, 29, 2, 'img/ciutat/placa-font.webp', 'Parc Catalunya', null],
+  ['esglesia-sabadell', 37, 21, 1, 'img/ciutat/esglesia.webp', 'Església de Sant Fèlix', null],
 ];
 
 // Locals en lloguer, naus i solars: [id, X, Y, tipus]
@@ -82,8 +156,11 @@ export const LOCALS_CIUTAT = [
 ];
 
 function zonaDe(X, Y) {
-  if (Y >= 20) return 'poligon';
-  if (X >= 4 && X <= 16 && Y >= 4 && Y <= 12) return 'centre';
+  if (esPoligonTerrassa(X, Y) || esPoligonSabadell(X, Y)) return 'poligon';
+  const z = zonaMapaDe(X, Y);
+  if (z === MATADEPERA) return X >= 4 && X <= 16 && Y >= 4 && Y <= 12 ? 'centre' : 'barri';
+  if (z === TERRASSA) return X >= -4 && X <= 12 && Y >= 28 && Y <= 36 ? 'centre' : 'barri';
+  if (z === SABADELL) return X >= 32 && X <= 48 && Y >= 16 && Y <= 32 ? 'centre' : 'barri';
   return 'barri';
 }
 
@@ -92,8 +169,8 @@ function generarMapa() {
   const cel = new Map();
   const carreteres = new Set();
   const posa = (X, Y, c) => cel.set(clau(X, Y), c);
-  const zones = [POBLE, TERRASSA];
-  // carrers: vores de totes les illes de les dues zones
+  const zones = ZONES_MAPA;
+  // carrers: vores de totes les illes de les tres poblacions
   for (const z of zones) {
     for (let by = z.by[0]; by <= z.by[1]; by++) for (let bx = z.bx[0]; bx <= z.bx[1]; bx++) {
       for (let k = 0; k <= 4; k++) {
@@ -101,8 +178,10 @@ function generarMapa() {
       }
     }
   }
-  // Carretera de Terrassa entre el poble i Terrassa
-  for (let Y = 16; Y <= 20; Y++) carreteres.add(clau(8, Y));
+  // carreteres entre poblacions
+  for (let Y = 16; Y <= 20; Y++) carreteres.add(clau(8, Y));    // Matadepera - Terrassa
+  for (let X = 20; X <= 28; X++) carreteres.add(clau(X, 12));   // Matadepera - Sabadell
+  for (let X = 16; X <= 28; X++) carreteres.add(clau(X, 32));   // Terrassa - Sabadell
   for (const k of carreteres) cel.set(k, { tipus: 'carretera' });
   // edificis singulars
   for (const [id, X, Y, mida, img, nom, servei] of EDIFICIS_CIUTAT) {
@@ -115,6 +194,10 @@ function generarMapa() {
   for (const [id, X, Y, tipus] of LOCALS_CIUTAT) posa(X, Y, { tipus: 'local', id, sub: tipus, zona: zonaDe(X, Y), X, Y });
   // la resta de caselles: cases amb jardí, espais verds i pocs blocs baixos al centre
   const CASES = ['casa-1', 'casa-2', 'casa-3', 'casa-4', 'casa-piscina'];
+  const BOTIGUES = ['fleca', 'cafeteria', 'roba', 'bicis', 'floristeria', 'fruiteria', 'gelateria', 'informatica', 'llibreria', 'perruqueria', 'restaurant', 'gimnas'];
+  const bloc = (h) => `img/ciutat/bloc-baix-${1 + ((h >> 4) % 2)}.webp`;
+  const pisos = (h) => `img/ciutat/habitatges-${1 + ((h >> 3) % 3)}.webp`;
+  // Terrassa i Sabadell: ciutat densa (pisos, botigues a la planta baixa, places)
   for (const z of zones) {
     for (let by = z.by[0]; by <= z.by[1]; by++) for (let bx = z.bx[0]; bx <= z.bx[1]; bx++) {
       for (let dx = 1; dx <= 3; dx++) for (let dy = 1; dy <= 3; dy++) {
@@ -122,7 +205,8 @@ function generarMapa() {
         if (cel.has(clau(X, Y))) continue;
         const h = hash(X, Y);
         let img;
-        if (z === TERRASSA) img = h < 450 ? 'img/ciutat/nau-industrial.webp' : h < 750 ? `img/ciutat/bloc-baix-${1 + ((h >> 4) % 2)}.webp` : 'img/ciutat/jardi.webp';
+        if (esPoligonTerrassa(X, Y) || esPoligonSabadell(X, Y)) img = h < 650 ? 'img/ciutat/nau-industrial.webp' : h < 850 ? bloc(h) : 'img/ciutat/jardi.webp';
+        else if (z !== MATADEPERA) img = h < 430 ? pisos(h) : h < 640 ? bloc(h) : h < 800 ? `img/negocis/${BOTIGUES[h % BOTIGUES.length]}-${1 + ((h >> 5) % 3)}.webp` : h < 890 ? 'img/ciutat/jardi.webp' : h < 950 ? 'img/ciutat/parc.webp' : 'img/ciutat/parc-infantil.webp';
         else if (zonaDe(X, Y) === 'centre') img = h < 380 ? `img/ciutat/bloc-baix-${1 + ((h >> 4) % 2)}.webp` : h < 760 ? `img/ciutat/${CASES[h % 5]}.webp` : h < 900 ? 'img/ciutat/jardi.webp' : 'img/ciutat/gespa.webp';
         else img = h < 680 ? `img/ciutat/${CASES[h % 5]}.webp` : h < 800 ? 'img/ciutat/jardi.webp' : h < 900 ? 'img/ciutat/gespa.webp' : h < 950 ? 'img/ciutat/parc-infantil.webp' : 'img/ciutat/parc.webp';
         posa(X, Y, { tipus: 'decor', img });
@@ -136,12 +220,15 @@ export const MAPA = generarMapa();
 export const localsPerId = Object.fromEntries(LOCALS_CIUTAT.map(([id, X, Y, sub]) => [id, { id, X, Y, sub, zona: zonaDe(X, Y) }]));
 export const edificiPerServei = (servei) => EDIFICIS_CIUTAT.find((e) => e[6] === servei);
 export const nomCarrerDe = (X, Y) => {
-  // carrer més proper a la casella
-  const opcions = [];
-  for (const [y, nom] of Object.entries(CARRERS.h)) opcions.push([Math.abs(Y - y), nom]);
-  for (const [x, nom] of Object.entries(CARRERS.v)) if (!(Y >= 20 && Number(x) > 16)) opcions.push([Math.abs(X - x), nom]);
-  opcions.sort((a, b) => a[0] - b[0]);
-  return opcions[0][1];
+  // carrer més proper a la casella (amb la població si no és Matadepera)
+  let millor = null, dist = Infinity;
+  for (const [dir, at, des, fins, nom, poble] of CARRERS) {
+    const [al, llarg] = dir === 'h' ? [Y, X] : [X, Y];
+    if (llarg < des - 1 || llarg > fins + 1) continue;
+    const d = Math.abs(al - at);
+    if (d < dist) { dist = d; millor = poble && poble !== 'Matadepera' ? `${nom} (${poble})` : nom; }
+  }
+  return millor || 'Carretera';
 };
 
 // Vehicles i persones (img/animacions). Els cotxes surten més sovint que els camions.
@@ -224,9 +311,9 @@ export function crearCiutat({ canvas, onClic }) {
     const dre = recta(xp + (x1 - xp) * 0.2, xp + (x1 - xp) * 0.85);
     if (!esq || !dre) return;
     // pendents raonables per a una base isomètrica
-    if (!(esq.m > 0.3 && esq.m < 1 && dre.m < -0.3 && dre.m > -1)) return;
+    if (!(esq.m > 0.15 && esq.m < 1.8 && dre.m < -0.15 && dre.m > -1.8)) return;
     const tx = (dre.q - esq.q) / (esq.m - dre.m), ty = esq.m * tx + esq.q;
-    if (tx < x0 + (x1 - x0) * 0.25 || tx > x1 - (x1 - x0) * 0.25) return;
+    if (tx < x0 + (x1 - x0) * 0.1 || tx > x1 - (x1 - x0) * 0.1) return;
     im._base = {
       E: [x0, esq.m * x0 + esq.q],   // cantonada esquerra
       P: [tx, ty],                   // punta de baix
@@ -280,17 +367,33 @@ export function crearCiutat({ canvas, onClic }) {
       ctx.closePath(); ctx.clip();
       const bs = im._base;
       if (bs) {
-        // Sense inclinar ni doblegar la imatge: només una escala horitzontal (k) i una de
-        // vertical (ky) molt semblant. ky fa que la inclinació mitjana del terra sigui la
-        // d'un rombe 2:1, i la posició és la que millor fa coincidir les tres cantonades.
         const E = bs.E, P = bs.P, D = bs.D;
-        const k = (b.x - d.x) / (D[0] - E[0]);
-        const pend = ((P[1] - E[1]) / (P[0] - E[0]) + (P[1] - D[1]) / (D[0] - P[0])) / 2;
-        const ky = k * Math.max(0.8, Math.min(1.05, 0.5 / pend));
-        const tx = (d.x + b.x) / 2 - k * (E[0] + D[0]) / 2;
-        const ty = (d.y + b.y + c.y) / 3 + DZ - ky * (E[1] + D[1] + P[1]) / 3;
-        ctx.transform(k, 0, 0, ky, tx, ty);
-        ctx.drawImage(im, 0, 0);
+        const f = (P[0] - E[0]) / (D[0] - E[0]);   // on cau la punta (0,5 = al mig)
+        if (PLANES.test(src)) {
+          // Superfícies planes (camp, gespa, solar, pistes, piscina): no hi ha res alt que es
+          // pugui deformar, així que cada meitat s'ajusta exactament a la parcel·la.
+          const kv = (b.x - d.x) / (D[0] - E[0]);
+          for (const [Q, q, xa, xb] of [[D, b, c.x, b.x + 2], [E, d, d.x - 2, c.x + 1.5]]) {
+            const mx = (q.x - c.x) / (Q[0] - P[0]);
+            const sh = ((q.y - c.y) - kv * (Q[1] - P[1])) / (Q[0] - P[0]);
+            ctx.save();
+            ctx.beginPath(); ctx.rect(xa, c.y - 3000, xb - xa, 3100); ctx.clip();
+            ctx.transform(mx, sh, 0, kv, c.x - mx * P[0], c.y + DZ - sh * P[0] - kv * P[1]);
+            ctx.drawImage(im, 0, 0);
+            ctx.restore();
+          }
+        } else {
+          // Edificis i parcs: MAI es deformen. Només una escala horitzontal (k) i una vertical
+          // (ky) molt semblant perquè el terra tingui la perspectiva 2:1. Si la il·lustració està
+          // dibuixada des d'un altre angle, encaixa una mica pitjor però no s'estira.
+          const k = (b.x - d.x) / (D[0] - E[0]);
+          const pend = ((P[1] - E[1]) / (P[0] - E[0]) + (P[1] - D[1]) / (D[0] - P[0])) / 2;
+          const ky = k * Math.max(0.7, Math.min(1.05, 0.5 / pend));
+          const tx = (d.x + b.x) / 2 - k * (E[0] + D[0]) / 2;
+          const ty = (d.y + b.y + c.y) / 3 + DZ - ky * (E[1] + D[1] + P[1]) / 3;
+          ctx.transform(k, 0, 0, ky, tx, ty);
+          ctx.drawImage(im, 0, 0);
+        }
       } else {
         const cx = im._caixa;
         const k = (W * t) / (cx.x1 - cx.x0 + 1);
@@ -337,8 +440,8 @@ export function crearCiutat({ canvas, onClic }) {
       tipus, fade: 1,
     };
   }
-  for (let i = 0; i < 14; i++) cotxes.push(nouAgent('cotxe'));
-  for (let i = 0; i < 46; i++) vianants.push(nouAgent('persona'));
+  for (let i = 0; i < 40; i++) cotxes.push(nouAgent('cotxe'));
+  for (let i = 0; i < 130; i++) vianants.push(nouAgent('persona'));
 
   let darrer = performance.now();
   function mouAgents(dt) {
@@ -434,7 +537,7 @@ export function crearCiutat({ canvas, onClic }) {
         const c = cel.get(clau(X, Y));
         if (!c) {
           // bosc del Parc Natural al nord i arbres pel camp
-          const bosc = Y < 0 && Y > -9 && X > -6 && X < 26;
+          const bosc = Y < 0 && Y > -9 && X > -14 && X < 30;
           if (escala > 0.2 && (bosc ? hash(X, Y) < 820 : hash(X, Y) < 110)) {
             sprite(['img/mapa/decor-arbres.webp', 'img/mapa/decor-arbres-2.webp', 'img/mapa/decor-arbres-3.webp'][hash(Y, X) % 3], X, Y, { marge: 0, base: '#8cbf45' });
           }
@@ -477,21 +580,19 @@ export function crearCiutat({ canvas, onClic }) {
     // noms dels carrers
     if (escala >= 0.3) {
       ctx.save();
-      for (const [y, nom] of Object.entries(CARRERS.h)) {
-        const Y = Number(y), X = Y >= 20 ? 6 : 2;
-        if (!carreteres.has(clau(X, Y))) continue;
-        const p = iso(X + 0.5, Y + 0.5);
-        ctx.save(); ctx.translate(p.x, p.y + DZ); ctx.transform(1, 0.5, 0, 1, 0, 0);
-        ctx.font = '700 15px "Nunito", system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        ctx.fillText(nom, 0, 0); ctx.restore();
-      }
-      for (const [x, nom] of Object.entries(CARRERS.v)) {
-        const X = Number(x), Y = X === 8 ? 17 : 2;
-        if (!carreteres.has(clau(X, Y))) continue;
-        const p = iso(X + 0.5, Y + 0.5);
-        ctx.save(); ctx.translate(p.x, p.y + DZ); ctx.transform(1, -0.5, 0, 1, 0, 0);
-        ctx.font = '700 15px "Nunito", system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-        ctx.fillText(nom, 0, 0); ctx.restore();
+      for (const [dir, at, des, fins, nom] of CARRERS) {
+        // el nom es dibuixa a l'inici de cada carrer (i a la meitat si és llarg)
+        // sempre a mig tram (X o Y = 4n+2), mai en una cruïlla, perquè no se superposin
+        const posicions = fins - des > 20 ? [des + 2, 4 * Math.round((des + fins) / 8) + 2] : [des + 2];
+        for (const q of posicions) {
+          const X = dir === 'h' ? q : at, Y = dir === 'h' ? at : q;
+          if (!carreteres.has(clau(X, Y))) continue;
+          const p = iso(X + 0.5, Y + 0.5);
+          ctx.save(); ctx.translate(p.x, p.y + DZ); ctx.transform(1, dir === 'h' ? 0.5 : -0.5, 0, 1, 0, 0);
+          ctx.font = '700 15px "Nunito", system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.85)';
+          ctx.textAlign = dir === 'h' ? 'left' : 'right'; ctx.textBaseline = 'middle';
+          ctx.fillText(nom, 0, 0); ctx.restore();
+        }
       }
       ctx.restore();
     }
@@ -500,7 +601,8 @@ export function crearCiutat({ canvas, onClic }) {
       const m = 18 / escala;
       const p1 = iso(10, -5); pastilla(p1.x, p1.y, 'Parc Natural de Sant Llorenç del Munt i l\'Obac', { fons: 'rgba(42,116,35,.92)', color: '#fff', mida: m });
       const p2 = iso(10.5, 8.5); pastilla(p2.x, p2.y - 200, 'MATADEPERA', { fons: '#0a3566', color: '#fff', mida: m * 1.3 });
-      const p3 = iso(10.5, 24.5); pastilla(p3.x, p3.y - 200, 'TERRASSA', { fons: '#0a3566', color: '#fff', mida: m * 1.3 });
+      const p3 = iso(2, 32); pastilla(p3.x, p3.y - 200, 'TERRASSA', { fons: '#0a3566', color: '#fff', mida: m * 1.6 });
+      const p4 = iso(42, 26); pastilla(p4.x, p4.y - 200, 'SABADELL', { fons: '#0a3566', color: '#fff', mida: m * 1.6 });
     }
   }
 
@@ -513,7 +615,7 @@ export function crearCiutat({ canvas, onClic }) {
   function zoom(factor, cx, cy) {
     const r = canvas.getBoundingClientRect();
     cx ??= r.width / 2; cy ??= r.height / 2;
-    const nova = Math.min(1.6, Math.max(0.08, escala * factor));
+    const nova = Math.min(1.6, Math.max(0.05, escala * factor));
     despl.x = cx - (cx - despl.x) * (nova / escala); despl.y = cy - (cy - despl.y) * (nova / escala);
     escala = nova; demana();
   }
@@ -584,6 +686,6 @@ export function crearCiutat({ canvas, onClic }) {
       if (l) centrar(l.X + 0.5, l.Y + 0.5, Math.max(escala, 0.5));
     },
     vistaPoble() { const r = canvas.getBoundingClientRect(); centrar(10.5, 8.5, r.width < 700 ? 0.32 : 0.45); },
-    vistaTot() { const r = canvas.getBoundingClientRect(); centrar(10.5, 12, Math.min(0.4, Math.max(0.1, Math.min(r.width / (W * 34), r.height / (W * 20))))); },
+    vistaTot() { const r = canvas.getBoundingClientRect(); centrar(21, 26, Math.min(0.4, Math.max(0.05, Math.min(r.width / (W * 54), r.height / (W * 28))))); },
   };
 }
