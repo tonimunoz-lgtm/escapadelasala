@@ -280,23 +280,16 @@ export function crearCiutat({ canvas, onClic }) {
       ctx.closePath(); ctx.clip();
       const bs = im._base;
       if (bs) {
-        // Escala horitzontal única (sense doblegar la imatge) i les verticals es mantenen
-        // verticals. Les cantonades esquerra i dreta de la base cauen exactament sobre les de
-        // la parcel·la, i l'alçada de la punta de baix també coincideix.
+        // Sense inclinar ni doblegar la imatge: només una escala horitzontal (k) i una de
+        // vertical (ky) molt semblant. ky fa que la inclinació mitjana del terra sigui la
+        // d'un rombe 2:1, i la posició és la que millor fa coincidir les tres cantonades.
         const E = bs.E, P = bs.P, D = bs.D;
         const k = (b.x - d.x) / (D[0] - E[0]);
-        const ex = d.x - k * E[0];
-        // y' = sh·x + ky·y + f  passant per E→d, D→b, P→c
-        const sol = (ky) => {
-          const sh = ((b.y - d.y) - ky * (D[1] - E[1])) / (D[0] - E[0]);
-          return { sh, ky, f: d.y + DZ - sh * E[0] - ky * E[1] };
-        };
-        // ky que fa coincidir també la punta
-        const den = (P[1] - E[1]) - (D[1] - E[1]) * (P[0] - E[0]) / (D[0] - E[0]);
-        let ky = den ? ((c.y - d.y) - (b.y - d.y) * (P[0] - E[0]) / (D[0] - E[0])) / den : k;
-        ky = Math.max(k * 0.75, Math.min(k * 1.1, ky));
-        const T = sol(ky);
-        ctx.transform(k, T.sh, 0, T.ky, ex, T.f);
+        const pend = ((P[1] - E[1]) / (P[0] - E[0]) + (P[1] - D[1]) / (D[0] - P[0])) / 2;
+        const ky = k * Math.max(0.8, Math.min(1.05, 0.5 / pend));
+        const tx = (d.x + b.x) / 2 - k * (E[0] + D[0]) / 2;
+        const ty = (d.y + b.y + c.y) / 3 + DZ - ky * (E[1] + D[1] + P[1]) / 3;
+        ctx.transform(k, 0, 0, ky, tx, ty);
         ctx.drawImage(im, 0, 0);
       } else {
         const cx = im._caixa;
@@ -421,7 +414,21 @@ export function crearCiutat({ canvas, onClic }) {
       perDiag.get(d).push(a);
     }
     const etiquetes = [];
+    // Els edificis grans (2×2) es pinten al començament de la diagonal de la seva cel·la
+    // de davant: així queden per sobre de tot el que tenen darrere i per sota de les
+    // parcel·les que tenen davant (abans, una casa del costat es podia pintar més tard).
+    const grans = new Map();
+    for (const c of cel.values()) if (c.tipus === 'edifici' && c.mida > 1) {
+      const dd = c.X + c.Y + c.mida;
+      if (!grans.has(dd)) grans.set(dd, []);
+      grans.get(dd).push(c);
+    }
     for (let d = minX + minY; d <= maxX + maxY; d++) {
+      for (const c of grans.get(d) || []) {
+        if (c.X + c.mida < minX || c.X > maxX || c.Y + c.mida < minY || c.Y > maxY) continue;
+        sprite(c.img, c.X, c.Y, { mida: c.mida });
+        etiquetes.push(['edifici', c]);
+      }
       for (let X = Math.max(minX, d - maxY); X <= Math.min(maxX, d - minY); X++) {
         const Y = d - X;
         const c = cel.get(clau(X, Y));
@@ -436,6 +443,7 @@ export function crearCiutat({ canvas, onClic }) {
         if (c.tipus === 'carretera') { dibuixaCarretera(X, Y); continue; }
         if (c.tipus === 'part') continue;
         if (c.tipus === 'edifici') {
+          if (c.mida > 1) continue;   // ja pintat al començament de la diagonal
           sprite(c.img, c.X, c.Y, { mida: c.mida });
           etiquetes.push(['edifici', c]);
           continue;
