@@ -270,7 +270,7 @@ export function crearCiutat({ canvas, onClic }) {
     const im = img(src);
     if (marge) { rombe(X, Y, mida, mida); ctx.fillStyle = COLORS.carrero; ctx.fill(); }
     const u = X + marge, v = Y + marge, t = mida - 2 * marge;
-    if (base) { rombe(u, v, t, t); ctx.fillStyle = base; ctx.fill(); }
+    if (base && !im) { rombe(u, v, t, t); ctx.fillStyle = base; ctx.fill(); }
     const a = iso(u, v), b = iso(u + t, v), c = iso(u + t, v + t), d = iso(u, v + t);
     if (marge) { ctx.strokeStyle = COLORS.vorada; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(d.x, d.y + DZ); ctx.lineTo(a.x, a.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.stroke(); }
     if (im) {
@@ -280,19 +280,24 @@ export function crearCiutat({ canvas, onClic }) {
       ctx.closePath(); ctx.clip();
       const bs = im._base;
       if (bs) {
-        // Cada meitat (esquerra i dreta de la punta) es deforma per separat perquè les
-        // cantonades de la base caiguin sobre les de la parcel·la, però les línies verticals
-        // de la imatge (parets, fanals, arbres) continuen sent verticals.
-        const P = bs.P, k = (b.x - d.x) / (bs.D[0] - bs.E[0]);
-        for (const [Q, q, xa, xb] of [[bs.E, d, d.x - 2, c.x], [bs.D, b, c.x, b.x + 2]]) {
-          const mx = (q.x - c.x) / (Q[0] - P[0]);
-          const sh = ((q.y - c.y) - k * (Q[1] - P[1])) / (Q[0] - P[0]);
-          ctx.save();
-          ctx.beginPath(); ctx.rect(xa, c.y - 3000, xb - xa, 3100); ctx.clip();
-          ctx.transform(mx, sh, 0, k, c.x - mx * P[0], c.y + DZ - sh * P[0] - k * P[1]);
-          ctx.drawImage(im, 0, 0);
-          ctx.restore();
-        }
+        // Escala horitzontal única (sense doblegar la imatge) i les verticals es mantenen
+        // verticals. Les cantonades esquerra i dreta de la base cauen exactament sobre les de
+        // la parcel·la, i l'alçada de la punta de baix també coincideix.
+        const E = bs.E, P = bs.P, D = bs.D;
+        const k = (b.x - d.x) / (D[0] - E[0]);
+        const ex = d.x - k * E[0];
+        // y' = sh·x + ky·y + f  passant per E→d, D→b, P→c
+        const sol = (ky) => {
+          const sh = ((b.y - d.y) - ky * (D[1] - E[1])) / (D[0] - E[0]);
+          return { sh, ky, f: d.y + DZ - sh * E[0] - ky * E[1] };
+        };
+        // ky que fa coincidir també la punta
+        const den = (P[1] - E[1]) - (D[1] - E[1]) * (P[0] - E[0]) / (D[0] - E[0]);
+        let ky = den ? ((c.y - d.y) - (b.y - d.y) * (P[0] - E[0]) / (D[0] - E[0])) / den : k;
+        ky = Math.max(k * 0.75, Math.min(k * 1.1, ky));
+        const T = sol(ky);
+        ctx.transform(k, T.sh, 0, T.ky, ex, T.f);
+        ctx.drawImage(im, 0, 0);
       } else {
         const cx = im._caixa;
         const k = (W * t) / (cx.x1 - cx.x0 + 1);
