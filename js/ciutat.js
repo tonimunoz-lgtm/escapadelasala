@@ -8,7 +8,7 @@
 //  Per moure un edifici, canvia'n les coordenades a EDIFICIS_CIUTAT.
 // =============================================================
 import { imgNegoci, imgLogo, SECTORS_NEGOCI } from './dades.js';
-import { TERRENYS_PARC, MIDA_PARC, OBJECTES, srcObjecte, giraObjecte, giraParc, dibuixaObjecte } from './parc-dades.js';
+import { TERRENYS_PARC, MIDA_TOTAL, BLOC, BLOCS_INICIALS, OBJECTES, srcObjecte, giraObjecte, giraParc, dibuixaObjecte } from './parc-dades.js';
 
 export const W = 236;
 const DZ = 14;
@@ -503,10 +503,18 @@ export function crearCiutat({ canvas, onClic }) {
     const vora = (u, v, mu, mv) => { const a = iso(u, v), b = iso(u + mu, v), c = iso(u + mu, v + mv), d = iso(u, v + mv);
       ctx.beginPath(); ctx.moveTo(a.x, a.y + DZ); ctx.lineTo(b.x, b.y + DZ); ctx.lineTo(c.x, c.y + DZ); ctx.lineTo(d.x, d.y + DZ); ctx.closePath(); };
     vora(X0 + 0.1, Y0 + 0.1, 6.8, 6.8);
-    ctx.fillStyle = parc ? '#7fbf4a' : '#a8c86a'; ctx.fill();
+    ctx.fillStyle = '#a8c86a'; ctx.fill();
     ctx.lineWidth = 6; ctx.strokeStyle = parc ? '#5a3d22' : '#c9b48a'; ctx.setLineDash(parc ? [] : [18, 12]); ctx.stroke(); ctx.setLineDash([]);
     if (!parc || escala < 0.12) return;
-    const k = 1 / 3;   // 3 caselles del parc = 1 parcel·la de la ciutat
+    const k = 7 / MIDA_TOTAL;   // l'espai màxim del parc (35x35 caselles) ocupa les 7x7 parcel·les del terreny
+    // parcel·les que ja ha comprat
+    ctx.fillStyle = '#8fd05a';
+    for (const b of (parc.blocs || BLOCS_INICIALS.join(';')).split(';')) {
+      if (!b) continue;
+      const [bx, by] = b.split(',').map(Number);
+      const [lx, ly] = giraObjecte(bx * BLOC, by * BLOC, BLOC, costat);
+      vora(X0 + lx * k, Y0 + ly * k, BLOC * k, BLOC * k); ctx.fill();
+    }
     // camins
     ctx.fillStyle = '#e6d6b4';
     for (const p of (parc.camins || '').split(';')) {

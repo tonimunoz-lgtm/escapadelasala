@@ -3,8 +3,21 @@
 //  Tot el que cal per ajustar el joc és aquí: preus, costos, atractiu...
 // =============================================================
 
-// Mida de la graella d'un parc (caselles). Al mapa de la ciutat, 3 caselles = 1 parcel·la.
-export const MIDA_PARC = 21;
+// El parc es compra per parcel·les de 7x7 caselles. Al principi en tens 3x3 (21x21 caselles) i
+// en pots comprar més fins a 5x5 (35x35): una a l'esquerra, una a la dreta i dues cap al fons.
+// El costat de davant (on hi ha l'entrada) dona a la carretera i no es pot ampliar.
+export const MIDA_PARC = 21;                       // terreny inicial
+export const BLOC = 7;                             // mida d'una parcel·la
+export const LIMITS_BLOCS = { bx: [-1, 3], by: [-2, 2] };
+export const MIDA_TOTAL = 35;                      // mida màxima (5 parcel·les)
+export const ORIGEN = { x: 7, y: 14 };             // on queda la casella (0,0) dins de l'espai màxim
+export const BLOCS_INICIALS = ['0,0', '1,0', '2,0', '0,1', '1,1', '2,1', '0,2', '1,2', '2,2'];
+export const preuParcella = (comprades) => 8000 + 2000 * comprades;  // cada parcel·la nova és més cara
+
+// Pàrquing: hi ha 15 places gratuïtes al carrer; si n'hi caben més, la gent ve en cotxe
+export const PLACES_CARRER = 15;
+export const PART_EN_COTXE = 0.75;                 // 3 de cada 4 visitants arriben en cotxe
+export const PERSONES_PER_COTXE = 3;
 // Entrada del parc (2x2) al mig del costat de davant
 export const ENTRADA = { x: 9, y: 19 };
 
@@ -87,6 +100,8 @@ export const OBJECTES = {
   'botiga-records': { nom: 'Botiga de records', cat: 'botiga', img: 'botiga-records', mida: 1, frac: 0.9, preu: 6000, manteniment: 60,
     cost: 4, preuJust: 10, text: 'Peluixos, gorres i tasses. Marge alt, però només hi compra qui s\'ho ha passat bé. Cada record et costa 4 €.' },
 
+  parquing: { nom: 'Pàrquing', cat: 'servei', img: 'parquing', mida: 2, frac: 1, preu: 6000, manteniment: 30, places: 20, sensecami: true,
+    text: '20 places per a cotxes. Sense pàrquing, només hi ha 15 places al carrer i molta gent no pot venir. Tu decideixes quant costa aparcar.' },
   lavabos: { nom: 'Lavabos', cat: 'servei', img: 'lavabos', mida: 1, frac: 0.92, preu: 4000, manteniment: 45,
     text: 'Sense lavabos, els visitants s\'enfaden molt (i marxen).' },
   'primers-auxilis': { nom: 'Infermeria', cat: 'servei', img: 'primers-auxilis', mida: 1, frac: 0.9, preu: 8000, manteniment: 90,
@@ -136,7 +151,8 @@ export const terrenyPerId = (id) => TERRENYS_PARC.find((t) => t[0] === id);
 // Passa una casella del parc (0..20) a la posició dins del terreny, girada perquè l'entrada
 // (que dins del parc sempre és al costat +Y) miri cap a la carretera.
 export function giraParc(px, py, costat) {
-  const n = MIDA_PARC - 1;
+  const n = MIDA_TOTAL - 1;
+  px += ORIGEN.x; py += ORIGEN.y;
   if (costat === 'S') return [px, py];
   if (costat === 'N') return [n - px, n - py];
   if (costat === 'E') return [py, n - px];
@@ -172,7 +188,8 @@ export function parcNou(terreny, nom) {
     camins: [`${ENTRADA.x},${ENTRADA.y - 1}`, `${ENTRADA.x + 1},${ENTRADA.y - 1}`, `${ENTRADA.x},${ENTRADA.y - 2}`, `${ENTRADA.x + 1},${ENTRADA.y - 2}`],
     objectes: [{ id: 1, t: 'entrada', x: ENTRADA.x, y: ENTRADA.y }],
     seguentId: 2,
-    preus: { entrada: 5 },
+    preus: { entrada: 5, parquing: 3 },
+    blocs: [...BLOCS_INICIALS],
     personal: { mecanic: 0, netejador: 0, animador: 0 },
     brossa: {},
     reputacio: 50,
