@@ -105,6 +105,20 @@ export const OBJECTES = {
   begudes: { nom: 'Parada de begudes', cat: 'menjar', img: 'begudes', mida: 1, frac: 0.84, preu: 2500, manteniment: 40,
     cost: 0.4, preuJust: 2.5, efecte: { set: 75 }, text: 'Imprescindible si fa calor. Cada beguda et costa 0,40 €.' },
 
+  // fase 3: restaurants temàtics (2x2). Treuen tota la gana, serveixen de pressa i agraden molt.
+  'restaurant-mediterrani': { nom: 'Taverna mediterrània', cat: 'menjar', tema: 'mediterrani', img: 'restaurant-mediterrani', mida: 2, frac: 1, punta: 0.579,
+    preu: 20000, manteniment: 180, cost: 4, preuJust: 12, efecte: { gana: 100, set: 60 }, rapid: true, satisfa: 8, text: 'Peix fresc i terrassa. Cada menú et costa 4 €.' },
+  'restaurant-oest': { nom: 'Saloon del Far West', cat: 'menjar', tema: 'oest', img: 'restaurant-oest', mida: 2, frac: 1, punta: 0.551,
+    preu: 20000, manteniment: 180, cost: 4, preuJust: 12, efecte: { gana: 100, set: 60 }, rapid: true, satisfa: 8, text: 'Costelles i limonada al desert. Cada menú et costa 4 €.' },
+  'restaurant-pirates': { nom: 'Taverna pirata', cat: 'menjar', tema: 'pirates', img: 'restaurant-pirates', mida: 2, frac: 1, punta: 0.515,
+    preu: 22000, manteniment: 190, cost: 4.5, preuJust: 13, efecte: { gana: 100, set: 60 }, rapid: true, satisfa: 9, text: 'Sobre l\'aigua, amb tresors i tot. Cada menú et costa 4,50 €.' },
+  'restaurant-selva': { nom: 'Restaurant tiki', cat: 'menjar', tema: 'selva', img: 'restaurant-selva', mida: 2, frac: 1, punta: 0.573,
+    preu: 22000, manteniment: 190, cost: 4.5, preuJust: 13, efecte: { gana: 100, set: 70 }, rapid: true, satisfa: 9, text: 'Fruita tropical i còctels sense alcohol. Cada menú et costa 4,50 €.' },
+  'restaurant-medieval': { nom: 'Taverna medieval', cat: 'menjar', tema: 'medieval', img: 'restaurant-medieval', mida: 2, frac: 1, punta: 0.544,
+    preu: 25000, manteniment: 210, cost: 5, preuJust: 14, efecte: { gana: 100, set: 60 }, rapid: true, satisfa: 10, text: 'Banquet de cavallers. Cada menú et costa 5 €.' },
+  'restaurant-espai': { nom: 'Diner espacial', cat: 'menjar', tema: 'espai', img: 'restaurant-espai', mida: 2, frac: 1, punta: 0.549,
+    preu: 25000, manteniment: 210, cost: 5, preuJust: 14, efecte: { gana: 100, set: 70 }, rapid: true, satisfa: 10, text: 'Hamburgueses galàctiques i neons. Cada menú et costa 5 €.' },
+
   globus: { nom: 'Parada de globus', cat: 'botiga', img: 'globus', mida: 1, frac: 0.86, preu: 2000, manteniment: 30,
     cost: 1, preuJust: 4, text: 'Un caprici: els visitants contents en compren. Cada globus et costa 1 €.' },
   'botiga-records': { nom: 'Botiga de records', cat: 'botiga', img: 'botiga-records', mida: 1, frac: 0.9, preu: 6000, manteniment: 60,
@@ -187,9 +201,10 @@ export function dibuixaObjecte(ctx, im, t, cx, cy, amp, gir = 0) {
   const w = amp * o.frac;
   const h = w * (im.naturalHeight / im.naturalWidth);
   const baix = cy + (amp / 4) * o.frac;   // punt de davant de l'objecte
-  if (!gir) { ctx.drawImage(im, cx - w / 2, baix - h, w, h); return; }
+  const p = o.punta ?? 0.5;   // on cau la punta de davant dins de la imatge (0,5 = al mig)
+  if (!gir) { ctx.drawImage(im, cx - w * p, baix - h, w, h); return; }
   ctx.save(); ctx.translate(cx, 0); ctx.scale(-1, 1);
-  ctx.drawImage(im, -w / 2, baix - h, w, h);
+  ctx.drawImage(im, -w * p, baix - h, w, h);
   ctx.restore();
 }
 

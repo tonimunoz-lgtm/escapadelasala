@@ -314,7 +314,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
       parc.diners -= d.cost; parc.avui.costMenjar += d.cost; parc.totals.despeses += d.cost;
       v.gana = clamp(v.gana - (d.efecte.gana || 0), 0, 100); v.set = clamp(v.set - (d.efecte.set || 0), 0, 100);
       v.lavabo += d.efecte.set > 0 ? 20 : 8;
-      v.brossa = 1; v.passos = 0; v.satisf += 4 * clamp(d.preuJust / Math.max(preu, 0.5), 0.5, 1.4);
+      v.brossa = d.rapid ? 0 : 1; v.passos = 0; v.satisf += (d.satisfa || 4) * clamp(d.preuJust / Math.max(preu, 0.5), 0.5, 1.4);
       o.usos = (o.usos || 0) + 1;
     }
     if (d.cat === 'botiga') {
@@ -412,7 +412,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
         if (o.avariat && s.cua.length) { for (const v of s.cua) { pensa(v, 'avaria'); v.satisf -= 6; v.estat = 'idle'; } s.cua = []; }
       } else if (s.cua.length) {
         s.servei += dm;
-        const t = o.t === 'lavabos' ? 0.3 : o.t === 'caixer' ? 0.4 : o.t === 'primers-auxilis' ? 0.5 : 0.6;   // minuts per persona
+        const t = o.t === 'lavabos' ? 0.3 : o.t === 'caixer' ? 0.4 : o.t === 'primers-auxilis' ? 0.5 : d.rapid ? 0.15 : 0.6;   // minuts per persona
         while (s.cua.length && s.servei >= t) { s.servei -= t; const v = s.cua.shift(); serveix(v, o); v.estat = 'idle'; }
       } else s.servei = 0;
     }
