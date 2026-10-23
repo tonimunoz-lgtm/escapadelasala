@@ -69,32 +69,32 @@ export const OBJECTES = {
     text: 'L\'entrada d\'un gran parc: dues torres i quatre taquilles. Ocupa 3x3 caselles.' },
 
   carrusel: { nom: 'Carrusel de cavallets', cat: 'atraccio', img: 'carrusel', mida: 2, frac: 0.97, preu: 12000, manteniment: 120,
-    capacitat: 16, durada: 4, atractiu: 3, emocio: 2, preuJust: 3, text: 'Un clàssic per a tota la família. Tranquil i molt popular.' },
+    capacitat: 16, durada: 4, atractiu: 3, emocio: 2, intensitat: 1, mareig: 1, preuJust: 3, text: 'Un clàssic per a tota la família. Tranquil i molt popular.' },
   tasses: { nom: 'Tasses giratòries', cat: 'atraccio', img: 'tasses', mida: 2, frac: 0.97, preu: 15000, manteniment: 150,
-    capacitat: 12, durada: 3, atractiu: 4, emocio: 3, preuJust: 3.5, text: 'Tasses que giren i giren. Més emoció que el carrusel.' },
+    capacitat: 12, durada: 3, atractiu: 4, emocio: 3, intensitat: 3, mareig: 5, preuJust: 3.5, text: 'Tasses que giren i giren. Més emoció que el carrusel.' },
   'cotxes-xoc': { nom: 'Cotxes de xoc', cat: 'atraccio', img: 'cotxes-xoc', mida: 2, frac: 0.97, preu: 22000, manteniment: 220,
-    capacitat: 10, durada: 3, atractiu: 5, emocio: 4, preuJust: 4, text: 'La preferida dels adolescents. Cara, però atrau molta gent.' },
+    capacitat: 10, durada: 3, atractiu: 5, emocio: 4, intensitat: 3, mareig: 1, preuJust: 4, text: 'La preferida dels adolescents. Cara, però atrau molta gent.' },
   'llits-elastics': { nom: 'Llits elàstics', cat: 'atraccio', img: 'llits-elastics', mida: 1, frac: 0.97, preu: 6000, manteniment: 60,
-    capacitat: 6, durada: 4, atractiu: 2, emocio: 2, preuJust: 2, text: 'Barata i petita. Ideal per començar.' },
+    capacitat: 6, durada: 4, atractiu: 2, emocio: 2, intensitat: 2, mareig: 2, preuJust: 2, text: 'Barata i petita. Ideal per començar.' },
   // fase 2: atraccions més grans (les d'emoció 6 o més poden marejar: cal una infermeria)
   'sinia-petita': { nom: 'Sínia petita', cat: 'atraccio', img: 'sinia-petita', mida: 2, frac: 0.97, preu: 18000, manteniment: 160,
-    capacitat: 16, durada: 5, atractiu: 4, emocio: 2, preuJust: 3.5, text: 'Vistes boniques i cap ensurt. Agrada a tothom.' },
+    capacitat: 16, durada: 5, atractiu: 4, emocio: 2, intensitat: 1, mareig: 1, preuJust: 3.5, text: 'Vistes boniques i cap ensurt. Agrada a tothom.' },
   'vaixell-pirata': { nom: 'Vaixell pirata', cat: 'atraccio', img: 'vaixell-pirata', mida: 2, frac: 0.97, preu: 26000, manteniment: 240,
-    capacitat: 20, durada: 3, atractiu: 6, emocio: 5, preuJust: 4.5, text: 'Es gronxa amunt i avall. Molta capacitat.' },
+    capacitat: 20, durada: 3, atractiu: 6, emocio: 5, intensitat: 5, mareig: 5, preuJust: 4.5, text: 'Es gronxa amunt i avall. Molta capacitat.' },
   'casa-terror': { nom: 'Casa del terror', cat: 'atraccio', img: 'casa-terror', mida: 2, frac: 0.97, preu: 30000, manteniment: 260,
-    capacitat: 12, durada: 4, atractiu: 6, emocio: 5, preuJust: 5, text: 'Fantasmes i crits. Els adolescents en fan cua.' },
+    capacitat: 12, durada: 4, atractiu: 6, emocio: 5, intensitat: 3, mareig: 1, preuJust: 5, text: 'Fantasmes i crits. Els adolescents en fan cua.' },
   'torre-caiguda': { nom: 'Torre de caiguda', cat: 'atraccio', img: 'torre-caiguda', mida: 1, frac: 0.97, preu: 35000, manteniment: 320,
-    capacitat: 12, durada: 2, atractiu: 7, emocio: 7, preuJust: 5.5, text: 'Ocupa poc espai i és molt emocionant. Pot marejar.' },
+    capacitat: 12, durada: 2, atractiu: 7, emocio: 7, intensitat: 9, mareig: 4, preuJust: 5.5, text: 'Ocupa poc espai i és molt emocionant. Pot marejar.' },
   'sinia-gran': { nom: 'Sínia gran', cat: 'atraccio', img: 'sinia-gran', mida: 3, frac: 0.97, preu: 55000, manteniment: 450,
-    capacitat: 40, durada: 6, atractiu: 8, emocio: 3, preuJust: 5, text: 'Es veu des de lluny i hi caben 40 persones alhora.' },
+    capacitat: 40, durada: 6, atractiu: 8, emocio: 3, intensitat: 1, mareig: 1, preuJust: 5, text: 'Es veu des de lluny i hi caben 40 persones alhora.' },
   'muntanya-russa-petita': { nom: 'Muntanya russa familiar', cat: 'atraccio', img: 'muntanya-russa-petita', mida: 3, frac: 0.97, preu: 60000, manteniment: 500,
-    capacitat: 20, durada: 3, atractiu: 9, emocio: 6, preuJust: 6, text: 'La primera muntanya russa! Atrau molta gent. Pot marejar.' },
+    capacitat: 20, durada: 3, atractiu: 9, emocio: 6, intensitat: 5, mareig: 3, preuJust: 6, text: 'La primera muntanya russa! Atrau molta gent. Pot marejar.' },
   'rius-rapids': { nom: 'Rius ràpids', cat: 'atraccio', img: 'rius-rapids', mida: 4, frac: 0.97, preu: 100000, manteniment: 850,
-    capacitat: 24, durada: 5, atractiu: 12, emocio: 6, preuJust: 7, text: 'Barques rodones entre cascades. Ideal a l\'estiu. Pot marejar.' },
+    capacitat: 24, durada: 5, atractiu: 12, emocio: 6, intensitat: 4, mareig: 2, preuJust: 7, text: 'Barques rodones entre cascades. Ideal a l\'estiu. Pot marejar.' },
   troncs: { nom: 'Troncs d\'aigua', cat: 'atraccio', img: 'troncs', mida: 4, frac: 0.97, preu: 110000, manteniment: 900,
-    capacitat: 24, durada: 4, atractiu: 13, emocio: 7, preuJust: 7.5, text: 'Una gran baixada i... xof! Pot marejar.' },
+    capacitat: 24, durada: 4, atractiu: 13, emocio: 7, intensitat: 5, mareig: 2, preuJust: 7.5, text: 'Una gran baixada i... xof! Pot marejar.' },
   'muntanya-russa-gegant': { nom: 'Muntanya russa gegant', cat: 'atraccio', img: 'muntanya-russa-gegant', mida: 4, frac: 0.97, preu: 140000, manteniment: 1100,
-    capacitat: 28, durada: 3, atractiu: 16, emocio: 10, preuJust: 9, text: 'L\'atracció estrella: loopings i velocitat. Molt cara i molt rendible. Mareja molt!' },
+    capacitat: 28, durada: 3, atractiu: 16, emocio: 10, intensitat: 9, mareig: 6, preuJust: 9, text: 'L\'atracció estrella: loopings i velocitat. Molt cara i molt rendible. Mareja molt!' },
 
   gelats: { nom: 'Parada de gelats', cat: 'menjar', img: 'gelats', mida: 1, frac: 0.84, preu: 3000, manteniment: 50,
     cost: 0.9, preuJust: 3, efecte: { gana: 25, set: 25 }, text: 'Treu la gana i la set una mica. Cada gelat et costa 0,90 €.' },
@@ -227,3 +227,30 @@ export function parcNou(terreny, nom) {
     totals: { visitants: 0, ingressos: 0, despeses: PREU_TERRENY },
   };
 }
+
+// ---------- investigació (R+D) ----------
+// Les atraccions grans no es poden construir fins que el departament d'investigació les ha dissenyat.
+// Cada dia el parc genera punts segons el pressupost; quan n'hi ha prou, es desbloqueja la següent.
+export const RECERCA_NIVELLS = {
+  cap:    { nom: 'Cap', cost: 0, punts: 0 },
+  baix:   { nom: 'Baix', cost: 300, punts: 1 },
+  normal: { nom: 'Normal', cost: 800, punts: 3 },
+  alt:    { nom: 'Alt', cost: 2000, punts: 6 },
+};
+export const RECERCA_ORDRE = [
+  ['sinia-gran', 4], ['torre-caiguda', 5], ['muntanya-russa-petita', 7], ['restaurant-mediterrani', 3], ['restaurant-oest', 3],
+  ['rius-rapids', 10], ['restaurant-pirates', 4], ['restaurant-selva', 4], ['troncs', 12], ['restaurant-medieval', 5],
+  ['restaurant-espai', 5], ['entrada-gran', 6], ['muntanya-russa-gegant', 16],
+];
+export const PER_INVESTIGAR = new Set(RECERCA_ORDRE.map(([t]) => t));
+
+// ---------- màrqueting ----------
+export const CAMPANYES = {
+  cartells: { nom: 'Cartells a la ciutat', ic: '🪧', costDia: 250, efecte: 0.12, text: 'Barat i discret: una mica més de gent.' },
+  radio: { nom: 'Anuncis a la ràdio', ic: '📻', costDia: 800, efecte: 0.3, text: 'Arriba a tota la comarca.' },
+  tele: { nom: 'Anunci a la televisió', ic: '📺', costDia: 2500, efecte: 0.6, text: 'Car, però ve molta més gent.' },
+};
+
+// Noms dels visitants (per quan en toques un)
+export const NOMS_VISITANTS = ['Pau', 'Martina', 'Jan', 'Júlia', 'Marc', 'Laia', 'Pol', 'Aina', 'Arnau', 'Carla', 'Biel', 'Noa', 'Àlex', 'Ona', 'Nil', 'Emma',
+  'Joan', 'Maria', 'Hugo', 'Sara', 'Oriol', 'Paula', 'Roc', 'Abril', 'Èric', 'Clàudia', 'Jordi', 'Núria', 'Iker', 'Mireia', 'Toni', 'Montse', 'Ferran', 'Rosa'];

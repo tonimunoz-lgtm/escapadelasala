@@ -9,6 +9,7 @@
 import { h, avis } from './ui.js';
 import { faseEconomica } from './joc.js';
 import {
+  RECERCA_NIVELLS, RECERCA_ORDRE, PER_INVESTIGAR, CAMPANYES, NOMS_VISITANTS,
   MIDA_TOTAL as M, ORIGEN, COST_TRAM_MURALLA, COST_TORRE, ATRACTIU_MURALLA, BLOC, LIMITS_BLOCS, BLOCS_INICIALS, preuParcella, PLACES_CARRER, PART_EN_COTXE, PERSONES_PER_COTXE, ENTRADA, MINUTS_DIA, SEGONS_PER_MINUT, HORA_OBERTURA, ULTIMA_ENTRADA, INTERES_DIARI,
   COST_CAMI, RETORN_ENDERROC, PERSONAL_PARC, CATEGORIES, OBJECTES, srcObjecte, dibuixaObjecte,
 } from './parc-dades.js';
@@ -29,6 +30,13 @@ const eur = (n) => `${fmt.format(n)} €`;
 const eur2 = (n) => `${fmt2.format(n)} €`;
 const hora = (m) => { const t = HORA_OBERTURA * 60 + Math.floor(m); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
 const PERSONES = 21;
+// elements SVG (el gràfic de benefici)
+const sv = (tag, attrs = {}, ...fills) => {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  for (const f of fills.flat()) if (f != null) el.append(f.nodeType ? f : String(f));
+  return el;
+};
 const VEINS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 const QUEIXES = {
@@ -42,6 +50,8 @@ const QUEIXES = {
   avaria: ['🔧', 'Hi ha atraccions espatllades', 'Contracta mecànics o repara-les tu.'],
   avorrit: ['🥱', 'S\'avorreixen: hi ha poques atraccions', 'Construeix atraccions noves.'],
   parquing: ['🚗', 'No troben lloc per aparcar (i se\'n tornen a casa)', 'Construeix un pàrquing: cada un té 20 places.'],
+  intens: ['😱', 'Algunes atraccions els fan massa por', 'És normal: no a tothom li agraden les emocions fortes. Tingues atraccions de tots els tipus.'],
+  vomit: ['🤮', 'Hi ha vòmits als camins', 'Les atraccions de mareig alt fan vomitar: posa una infermeria a prop i netejadors.'],
   pluja: ['🌧️', 'Plou i no hi ha on aixoplugar-se', 'Els dies de pluja ve menys gent: aprofita per fer manteniment.'],
   mareig: ['🤢', 'Es maregen i no hi ha infermeria', 'Si tens atraccions fortes, construeix una infermeria.'],
 };
@@ -51,6 +61,16 @@ export const ESDEVENIMENTS = {
   calor: { nom: 'Onada de calor', ic: '☀️', text: 'Tothom té molta set: es venen moltes més begudes i gelats.', arribades: 1.05, set: 1.8 },
   pluja: { nom: 'Dia de pluja', ic: '🌧️', text: 'Ve la meitat de gent i estan de pitjor humor.', arribades: 0.5, satisf: -0.03 },
   festa: { nom: 'Festa Major', ic: '🎉', text: 'Hi ha festa a la comarca: ve molta més gent.', arribades: 1.4 },
+};
+
+// Pensaments positius (elogis), com al RollerCoaster Tycoon
+const ELOGIS = {
+  genial: ['🤩', 'Aquesta atracció és genial!'],
+  bonpreu: ['👍', 'Quin preu tan bo!'],
+  bonic: ['🌸', 'Quin parc tan bonic!'],
+  net: ['✨', 'Que net que està tot!'],
+  bonmenjar: ['😋', 'Això estava boníssim!'],
+  divertit: ['😄', 'M\'ho estic passant d\'allò més bé!'],
 };
 
 export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLectura = false, pas = () => null, onFita = () => {}, obrePortes = () => {}, config = () => ({}) }) {
@@ -73,7 +93,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
 
   // ---------- DOM ----------
   const canvas = h('canvas', { class: 'parc-canvas', 'aria-label': 'El teu parc d\'atraccions' });
-  let vEsdev = null, botoObrir = null;
+  let vEsdev = null, botoObrir = null, vValoracio = null, infoVisitant = null;
   const vDiners = h('strong', {}), vVisit = h('strong', {}), vSatisf = h('strong', {}), vDia = h('strong', {});
   const botoVel = [0, 1, 2, 4].map((v) => h('button', { class: 'parc-vel', title: v ? `Velocitat x${v}` : 'Pausa', onclick: () => posaVelocitat(v) }, v === 0 ? '⏸' : v === 1 ? '▶' : v === 2 ? '⏩' : '⏭'));
   const barra = h('header', { class: 'parc-barra' },
@@ -82,6 +102,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     h('span', { class: 'parc-dada', title: 'Diners del parc' }, '💶 ', vDiners),
     h('span', { class: 'parc-dada', title: 'Visitants dins del parc' }, '👥 ', vVisit),
     h('span', { class: 'parc-dada', title: 'Satisfacció mitjana dels visitants' }, '😊 ', vSatisf),
+    h('span', { class: 'parc-dada', title: 'Valoració del parc (0-999): satisfacció, atraccions, netedat i fama' }, '⭐ ', vValoracio = h('strong', {})),
     h('span', { class: 'parc-dada', title: 'Dia i hora' }, '📅 ', vDia),
     vEsdev = h('span', { class: 'parc-esdev', hidden: true }),
     botoObrir = h('button', { class: 'btn btn-principal parc-obrir', hidden: true, onclick: () => {
@@ -97,6 +118,9 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     ['terreny', '🗺️', 'Terreny'],
     ['finances', '💶', 'Diners'],
     ['personal', '👷', 'Personal'],
+    ['opinions', '💭', 'Opinions'],
+    ['marqueting', '📣', 'Màrqueting'],
+    ['recerca', '🔬', 'Recerca'],
   ];
   const botonsEina = {};
   const eines = h('nav', { class: 'parc-eines' }, ...EINES.map(([id, ic, nom]) => {
@@ -173,6 +197,25 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const [sx, sy] = entradaAcces[0];
     if (parc.objectes.some((o) => OBJECTES[o.t].cat === 'atraccio' && accessible(o) && ruta(sx, sy, acces.get(o.id)))) onFita('atraccio');
   }
+  // ---------- investigació ----------
+  function recerca() {
+    if (!parc.recerca) {
+      // el que ja estava construit (parcs d'abans) compta com a investigat
+      parc.recerca = { nivell: 'normal', punts: 0, investigat: [...new Set(parc.objectes.map((o) => o.t).filter((t) => PER_INVESTIGAR.has(t)))] };
+    }
+    return parc.recerca;
+  }
+  const investigat = (t) => !PER_INVESTIGAR.has(t) || recerca().investigat.includes(t);
+  const seguentRecerca = () => RECERCA_ORDRE.find(([t]) => !recerca().investigat.includes(t)) || null;
+
+  // ---------- valoració del parc (0-999), com al RollerCoaster ----------
+  function valoracio() {
+    const s = visitants.length ? visitants.reduce((t, v) => t + v.satisf, 0) / visitants.length : (parc.historial.at(-1)?.satisf ?? 60);
+    const atr = parc.objectes.filter((o) => OBJECTES[o.t].cat === 'atraccio');
+    const brossa = Object.values(parc.brossa).reduce((t, n) => t + n, 0);
+    const v = s * 5 + Math.min(250, atr.length * 25) + Math.max(0, 150 - brossa * 8) + parc.reputacio - atr.filter((o) => o.avariat).length * 40;
+    return Math.round(clamp(v, 0, 999));
+  }
   const objecte = (id) => parc.objectes.find((o) => o.id === id);
   const esEntrada = (o) => OBJECTES[o.t].cat === 'fix';
   const entrada = () => parc.objectes.find(esEntrada);
@@ -229,7 +272,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const busF = 1 + 0.08 * Math.min(2, quants('parada-bus'));
     const faseF = faseEconomica().vendes || 1;
     const esdF = esdeveniment()?.arribades || 1;
-    return 0.065 * a * horaF * preuF * repF * parqF * busF * faseF * esdF;
+    const mktF = 1 + Math.min(1, (parc.campanyes || []).filter((c) => c.fins >= parc.dia).reduce((t, c) => t + (CAMPANYES[c.tipus]?.efecte || 0), 0));
+    return 0.065 * a * horaF * preuF * repF * parqF * busF * faseF * esdF * mktF;
   }
 
   // ---------- visitants ----------
@@ -253,8 +297,12 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       estat: 'camina', objectiu: null, img: `persona-${1 + Math.floor(Math.random() * PERSONES)}`, dir: 2,
       gana: 5 + Math.random() * 35, set: 5 + Math.random() * 35, lavabo: Math.random() * 25, energia: 75 + Math.random() * 25,
       satisf: 62, pressupost: 15 + Math.random() * 45, brossa: 0, passos: 0, temps: 0, vist: new Set(), sense: {}, espera: 0,
+      // gustos: fins a quina intensitat aguanta (i a partir de quina li sembla avorrit) i com de fàcil es mareja
+      nom: NOMS_VISITANTS[Math.floor(Math.random() * NOMS_VISITANTS.length)], num: (parc.totals.visitants || 0) + 1,
+      intMax: 3 + Math.random() * 7.5, mareigF: 0.5 + Math.random(), viatges: 0, gastat: parc.preus.entrada,
     };
     v.cotxe = enCotxe;
+    v.intMin = Math.max(0, v.intMax - 6);
     parc.diners += parc.preus.entrada + pagaParquing; v.pressupost -= parc.preus.entrada + pagaParquing;
     if (pagaParquing) { parc.avui.parquing += pagaParquing; parc.totals.ingressos += pagaParquing; }
     parc.avui.visitants += 1; parc.avui.entrades += parc.preus.entrada; parc.totals.visitants += 1; parc.totals.ingressos += parc.preus.entrada;
@@ -262,8 +310,13 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     visitants.push(v);
   }
   function pensa(v, clau) {
-    v.pensament = { ic: QUEIXES[clau]?.[0] || clau, fins: performance.now() + 2600 };
-    if (QUEIXES[clau]) parc.avui.queixes[clau] = (parc.avui.queixes[clau] || 0) + 1;
+    const q = QUEIXES[clau] || ELOGIS[clau];
+    v.pensament = { ic: q?.[0] || clau, fins: performance.now() + 2600 };
+    if (q) {
+      (v.pensaments ??= []).unshift(`${q[0]} ${q[1]}`); if (v.pensaments.length > 5) v.pensaments.pop();
+      if (QUEIXES[clau]) parc.avui.queixes[clau] = (parc.avui.queixes[clau] || 0) + 1;
+      else { parc.avui.elogis ??= {}; parc.avui.elogis[clau] = (parc.avui.elogis[clau] || 0) + 1; }
+    }
   }
   function flota(x, y, text, color) { textos.push({ x, y, text, color, ini: performance.now() }); if (textos.length > 40) textos.shift(); }
 
@@ -297,10 +350,15 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const atr = parc.objectes.filter((o) => OBJECTES[o.t].cat === 'atraccio' && accessible(o) && !o.avariat);
     if (atr.length) {
       let total = 0;
-      const pes = atr.map((o) => { const p = OBJECTES[o.t].atractiu * (v.vist.has(o.id) ? 0.3 : 1) / (1 + rt.get(o.id).cua.length / 8); total += p; return p; });
+      const pes = atr.map((o) => {
+        const d = OBJECTES[o.t], int = d.intensitat ?? 3;
+        const gust = int > v.intMax ? 0.02 : int < v.intMin ? 0.35 : 1;   // massa forta: gairebé mai; massa suau: poc
+        const p = d.atractiu * gust * (v.vist.has(o.id) ? 0.3 : 1) / (1 + rt.get(o.id).cua.length / 8); total += p; return p;
+      });
       let r = Math.random() * total, tria = atr[0];
       for (let i = 0; i < atr.length; i++) { r -= pes[i]; if (r <= 0) { tria = atr[i]; break; } }
       if (v.vist.has(tria.id) && v.vist.size >= atr.length && v.temps > 150 && Math.random() < 0.35) return marxa(v);
+      if ((OBJECTES[tria.t].intensitat ?? 3) > v.intMax) { pensa(v, 'intens'); v.vist.add(tria.id); v.estat = 'espera'; v.espera = 2; return; }
       const rr = ruta(v.x, v.y, acces.get(tria.id));
       if (rr) { v.objectiu = tria.id; v.ruta = rr; v.pas = 0; v.estat = 'camina'; return; }
     } else if (!v.sense.avorrit) { pensa(v, 'avorrit'); v.satisf -= 8; v.sense.avorrit = 60; }
@@ -337,7 +395,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const d = OBJECTES[o.t];
     const preu = d.cat === 'atraccio' ? (o.preu ?? 0) : d.cat === 'servei' ? 0 : (o.preu ?? d.preuJust);
     if (preu > 0) {
-      v.pressupost -= preu; parc.diners += preu; o.ingressos = (o.ingressos || 0) + preu; parc.totals.ingressos += preu;
+      v.pressupost -= preu; v.gastat = (v.gastat || 0) + preu; parc.diners += preu; o.ingressos = (o.ingressos || 0) + preu; parc.totals.ingressos += preu;
       if (d.cat === 'atraccio') parc.avui.atraccions += preu; else if (d.cat === 'botiga') parc.avui.botigues += preu; else parc.avui.menjar += preu;
       flota(o.x + d.mida / 2, o.y + d.mida / 2, `+${eur2(preu)}`, '#2a7423');
     }
@@ -345,6 +403,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       parc.diners -= d.cost; parc.avui.costMenjar += d.cost; parc.totals.despeses += d.cost;
       v.gana = clamp(v.gana - (d.efecte.gana || 0), 0, 100); v.set = clamp(v.set - (d.efecte.set || 0), 0, 100);
       v.lavabo += d.efecte.set > 0 ? 20 : 8;
+      if (d.rapid && Math.random() < 0.4) pensa(v, 'bonmenjar');
       v.brossa = d.rapid ? 0 : 1; v.passos = 0; v.satisf += (d.satisfa || 4) * clamp(d.preuJust / Math.max(preu, 0.5), 0.5, 1.4);
       o.usos = (o.usos || 0) + 1;
     }
@@ -359,8 +418,12 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       parc.diners += 0.5; parc.avui.altres += 0.5; parc.totals.ingressos += 0.5; o.ingressos = (o.ingressos || 0) + 0.5;
     }
     if (d.cat === 'atraccio') {
-      v.vist.add(o.id); v.set += 3; v.satisf += (3 + d.emocio * 1.6) * clamp(Math.sqrt(d.preuJust / Math.max(preu, d.preuJust * 0.5)), 0.6, 1.3); v.energia -= 4;
-      if (d.emocio >= 6 && Math.random() < 0.015 * (d.emocio - 5)) { v.marejat = true; pensa(v, '🤢'); }
+      const int = d.intensitat ?? 3, ajust = int > v.intMax ? 0.4 : int < v.intMin ? 0.6 : 1;
+      v.viatges = (v.viatges || 0) + 1;
+      v.vist.add(o.id); v.set += 3; v.satisf += ajust * (3 + d.emocio * 1.6) * clamp(Math.sqrt(d.preuJust / Math.max(preu, d.preuJust * 0.5)), 0.6, 1.3); v.energia -= 4;
+      if (Math.random() < 0.012 * (d.mareig ?? 1) * v.mareigF) { v.marejat = true; v.marejatDes = parc.minut; pensa(v, '🤢'); }
+      else if (ajust === 1 && d.emocio >= 5 && Math.random() < 0.3) pensa(v, 'genial');
+      if (preu > 0 && preu <= d.preuJust * 0.7 && Math.random() < 0.3) pensa(v, 'bonpreu');
     }
     v.satisf = clamp(v.satisf, 0, 100);
   }
@@ -380,6 +443,10 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (p.rol === 'mecanic') {
       const avariats = parc.objectes.filter((o) => o.avariat && accessible(o) && !personal.some((q) => q !== p && q.desti === o.id));
       for (const o of avariats) { const r = ruta(p.x, p.y, acces.get(o.id)); if (r) { p.ruta = r; p.pas = 0; p.estat = 'camina'; p.desti = o.id; return; } }
+      // si no hi ha res espatllat, revisa l'atracció més gastada
+      const gastada = parc.objectes.filter((o) => OBJECTES[o.t].cat === 'atraccio' && (o.fiabilitat ?? 100) < 85 && accessible(o) && !personal.some((q) => q !== p && q.desti === o.id))
+        .sort((a, b) => (a.fiabilitat ?? 100) - (b.fiabilitat ?? 100))[0];
+      if (gastada) { const r = ruta(p.x, p.y, acces.get(gastada.id)); if (r) { p.ruta = r; p.pas = 0; p.estat = 'camina'; p.desti = gastada.id; p.revisio = true; return; } }
     }
     if (p.rol === 'netejador') {
       const brutes = Object.keys(parc.brossa).map((s) => s.split(',').map(Number)).filter(([x, y]) => !personal.some((q) => q !== p && q.desti === k2(x, y)));
@@ -429,7 +496,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
         if (s.muntats.length && parc.minut >= s.fi) {
           for (const v of s.muntats) { serveix(v, o); v.estat = 'idle'; v.amagat = false; }
           o.usos = (o.usos || 0) + s.muntats.length;
-          if (Math.random() < 0.005 * (1 + (o.usos || 0) / 600)) {
+          o.fiabilitat = Math.max(20, (o.fiabilitat ?? 100) - 0.12);   // cada viatge desgasta una mica
+          if (Math.random() < 0.002 + (100 - o.fiabilitat) / 100 * 0.03) {
             o.avariat = true; o.avariatDes = parc.minut;
             avis(`S'ha espatllat: ${d.nom}!`, 'error');
           }
@@ -472,6 +540,16 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
           }
         }
         for (const a of animadors) if (Math.abs(a.fx - v.fx) + Math.abs(a.fy - v.fy) < 4) { v.satisf += 0.12 * dm; break; }
+        // marejat massa estona sense infermeria: vomita al camí
+        if (v.marejat && parc.minut - (v.marejatDes ?? parc.minut) > 10 && esCami(v.x, v.y)) {
+          parc.brossa[k2(v.x, v.y)] = Math.min(6, (parc.brossa[k2(v.x, v.y)] || 0) + 2);
+          pensa(v, 'vomit'); v.satisf -= 8; v.marejat = false;
+        }
+        if (dins(v.x, v.y)) {
+          if (bellesa[c] >= 6 && Math.random() < 0.004 * dm) pensa(v, 'bonic');
+          if (v.satisf > 85 && Math.random() < 0.003 * dm) pensa(v, 'divertit');
+          if (Math.random() < 0.0015 * dm && Object.keys(parc.brossa).length < 2) pensa(v, 'net');
+        }
         if (parc.objectes.some((o) => o.t === 'informacio' && accessible(o))) v.satisf += 0.01 * dm;
       }
       v.satisf = clamp(v.satisf, 0, 100);
@@ -495,14 +573,17 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
         if (camina(p, dm)) {
           p.estat = 'idle';
           if (p.rol === 'netejador' && p.desti && parc.brossa[p.desti]) { p.estat = 'treballa'; p.feina = 1.5; }
-          if (p.rol === 'mecanic' && p.desti && objecte(p.desti)?.avariat) { p.estat = 'treballa'; p.feina = 12; }
+          if (p.rol === 'mecanic' && p.desti && (objecte(p.desti)?.avariat || p.revisio)) { p.estat = 'treballa'; p.feina = p.revisio && !objecte(p.desti)?.avariat ? 5 : 12; }
         }
       } else if (p.estat === 'treballa') {
         p.feina -= dm;
         if (p.feina <= 0) {
           if (p.rol === 'netejador') delete parc.brossa[p.desti];
-          if (p.rol === 'mecanic') { const o = objecte(p.desti); if (o) { o.avariat = false; flota(o.x + 1, o.y + 1, '🔧 Reparada', '#0b78c8'); } }
-          p.estat = 'idle'; p.desti = null;
+          if (p.rol === 'mecanic') {
+            const o = objecte(p.desti);
+            if (o) { flota(o.x + 1, o.y + 1, o.avariat ? '🔧 Reparada' : '🔧 Revisada', '#0b78c8'); o.avariat = false; o.fiabilitat = Math.min(100, Math.max(o.fiabilitat ?? 100, 92)); }
+          }
+          p.estat = 'idle'; p.desti = null; p.revisio = false;
         }
       } else decideixPersonal(p);
     }
@@ -524,12 +605,25 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const manteniment = parc.objectes.reduce((t, o) => t + (OBJECTES[o.t].manteniment || 0), 0);
     const sous = Object.entries(parc.personal).reduce((t, [rol, n]) => t + n * PERSONAL_PARC[rol].sou, 0);
     const interessos = Math.round(parc.deute * INTERES_DIARI);
-    parc.diners -= manteniment + sous + interessos;
-    parc.totals.despeses += manteniment + sous + interessos;
+    // publicitat: les campanyes actives es paguen cada dia
+    parc.campanyes = (parc.campanyes || []).filter((c) => c.fins >= parc.dia);
+    const publicitat = parc.campanyes.reduce((t, c) => t + (CAMPANYES[c.tipus]?.costDia || 0), 0);
+    // investigació: punts segons el pressupost; quan n'hi ha prou, es desbloqueja la següent atracció
+    const rec = recerca(), nivell = RECERCA_NIVELLS[rec.nivell] || RECERCA_NIVELLS.cap;
+    let descobert = null;
+    rec.punts += nivell.punts;
+    const seg = seguentRecerca();
+    if (seg && rec.punts >= seg[1]) { rec.punts -= seg[1]; rec.investigat.push(seg[0]); descobert = seg[0]; }
+    if (!seguentRecerca()) rec.punts = 0;
+    const despRecerca = seguentRecerca() || descobert ? nivell.cost : 0;
+    const valoracioDia = valoracio();
+    parc.diners -= manteniment + sous + interessos + publicitat + despRecerca;
+    parc.totals.despeses += manteniment + sous + interessos + publicitat + despRecerca;
     const ingressos = a.entrades + a.atraccions + a.menjar + (a.botigues || 0) + (a.altres || 0) + (a.parquing || 0);
-    const despeses = manteniment + sous + interessos + a.costMenjar;
+    const despeses = manteniment + sous + interessos + a.costMenjar + publicitat + despRecerca;
     const informe = {
-      parquing: Math.round(a.parquing || 0), senseParquing: a.senseParquing || 0,
+      parquing: Math.round(a.parquing || 0), senseParquing: a.senseParquing || 0, publicitat, recerca: despRecerca, descobert, valoracio: valoracioDia,
+      elogis: Object.fromEntries(Object.entries(a.elogis || {}).sort((x, y) => y[1] - x[1]).slice(0, 3)),
       dia: parc.dia, visitants: a.visitants, entrades: a.entrades, atraccions: a.atraccions, menjar: a.menjar, botigues: Math.round((a.botigues || 0) + (a.altres || 0)),
       costMenjar: Math.round(a.costMenjar), manteniment, sous, interessos, ingressos: Math.round(ingressos), despeses: Math.round(despeses),
       benefici: Math.round(ingressos - despeses), satisf: a.satisfN ? Math.round(a.satisfSum / a.satisfN) : null, reputacio: Math.round(parc.reputacio),
@@ -656,6 +750,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   }
   function coloca(t, x, y) {
     const d = OBJECTES[t];
+    if (!investigat(t)) return avis('Aquesta atracció encara s\'ha d\'investigar.', 'error');
     if (!potColocar(t, x, y)) return avis('Aquí no hi cap: ha de ser sobre gespa lliure.', 'error');
     if (parc.diners < d.preu) return avis(`No tens prou diners: costa ${eur(d.preu)}.`, 'error');
     parc.diners -= d.preu; parc.totals.despeses += d.preu;
@@ -704,6 +799,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     aColocar = null; xip.hidden = true; ajuda.hidden = false;
     if (id === 'finances') { eina = 'mou'; botonsEina.mou.classList.add('actiu'); botonsEina.finances.classList.remove('actiu'); cataleg.hidden = true; return obreFinances(); }
     if (id === 'personal') { eina = 'mou'; botonsEina.mou.classList.add('actiu'); botonsEina.personal.classList.remove('actiu'); cataleg.hidden = true; return obrePersonal(); }
+    const panells = { opinions: obreOpinions, marqueting: obreMarqueting, recerca: obreRecerca };
+    if (panells[id]) { eina = 'mou'; botonsEina.mou.classList.add('actiu'); botonsEina[id].classList.remove('actiu'); cataleg.hidden = true; return panells[id](); }
     const abans = eina;
     eina = id;
     if ((abans === 'terreny') !== (id === 'terreny')) encaixa();
@@ -722,7 +819,9 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const cartaMuralla = eina === 'decoracio' ? h('button', { class: `parc-carta${parc.muralla ? ' triada' : ''}`, onclick: construeixMuralla, title: 'Envolta tot el parc amb una muralla' },
       h('img', { src: 'img/parc/muralla-tram.webp', alt: '' }), h('strong', {}, parc.muralla ? 'Muralla (feta)' : 'Muralla'),
       h('span', {}, parc.muralla ? 'Toca per treure-la' : eur(muralla().cost)), h('span', { class: 'nota' }, `Tot el parc · +${ATRACTIU_MURALLA} d'atractiu`)) : null;
-    cataleg.replaceChildren(...[cartaMuralla].filter(Boolean), ...Object.entries(OBJECTES).filter(([, d]) => d.cat === eina).map(([t, d]) => h('button', {
+    cataleg.replaceChildren(...[cartaMuralla].filter(Boolean), ...Object.entries(OBJECTES).filter(([, d]) => d.cat === eina).map(([t, d]) => !investigat(t) ? h('button', {
+      class: 'parc-carta bloquejada', title: 'Encara s\'ha d\'investigar', onclick: () => obreRecerca(),
+    }, h('img', { src: srcObjecte(t), alt: '' }), h('strong', {}, d.nom), h('span', {}, '🔒 Per investigar'), h('span', { class: 'nota' }, seguentRecerca()?.[0] === t ? 'S\'està investigant ara' : 'Toca per veure la recerca')) : h('button', {
       class: `parc-carta${aColocar === t ? ' triada' : ''}`, disabled: parc.diners < d.preu, title: d.text || '', 'data-preu': d.preu,
       onclick: () => { aColocar = t; mostraXip(); },
     }, h('img', { src: srcObjecte(t), alt: '' }), h('strong', {}, d.nom), h('span', {}, eur(d.preu)),
@@ -770,8 +869,9 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     movent = null; aColocar = null; xip.hidden = true; ajuda.hidden = false;
     recalcula();
   }
-  function tancaInfo() { info.hidden = true; info.replaceChildren(); }
+  function tancaInfo() { info.hidden = true; info.replaceChildren(); infoVisitant = null; }
   function panell(titol, ...cos) {
+    infoVisitant = null;
     info.replaceChildren(h('header', {}, h('h2', {}, titol), h('button', { class: 'btn-tancar', onclick: tancaInfo, 'aria-label': 'Tanca' }, '×')), h('div', { class: 'parc-info-cos' }, ...cos));
     info.hidden = false;
   }
@@ -797,6 +897,11 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       if (d.text) cos.push(h('p', { class: 'nota' }, d.text));
       if (!accessible(o) && d.cat !== 'decoracio' && !d.sensecami) cos.push(h('p', { class: 'nota falta' }, '⚠️ No toca cap camí: ningú hi pot arribar.'));
       if (d.cat === 'atraccio') {
+        const barra = (nom, n, color) => h('div', { class: 'parc-nota' }, h('span', {}, nom), h('span', { class: 'parc-barreta' }, h('span', { style: `width:${n * 10}%;background:${color}` })), h('strong', {}, `${n}/10`));
+        cos.push(barra('Emoció', d.emocio ?? 0, '#3c9d32'), barra('Intensitat', d.intensitat ?? 0, '#f2891d'), barra('Mareig', d.mareig ?? 0, '#8e44ad'),
+          h('p', { class: 'nota' }, 'Cada visitant té els seus gustos: si la intensitat és més alta del que aguanta, no hi puja; si és massa baixa, s\'avorreix. Com més mareig, més gent es mareja.'),
+          barra('Fiabilitat', Math.round((o.fiabilitat ?? 100) / 10), (o.fiabilitat ?? 100) > 70 ? '#0b78c8' : '#d6402f'),
+          h('p', { class: 'nota' }, `Fiabilitat: ${Math.round(o.fiabilitat ?? 100)} %. Amb l'ús es desgasta i s'espatlla més sovint; els mecànics la revisen quan no tenen res a reparar.`));
         cos.push(h('dl', { class: 'dades' },
           h('dt', {}, 'Viatges (persones)'), h('dd', {}, fmt.format(o.usos || 0)),
           h('dt', {}, 'Ingressos totals'), h('dd', {}, eur(o.ingressos || 0)),
@@ -840,6 +945,65 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     }
     panell(d.nom, ...cos);
   }
+  // ---------- un visitant ----------
+  function obreVisitant(v) {
+    const barra = (nom, n, color) => h('div', { class: 'parc-nota' }, h('span', {}, nom), h('span', { class: 'parc-barreta' }, h('span', { style: `width:${clamp(n, 0, 100)}%;background:${color}` })));
+    const fer = { camina: v.objectiu === 'sortida' ? 'Se\'n va cap a la sortida' : v.objectiu ? `Va cap a: ${OBJECTES[objecte(v.objectiu)?.t]?.nom || '...'}` : 'Passeja', cua: 'Fa cua', muntat: 'És dins d\'una atracció', seu: 'Descansa en un banc', idle: 'Pensa què fer', espera: 'Mira al seu voltant', surt: 'Marxa del parc' }[v.estat] || '';
+    panell(`${v.nom} (visitant n. ${v.num})`,
+      h('p', {}, h('strong', {}, fer), v.marejat ? ' · 🤢 Està marejat' : ''),
+      barra('Felicitat', v.satisf, '#3c9d32'), barra('Energia', v.energia, '#0b78c8'),
+      barra('Gana', v.gana, '#f2891d'), barra('Set', v.set, '#29a3d6'), barra('Lavabo', v.lavabo, '#8e44ad'),
+      h('dl', { class: 'dades' },
+        h('dt', {}, 'Diners que li queden'), h('dd', {}, eur2(Math.max(0, v.pressupost))),
+        h('dt', {}, 'Ha gastat al parc'), h('dd', {}, eur2(v.gastat || 0)),
+        h('dt', {}, 'Atraccions on ha pujat'), h('dd', {}, String(v.viatges || 0)),
+        h('dt', {}, 'Intensitat que li agrada'), h('dd', {}, `de ${v.intMin.toFixed(0)} a ${v.intMax.toFixed(0)}`),
+        h('dt', {}, 'Temps al parc'), h('dd', {}, `${Math.round(v.temps)} min`)),
+      h('h3', {}, 'Què pensa'),
+      v.pensaments?.length ? h('ul', { class: 'parc-queixes' }, ...v.pensaments.map((t) => h('li', {}, t))) : h('p', { class: 'nota' }, 'Encara no ha pensat res especial.'));
+    infoVisitant = v;
+  }
+  // ---------- què pensen els visitants (avui) ----------
+  function obreOpinions() {
+    const llista = (obj, dic, classe) => Object.entries(obj || {}).filter(([c]) => dic[c]).sort((a, b) => b[1] - a[1])
+      .map(([c, n]) => h('li', { class: classe }, `${dic[c][0]} ${dic[c][1]} `, h('strong', {}, `(${n})`), dic[c][2] ? h('span', { class: 'nota' }, dic[c][2]) : null));
+    const bons = llista(parc.avui.elogis, ELOGIS, ''), dolents = llista(parc.avui.queixes, QUEIXES, '');
+    panell('Què pensen els visitants (avui)',
+      h('p', { class: 'nota' }, 'Com al RollerCoaster Tycoon: el que diuen els visitants és la millor pista per saber què has de millorar. Toca un visitant per veure què pensa ell.'),
+      h('h3', {}, '👍 Coses bones'), bons.length ? h('ul', { class: 'parc-queixes' }, ...bons) : h('p', { class: 'nota' }, 'Encara res.'),
+      h('h3', {}, '👎 Queixes'), dolents.length ? h('ul', { class: 'parc-queixes' }, ...dolents) : h('p', { class: 'nota' }, 'Cap queixa. Molt bé!'));
+  }
+  // ---------- màrqueting ----------
+  function obreMarqueting() {
+    parc.campanyes = (parc.campanyes || []).filter((c) => c.fins >= parc.dia);
+    const files = Object.entries(CAMPANYES).map(([id, c]) => {
+      const activa = parc.campanyes.find((x) => x.tipus === id);
+      return h('div', { class: 'parc-personal' },
+        h('div', {}, h('strong', {}, `${c.ic} ${c.nom}`), h('span', { class: 'nota' }, `${c.text} ${eur(c.costDia)} cada dia · +${Math.round(c.efecte * 100)} % de visitants.`)),
+        activa ? h('p', { class: 'nota' }, `✅ En marxa fins al dia ${activa.fins}.`) : h('div', { class: 'fila-botons' }, ...[3, 7].map((dies) =>
+          h('button', { class: 'btn', onclick: () => { parc.campanyes.push({ tipus: id, fins: parc.dia + dies - 1 }); guarda(); obreMarqueting(); avis(`Campanya «${c.nom}» en marxa!`, 'ok'); } }, `${dies} dies (${eur(c.costDia * dies)})`))));
+    });
+    panell('Màrqueting', h('p', { class: 'nota' }, 'La publicitat fa venir més gent mentre dura. Es paga al final de cada dia. Pregunta\'t si el que guanyes de més paga el que costa!'), ...files);
+  }
+  // ---------- investigació ----------
+  function obreRecerca() {
+    const rec = recerca(), seg = seguentRecerca();
+    const triar = h('div', { class: 'fila-botons' }, ...Object.entries(RECERCA_NIVELLS).map(([id, n]) =>
+      h('button', { class: `btn${rec.nivell === id ? ' btn-principal' : ''}`, onclick: () => { rec.nivell = id; guarda(); obreRecerca(); } }, `${n.nom}${n.cost ? ` (${eur(n.cost)}/dia)` : ''}`)));
+    const pendents = RECERCA_ORDRE.filter(([t]) => !rec.investigat.includes(t));
+    panell('Investigació (R+D)',
+      h('p', { class: 'nota' }, 'El departament d\'investigació dissenya atraccions noves. Com més pressupost, més de pressa. Si no hi inverteixes, no tindràs les atraccions més grans.'),
+      h('h3', {}, 'Pressupost'), triar,
+      seg ? h('div', { class: 'parc-personal' },
+        h('strong', {}, `Ara s'investiga: ${OBJECTES[seg[0]].nom}`),
+        h('div', { class: 'parc-nota' }, h('span', {}, 'Progrés'), h('span', { class: 'parc-barreta' }, h('span', { style: `width:${Math.min(100, rec.punts / seg[1] * 100)}%;background:#8e44ad` })), h('strong', {}, `${rec.punts}/${seg[1]}`)),
+        h('span', { class: 'nota' }, (RECERCA_NIVELLS[rec.nivell]?.punts || 0) ? `Al ritme actual, falten uns ${Math.ceil((seg[1] - rec.punts) / RECERCA_NIVELLS[rec.nivell].punts)} dies.` : 'Amb el pressupost a «Cap», la investigació està aturada.'))
+        : h('p', {}, '🎉 Ja ho has investigat tot!'),
+      pendents.length > 1 ? h('h3', {}, 'Després vindran') : null,
+      pendents.length > 1 ? h('ul', { class: 'parc-queixes' }, ...pendents.slice(1).map(([t]) => h('li', {}, OBJECTES[t].nom))) : null,
+      rec.investigat.length ? h('h3', {}, 'Ja investigat') : null,
+      rec.investigat.length ? h('p', { class: 'nota' }, rec.investigat.map((t) => OBJECTES[t]?.nom).join(', ')) : null);
+  }
   function obreFinances() {
     const hist = parc.historial.slice(-7).reverse();
     const deute = h('div', { class: 'bloc' },
@@ -865,7 +1029,19 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       h('thead', {}, h('tr', {}, h('th', {}, 'Dia'), h('th', {}, 'Visitants'), h('th', {}, 'Ingressos'), h('th', {}, 'Despeses'), h('th', {}, 'Benefici'))),
       h('tbody', {}, ...hist.map((r) => h('tr', {}, h('td', {}, String(r.dia)), h('td', {}, String(r.visitants)), h('td', {}, eur(r.ingressos)), h('td', {}, eur(r.despeses)),
         h('td', { class: r.benefici < 0 ? 'falta' : '' }, eur(r.benefici)))))) : h('p', { class: 'nota' }, 'Encara no ha acabat cap dia. Al final de cada dia (a les 20:00) veuràs l\'informe.');
-    panell('Diners i preus', deute, h('h3', {}, 'Preus'), ...preus, h('h3', {}, 'Últims dies'), taula);
+    const dies = parc.historial.slice(-14);
+    const grafic = dies.length > 1 ? (() => {
+      const W = 340, H = 120, m = Math.max(1, ...dies.map((d) => Math.abs(d.benefici))), bw = W / dies.length;
+      const y0 = H / 2;
+      return sv('svg', { viewBox: `0 0 ${W} ${H + 16}`, class: 'parc-grafic', role: 'img', 'aria-label': 'Benefici dels últims dies' },
+        sv('line', { x1: 0, x2: W, y1: y0, y2: y0, stroke: '#9fb3c8', 'stroke-width': 1 }),
+        ...dies.map((d, i) => {
+          const hh = (Math.abs(d.benefici) / m) * (H / 2 - 4);
+          return sv('rect', { x: i * bw + 3, y: d.benefici >= 0 ? y0 - hh : y0, width: bw - 6, height: Math.max(1, hh), rx: 3, fill: d.benefici >= 0 ? '#3c9d32' : '#d6402f' });
+        }),
+        ...dies.map((d, i) => sv('text', { x: i * bw + bw / 2, y: H + 13, 'text-anchor': 'middle', 'font-size': 10, fill: '#5a6b7d' }, String(d.dia))));
+    })() : null;
+    panell('Diners i preus', deute, h('h3', {}, 'Preus'), ...preus, h('h3', {}, 'Benefici de cada dia'), grafic || h('p', { class: 'nota' }, 'El gràfic sortirà quan hagin passat uns quants dies.'), h('h3', {}, 'Últims dies'), taula);
   }
   function obrePersonal() {
     const files = Object.entries(PERSONAL_PARC).map(([rol, p]) => h('div', { class: 'parc-personal' },
@@ -892,9 +1068,14 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
         h('dt', {}, 'Manteniment'), h('dd', {}, `−${eur(r.manteniment)}`),
         h('dt', {}, 'Sous del personal'), h('dd', {}, `−${eur(r.sous)}`),
         h('dt', {}, 'Interessos del préstec'), h('dd', {}, `−${eur(r.interessos)}`),
+        r.publicitat ? [h('dt', {}, 'Publicitat'), h('dd', {}, `−${eur(r.publicitat)}`)] : null,
+        r.recerca ? [h('dt', {}, 'Investigació'), h('dd', {}, `−${eur(r.recerca)}`)] : null,
         h('dt', {}, h('strong', {}, 'Benefici del dia')), h('dd', { class: r.benefici < 0 ? 'falta' : '' }, h('strong', {}, eur(r.benefici))),
         h('dt', {}, 'Satisfacció'), h('dd', {}, r.satisf == null ? '—' : `${r.satisf} / 100`),
-        h('dt', {}, 'Reputació'), h('dd', {}, `${r.reputacio} / 100`)),
+        h('dt', {}, 'Reputació'), h('dd', {}, `${r.reputacio} / 100`),
+        r.valoracio != null ? [h('dt', {}, 'Valoració del parc'), h('dd', {}, `⭐ ${r.valoracio} / 999`)] : null),
+      r.descobert ? h('p', { class: 'nota' }, `🔬 Els investigadors han acabat el disseny de: `, h('strong', {}, OBJECTES[r.descobert].nom), '. Ja la pots construir!') : null,
+      Object.keys(r.elogis || {}).length ? h('div', {}, h('h3', {}, 'El que més els ha agradat'), h('ul', { class: 'parc-queixes' }, ...Object.entries(r.elogis).filter(([c]) => ELOGIS[c]).map(([c, n]) => h('li', {}, `${ELOGIS[c][0]} ${ELOGIS[c][1]} (${n} vegades)`)))) : null,
       r.senseParquing ? h('p', { class: 'nota falta' }, `🚗 ${r.senseParquing} visitants no han trobat lloc per aparcar i se n'han tornat a casa.`) : null,
       r.visitants === 0 ? h('p', { class: 'nota falta' }, atractiu() <= 0 ? 'No ha vingut ningú: construeix una atracció i connecta-la amb un camí fins a l\'entrada.' : 'No ha vingut ningú. Potser l\'entrada és massa cara?') : null,
       consells.length ? h('div', {}, h('h3', {}, 'De què es queixen els visitants'), h('ul', { class: 'parc-queixes' }, ...consells)) : null,
@@ -982,8 +1163,21 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (aColocar) { const m = OBJECTES[aColocar].mida; const { x, y } = casella(ev.clientX, ev.clientY, m); if (movent) acabaMoure(x, y); else coloca(aColocar, x, y); return; }
     if (eina === 'terreny') { const { x, y } = casella(ev.clientX, ev.clientY); return compraParcella(blocDe(x, y)); }
     if (eina !== 'mou') return;
+    const v = visitantA(ev.clientX, ev.clientY);
+    if (v) return obreVisitant(v);
     const o = objecteA(ev.clientX, ev.clientY);
     if (o) obreObjecte(o);
+  }
+  function visitantA(sx, sy) {
+    const r = canvas.getBoundingClientRect();
+    const wx = (sx - r.left - despl.x) / escala, wy = (sy - r.top - despl.y) / escala;
+    let millor = null, dist = 26;
+    for (const v of visitants) {
+      if (v.amagat) continue;
+      const p = iso(v.fx, v.fy), d = Math.hypot(wx - p.x, wy - (p.y - 14));
+      if (d < dist) { dist = d; millor = v; }
+    }
+    return millor;
   }
   // Quin objecte hi ha sota el dit: primer mira la imatge (de davant cap enrere), després la casella
   function objecteA(sx, sy) {
@@ -1182,6 +1376,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const s = visitants.length ? visitants.reduce((t, v) => t + v.satisf, 0) / visitants.length : null;
     vSatisf.textContent = s == null ? '—' : `${Math.round(s)}%`;
     vDia.textContent = `Dia ${parc.dia} · ${hora(parc.minut)}`;
+    vValoracio.textContent = String(valoracio());
     botoVel.forEach((b, i) => b.classList.toggle('actiu', [0, 1, 2, 4][i] === velocitat));
     const esd = esdeveniment();
     vEsdev.hidden = !esd; if (esd) { vEsdev.textContent = `${esd.ic} ${esd.nom}`; vEsdev.title = esd.text; }
@@ -1199,7 +1394,9 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       while (dm > 0) { const pas = Math.min(0.5, dm); simula(pas); dm -= pas; if (informeObert) break; }
     }
     dibuixa();
-    if ((comptadorBarra += dt) > 0.25) { comptadorBarra = 0; refrescaBarra(); if (!cataleg.hidden) for (const b of cataleg.children) b.disabled = parc.diners < Number(b.dataset.preu || 0); }
+    if ((comptadorBarra += dt) > 0.25) {
+      comptadorBarra = 0; refrescaBarra();
+      if (infoVisitant && !info.hidden) { const v = infoVisitant; if (visitants.includes(v)) { const sc = info.querySelector('.parc-info-cos')?.scrollTop; obreVisitant(v); const c = info.querySelector('.parc-info-cos'); if (c && sc) c.scrollTop = sc; } else tancaInfo(); } if (!cataleg.hidden) for (const b of cataleg.children) b.disabled = parc.diners < Number(b.dataset.preu || 0); }
     if (Date.now() - darrerDesat > 30000 && !movent) guarda(false);
     requestAnimationFrame(bucle);
   }
