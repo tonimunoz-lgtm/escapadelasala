@@ -42,6 +42,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   const parc = estat.parc;
   parc.brossa ??= {}; parc.historial ??= []; parc.personal ??= { mecanic: 0, netejador: 0, animador: 0 };
   parc.preus ??= { entrada: 5 }; parc.totals ??= { visitants: 0, ingressos: 0, despeses: 0 };
+  for (const r of parc.historial) if (Array.isArray(r.queixes)) r.queixes = Object.fromEntries(r.queixes);
 
   // ---------- DOM ----------
   const canvas = h('canvas', { class: 'parc-canvas', 'aria-label': 'El teu parc d\'atraccions' });
@@ -460,7 +461,8 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
       dia: parc.dia, visitants: a.visitants, entrades: a.entrades, atraccions: a.atraccions, menjar: a.menjar, botigues: Math.round((a.botigues || 0) + (a.altres || 0)),
       costMenjar: Math.round(a.costMenjar), manteniment, sous, interessos, ingressos: Math.round(ingressos), despeses: Math.round(despeses),
       benefici: Math.round(ingressos - despeses), satisf: a.satisfN ? Math.round(a.satisfSum / a.satisfN) : null, reputacio: Math.round(parc.reputacio),
-      queixes: Object.entries(a.queixes).sort((x, y) => y[1] - x[1]).slice(0, 3),
+      // Firebase no accepta llistes dins de llistes: les 3 queixes principals es desen com a objecte
+      queixes: Object.fromEntries(Object.entries(a.queixes).sort((x, y) => y[1] - x[1]).slice(0, 3)),
     };
     parc.historial.push(informe);
     if (parc.historial.length > 30) parc.historial.shift();
@@ -696,7 +698,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   }
   function mostraInforme(r) {
     informeObert = true;
-    const consells = r.queixes.map(([c, n]) => h('li', {}, `${QUEIXES[c][0]} ${QUEIXES[c][1]} (${n} vegades). `, h('span', { class: 'nota' }, QUEIXES[c][2])));
+    const consells = Object.entries(r.queixes || {}).sort((x, y) => y[1] - x[1]).filter(([c]) => QUEIXES[c]).map(([c, n]) => h('li', {}, `${QUEIXES[c][0]} ${QUEIXES[c][1]} (${n} vegades). `, h('span', { class: 'nota' }, QUEIXES[c][2])));
     panell(`Informe del dia ${r.dia}`,
       h('dl', { class: 'dades' },
         h('dt', {}, 'Visitants'), h('dd', {}, String(r.visitants)),

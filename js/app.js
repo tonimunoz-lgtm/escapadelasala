@@ -61,6 +61,8 @@ async function entrarAlumne() {
   }
   estat.partida ??= config.partida;
   joc.migrar(estat);
+  // informes del parc desats amb el format antic (llistes dins de llistes, que Firebase no accepta)
+  for (const r of estat.parc?.historial || []) if (Array.isArray(r.queixes)) r.queixes = Object.fromEntries(r.queixes);
   iniciarJoc();
 }
 
