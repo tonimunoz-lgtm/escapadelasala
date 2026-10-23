@@ -385,7 +385,11 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
         const vol = clamp(1.75 - preu / d.preuJust, 0, 1);
         if (v.pressupost < preu || Math.random() > vol) { pensa(v, 'car'); v.satisf -= 5; v.estat = 'idle'; if (d.cat !== 'atraccio') v.sense[d.cat === 'menjar' ? (o.t === 'begudes' ? 'set' : 'gana') : d.cat === 'botiga' ? 'botiga' : 'lavabo'] = 25; return; }
       }
+      const n = rt.get(o.id).cua.length;
       v.estat = 'cua'; v.espera = 0; rt.get(o.id).cua.push(v);
+      // es col·loquen en fila dins la casella del camí (3x3 llocs, i després s'hi van afegint)
+      v.fx = v.x + 0.5 + ((n % 3) - 1) * 0.27 + (Math.random() - 0.5) * 0.06;
+      v.fy = v.y + 0.5 + ((Math.floor(n / 3) % 3) - 1) * 0.27 + (Math.random() - 0.5) * 0.06;
       return;
     }
     v.estat = 'idle';
@@ -1297,6 +1301,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       if (!ok) { ctx.font = '800 22px "Baloo 2", system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#d6402f'; ctx.fillText(parc.diners < (movent ? movent.cost : OBJECTES[aColocar].preu) ? 'No tens prou diners' : 'Aquí no hi cap', c.x, c.y + 8); }
     });
     for (const d of [...capes.keys()].sort((a, b) => a - b)) for (const f of capes.get(d)) f();
+    dibuixaCrits();
     // textos flotants (diners)
     const ara = performance.now();
     ctx.textAlign = 'center'; ctx.font = '800 22px "Baloo 2", system-ui, sans-serif';
@@ -1316,11 +1321,79 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const q = iso(x, y + 1);
     ctx.save(); ctx.translate(q.x, 0); ctx.scale(-1, 1); ctx.drawImage(im, -w * 0.96, q.y + 4 - hh, w, hh); ctx.restore();
   }
+  // ---------- atraccions en marxa ----------
+  // Gent que es veu damunt de l'atracció mentre funciona. Retorna [darrere, davant] per poder
+  // dibuixar els de darrere abans de la imatge i els de davant després (sembla que hi són a dins).
+  const t0 = performance.now();
+  function passatgers(o, s) {
+    const d = OBJECTES[o.t], m = d.mida, t = (performance.now() - t0) / 1000;
+    const qui = s.muntats.slice(0, o.t === 'llits-elastics' ? 4 : 10);
+    if (!qui.length) return [[], []];
+    const cu = o.x + m / 2, cv = o.y + m / 2, r = [[], []];
+    qui.forEach((v, i) => {
+      let u = cu, w = cv, alt = 0;
+      if (o.t === 'llits-elastics') {
+        const [du, dw] = [[-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22]][i];
+        u += du; w += dw; alt = 6 + Math.abs(Math.sin(t * 5 + i * 1.7)) * 26;
+      } else if (o.t === 'carrusel') {
+        const a = t * 0.9 + (i / qui.length) * Math.PI * 2;
+        u += Math.cos(a) * m * 0.3; w += Math.sin(a) * m * 0.3; alt = 14 + Math.sin(t * 3 + i) * 5;
+      } else if (o.t === 'tasses') {
+        const a = t * 0.7 + (Math.floor(i / 2) / Math.ceil(qui.length / 2)) * Math.PI * 2, b = t * 4 + i * Math.PI;
+        u += Math.cos(a) * m * 0.24 + Math.cos(b) * 0.08; w += Math.sin(a) * m * 0.24 + Math.sin(b) * 0.08; alt = 10;
+      } else return;
+      const p = iso(u, w);
+      r[p.y < iso(cu, cv).y ? 0 : 1].push({ v, x: p.x, y: p.y - alt });
+    });
+    return r;
+  }
+  function dibuixaPassatger({ v, x, y }) {
+    const im = img(`img/animacions/${v.img}.webp`);
+    if (!im) return;
+    const fw = im.naturalWidth / 4, fh = im.naturalHeight / 4;
+    ctx.drawImage(im, 0, 0, fw, fh, x - 10, y - 28, 20, 30);
+  }
+  // crits i emocions que surten de les atraccions grans quan funcionen
+  const crits = [];
+  const CRITS = { fort: ['Aaaah!', '😱', '🤩', 'Iuuuhu!', 'Més ràpid!', '😵'], suau: ['😄', '🎵', '😊', 'Que bonic!', '👋'], aigua: ['💦', '💦', 'Xof!', '😆', '💧'] };
+  function llançaCrits() {
+    const ara = performance.now();
+    for (const o of parc.objectes) {
+      const d = OBJECTES[o.t], s = rt.get(o.id);
+      if (d.cat !== 'atraccio' || !s?.muntats.length || o.x < 0 || ['llits-elastics', 'carrusel', 'tasses'].includes(o.t)) continue;
+      if (Math.random() > 0.35) continue;
+      const tipus = /troncs|rius/.test(o.t) ? 'aigua' : (d.intensitat ?? 3) >= 5 ? 'fort' : 'suau';
+      const llista = CRITS[tipus];
+      const im = img(srcObjecte(o.t)), m = d.mida;
+      const alt = im ? WP * m * d.frac * (im.naturalHeight / im.naturalWidth) * 0.75 : WP * m * 0.5;
+      crits.push({ x: o.x + m / 2 + (Math.random() - 0.5) * m * 0.6, y: o.y + m / 2 + (Math.random() - 0.5) * m * 0.6, alt, text: llista[Math.floor(Math.random() * llista.length)], ini: ara });
+    }
+    while (crits.length > 60) crits.shift();
+  }
+  function dibuixaCrits() {
+    const ara = performance.now();
+    ctx.textAlign = 'center';
+    for (let i = crits.length - 1; i >= 0; i--) {
+      const c = crits[i], vida = (ara - c.ini) / 1800;
+      if (vida >= 1) { crits.splice(i, 1); continue; }
+      const p = iso(c.x, c.y);
+      ctx.globalAlpha = Math.min(1, (1 - vida) * 1.6);
+      ctx.font = c.text.length > 2 ? '800 20px "Baloo 2", system-ui' : '26px system-ui';
+      const y = p.y - c.alt - vida * 60;
+      if (c.text.length > 2) { ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.strokeText(c.text, p.x, y); ctx.fillStyle = '#0a3566'; }
+      ctx.fillText(c.text, p.x, y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function dibuixaObj(o) {
     if (o.x < 0) return;
     const d = OBJECTES[o.t], m = d.mida, im = img(srcObjecte(o.t));
     const c = iso(o.x + m / 2, o.y + m / 2);
+    const [darrere, davant] = d.cat === 'atraccio' && rt.get(o.id) ? passatgers(o, rt.get(o.id)) : [[], []];
+    darrere.forEach(dibuixaPassatger);
     if (im) dibuixaObjecte(ctx, im, o.t, c.x, c.y, WP * m, o.gir);
+    davant.forEach(dibuixaPassatger);
     if (o.t === 'parquing') dibuixaCotxes(o);
     const s = rt.get(o.id);
     ctx.textAlign = 'center';
@@ -1396,6 +1469,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     dibuixa();
     if ((comptadorBarra += dt) > 0.25) {
       comptadorBarra = 0; refrescaBarra();
+      if (velocitat && !informeObert) llançaCrits();
       if (infoVisitant && !info.hidden) { const v = infoVisitant; if (visitants.includes(v)) { const sc = info.querySelector('.parc-info-cos')?.scrollTop; obreVisitant(v); const c = info.querySelector('.parc-info-cos'); if (c && sc) c.scrollTop = sc; } else tancaInfo(); } if (!cataleg.hidden) for (const b of cataleg.children) b.disabled = parc.diners < Number(b.dataset.preu || 0); }
     if (Date.now() - darrerDesat > 30000 && !movent) guarda(false);
     requestAnimationFrame(bucle);
