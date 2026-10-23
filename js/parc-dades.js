@@ -18,6 +18,11 @@ export const preuParcella = (comprades) => 8000 + 2000 * comprades;  // cada par
 export const PLACES_CARRER = 15;
 export const PART_EN_COTXE = 0.75;                 // 3 de cada 4 visitants arriben en cotxe
 export const PERSONES_PER_COTXE = 3;
+
+// Muralla: es construeix sola al voltant de tot el parc (deixant lliure l'entrada)
+export const COST_TRAM_MURALLA = 120;   // per cada costat de casella
+export const COST_TORRE = 600;          // a cada cantonada
+export const ATRACTIU_MURALLA = 2;
 // Entrada del parc (2x2) al mig del costat de davant
 export const ENTRADA = { x: 9, y: 19 };
 
@@ -56,7 +61,12 @@ export const CATEGORIES = [
 ];
 
 export const OBJECTES = {
-  entrada: { nom: 'Entrada del parc', cat: 'fix', img: 'entrada-petita', mida: 2, frac: 0.97, preu: 0, manteniment: 40 },
+  // entrades: la petita és la del principi; es pot millorar a la mitjana i a la gran (més atractiu)
+  entrada: { nom: 'Entrada petita', cat: 'fix', img: 'entrada-petita', mida: 2, frac: 0.97, preu: 0, manteniment: 40, atractiu: 0 },
+  'entrada-mitjana': { nom: 'Entrada del castell', cat: 'fix', img: 'entrada-mitjana', mida: 2, frac: 0.97, preu: 25000, manteniment: 80, atractiu: 1.5,
+    text: 'Una porta amb torre. Fa el parc més vistós i hi ve més gent.' },
+  'entrada-gran': { nom: 'Gran portal', cat: 'fix', img: 'entrada-gran', mida: 3, frac: 0.97, preu: 60000, manteniment: 150, atractiu: 4,
+    text: 'L\'entrada d\'un gran parc: dues torres i quatre taquilles. Ocupa 3x3 caselles.' },
 
   carrusel: { nom: 'Carrusel de cavallets', cat: 'atraccio', img: 'carrusel', mida: 2, frac: 0.97, preu: 12000, manteniment: 120,
     capacitat: 16, durada: 4, atractiu: 3, emocio: 2, preuJust: 3, text: 'Un clàssic per a tota la família. Tranquil i molt popular.' },
@@ -102,6 +112,10 @@ export const OBJECTES = {
 
   parquing: { nom: 'Pàrquing', cat: 'servei', img: 'parquing', mida: 2, frac: 1, preu: 6000, manteniment: 30, places: 20, sensecami: true,
     text: '20 places per a cotxes. Sense pàrquing, només hi ha 15 places al carrer i molta gent no pot venir. Tu decideixes quant costa aparcar.' },
+  'parquing-caseta': { nom: 'Caseta del pàrquing', cat: 'servei', img: 'parquing-caseta', mida: 1, frac: 0.82, preu: 2500, manteniment: 40, sensecami: true,
+    text: 'Sense caseta, el pàrquing és gratis. Amb una caseta, cobres el preu que tu decideixis per cada cotxe (el manteniment inclou el sou del cobrador).' },
+  'parada-bus': { nom: 'Parada d\'autobús', cat: 'servei', img: 'parada-bus', mida: 2, frac: 0.95, preu: 15000, manteniment: 120, sensecami: true,
+    text: 'Una línia d\'autobús des de la ciutat: ve més gent i menys gent necessita aparcar.' },
   lavabos: { nom: 'Lavabos', cat: 'servei', img: 'lavabos', mida: 1, frac: 0.92, preu: 4000, manteniment: 45,
     text: 'Sense lavabos, els visitants s\'enfaden molt (i marxen).' },
   'primers-auxilis': { nom: 'Infermeria', cat: 'servei', img: 'primers-auxilis', mida: 1, frac: 0.9, preu: 8000, manteniment: 90,
