@@ -517,15 +517,15 @@ export function crearCiutat({ canvas, onClic }) {
     }
     // objectes, de darrere cap endavant
     const objs = (parc.objectes || '').split(';').filter(Boolean).map((o) => {
-      const [t, px, py] = o.split(','); const m = OBJECTES[t]?.mida || 1;
+      const [t, px, py, gir] = o.split(','); const m = OBJECTES[t]?.mida || 1;
       const [lx, ly] = giraObjecte(Number(px), Number(py), m, costat);
-      return { t, lx, ly, m };
+      return { t, lx, ly, m, gir: gir === '1' ? 1 : 0 };
     }).filter((o) => OBJECTES[o.t]).sort((a, b) => (a.lx + a.ly + a.m) - (b.lx + b.ly + b.m));
     for (const o of objs) {
       const im = imgParc(srcObjecte(o.t));
       if (!im) continue;
       const c = iso(X0 + (o.lx + o.m / 2) * k, Y0 + (o.ly + o.m / 2) * k);
-      dibuixaObjecte(ctx, im, o.t, c.x, c.y + DZ, W * o.m * k);
+      dibuixaObjecte(ctx, im, o.t, c.x, c.y + DZ, W * o.m * k, o.gir);
     }
   }
   // les imatges del parc no tenen base: no cal mesurar-les

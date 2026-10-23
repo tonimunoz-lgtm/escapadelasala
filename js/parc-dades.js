@@ -151,12 +151,16 @@ export function giraObjecte(px, py, m, costat) {
 // Dibuixa un objecte del parc: la imatge no té base; s'escala segons la fracció de l'amplada
 // del rombe que ocupa i es recolza a terra al centre de la casella.
 // (cx, cy) = centre del rombe a terra; amp = amplada del rombe a la pantalla.
-export function dibuixaObjecte(ctx, im, t, cx, cy, amp) {
+// gir = 1: la imatge es dibuixa com en un mirall (l'objecte mira cap a l'altre costat).
+export function dibuixaObjecte(ctx, im, t, cx, cy, amp, gir = 0) {
   const o = OBJECTES[t];
   const w = amp * o.frac;
   const h = w * (im.naturalHeight / im.naturalWidth);
   const baix = cy + (amp / 4) * o.frac;   // punt de davant de l'objecte
-  ctx.drawImage(im, cx - w / 2, baix - h, w, h);
+  if (!gir) { ctx.drawImage(im, cx - w / 2, baix - h, w, h); return; }
+  ctx.save(); ctx.translate(cx, 0); ctx.scale(-1, 1);
+  ctx.drawImage(im, -w / 2, baix - h, w, h);
+  ctx.restore();
 }
 
 // ---------- estat inicial del parc ----------

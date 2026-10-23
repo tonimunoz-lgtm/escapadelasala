@@ -82,7 +82,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   const ctx = canvas.getContext('2d');
 
   // ---------- estat d'execució (no es desa) ----------
-  let velocitat = 1, eina = 'mou', aColocar = null, hover = null, movent = null;
+  let velocitat = 1, eina = 'mou', aColocar = null, hover = null, movent = null, girNou = 0;
   let escala = 0.5; const despl = { x: 0, y: 0 };
   const visitants = [], personal = [], textos = [];
   const rt = new Map();          // estat de cada atracció/parada: cua, muntats...
@@ -476,7 +476,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     if (publica) publicar?.({
       nom: parc.nom,
       camins: parc.camins.join(';'),
-      objectes: parc.objectes.filter((o) => o.x >= 0).map((o) => `${o.t},${o.x},${o.y}`).join(';'),
+      objectes: parc.objectes.filter((o) => o.x >= 0).map((o) => `${o.t},${o.x},${o.y}${o.gir ? ',1' : ''}`).join(';'),
       atraccions: parc.objectes.filter((o) => OBJECTES[o.t].cat === 'atraccio').length,
       reputacio: Math.round(parc.reputacio),
     });
@@ -498,6 +498,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     if (parc.diners < d.preu) return avis(`No tens prou diners: costa ${eur(d.preu)}.`, 'error');
     parc.diners -= d.preu; parc.totals.despeses += d.preu;
     const o = { id: parc.seguentId++, t, x, y };
+    if (girNou) o.gir = 1;
     if (d.cat === 'atraccio') o.preu = 0; else if (d.cat === 'menjar' || d.cat === 'botiga') o.preu = d.preuJust;
     parc.objectes.push(o);
     recalcula();
@@ -565,9 +566,15 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     const text = movent
       ? `Mou ${d.nom}: toca on la vols posar${movent.cost ? ` (costarà ${eur(movent.cost)})` : ' (gratis)'}.`
       : `${d.nom} (${eur(d.preu)}): toca la gespa on la vols posar${d.mida > 1 ? ` (${d.mida}x${d.mida})` : ''}. Pots arrossegar el mapa.`;
-    xip.replaceChildren(...[h('img', { src: srcObjecte(aColocar), alt: '' }), h('span', {}, text),
+    xip.replaceChildren(...[h('img', { src: srcObjecte(aColocar), alt: '', style: (movent ? movent.o.gir : girNou) ? 'transform: scaleX(-1)' : '' }), h('span', {}, text),
+      h('button', { class: 'btn', title: 'Gira (tecla R)', onclick: giraNou }, '↔ Gira'),
       movent ? null : h('button', { class: 'btn', onclick: () => { aColocar = null; xip.hidden = true; cataleg.hidden = false; refrescaCataleg(); } }, 'Canvia'),
       h('button', { class: 'btn btn-principal', onclick: () => { if (movent) cancelaMoure(); else { aColocar = null; xip.hidden = true; cataleg.hidden = false; refrescaCataleg(); } } }, movent ? 'Cancel·la' : 'Fet')].filter(Boolean));
+  }
+  // Girar (com en un mirall) el que estàs col·locant o movent
+  function giraNou() {
+    if (movent) movent.o.gir = movent.o.gir ? 0 : 1; else girNou = girNou ? 0 : 1;
+    mostraXip();
   }
   // Moure un objecte ja construït: gratis si encara no l'ha fet servir ningú (o és decoració)
   function costMoure(o) { const d = OBJECTES[o.t]; return d.cat === 'decoracio' || !(o.usos > 0) ? 0 : Math.round(d.preu * 0.1); }
@@ -645,6 +652,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
       if (d.cat === 'servei') cos.push(h('p', { class: 'nota' }, `Usos: ${fmt.format(o.usos || 0)} · Manteniment: ${eur(d.manteniment)} / dia${o.t === 'caixer' ? ` · Comissions: ${eur2(o.ingressos || 0)}` : ''}`));
       const cm = costMoure(o);
       cos.push(h('div', { class: 'fila-botons' },
+        h('button', { class: 'btn', onclick: () => { o.gir = o.gir ? 0 : 1; guardaAviat(); } }, '↔ Gira'),
         h('button', { class: 'btn', onclick: () => comencaMoure(o) }, cm ? `Mou-la (${eur(cm)})` : 'Mou-la (gratis)'),
         h('button', { class: 'btn', onclick: () => enderroca(o.x, o.y) }, `Enderroca (+${eur(Math.round(d.preu * RETORN_ENDERROC))})`)),
       h('p', { class: 'nota' }, cm ? 'Com que ja s\'ha fet servir, moure-la costa un 10 % del preu (desmuntar i tornar a muntar).' : 'Encara no l\'ha fet servir ningú: la pots moure gratis.'));
@@ -770,7 +778,9 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   canvas.addEventListener('pointercancel', acaba);
   canvas.addEventListener('pointerleave', () => { hover = null; });
   canvas.addEventListener('wheel', (ev) => { ev.preventDefault(); const r = canvas.getBoundingClientRect(); zoomA(ev.deltaY < 0 ? 1.12 : 1 / 1.12, ev.clientX - r.left, ev.clientY - r.top); }, { passive: false });
-  const tecla = (ev) => { if (ev.key === 'Escape') { if (movent) cancelaMoure(); else if (aColocar) { aColocar = null; xip.hidden = true; cataleg.hidden = false; refrescaCataleg(); } else triaEina('mou'); } };
+  const tecla = (ev) => {
+    if ((ev.key === 'r' || ev.key === 'R') && aColocar && !ev.target.matches?.('input')) { giraNou(); return; }
+    if (ev.key === 'Escape') { if (movent) cancelaMoure(); else if (aColocar) { aColocar = null; xip.hidden = true; cataleg.hidden = false; refrescaCataleg(); } else triaEina('mou'); } };
   window.addEventListener('keydown', tecla);
   const redim = () => encaixa();
   window.addEventListener('resize', redim);
@@ -860,7 +870,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
       const im = img(srcObjecte(aColocar)); if (!im) return;
       const m = OBJECTES[aColocar].mida, c = iso(hover.x + m / 2, hover.y + m / 2);
       const ok = potColocar(aColocar, hover.x, hover.y) && parc.diners >= (movent ? movent.cost : OBJECTES[aColocar].preu);
-      ctx.globalAlpha = ok ? 0.75 : 0.35; dibuixaObjecte(ctx, im, aColocar, c.x, c.y, WP * m); ctx.globalAlpha = 1;
+      ctx.globalAlpha = ok ? 0.75 : 0.35; dibuixaObjecte(ctx, im, aColocar, c.x, c.y, WP * m, movent ? movent.o.gir : girNou); ctx.globalAlpha = 1;
       // contorn de la base per sobre de la imatge: verd si hi cap, vermell si no
       rombe(hover.x, hover.y, m, m); ctx.lineWidth = 5; ctx.strokeStyle = ok ? '#3c9d32' : '#d6402f'; ctx.stroke();
       if (!ok) { ctx.font = '800 22px "Baloo 2", system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#d6402f'; ctx.fillText(parc.diners < (movent ? movent.cost : OBJECTES[aColocar].preu) ? 'No tens prou diners' : 'Aquí no hi cap', c.x, c.y + 8); }
@@ -882,7 +892,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     if (o.x < 0) return;
     const d = OBJECTES[o.t], m = d.mida, im = img(srcObjecte(o.t));
     const c = iso(o.x + m / 2, o.y + m / 2);
-    if (im) dibuixaObjecte(ctx, im, o.t, c.x, c.y, WP * m);
+    if (im) dibuixaObjecte(ctx, im, o.t, c.x, c.y, WP * m, o.gir);
     const s = rt.get(o.id);
     ctx.textAlign = 'center';
     if (o.avariat) { ctx.font = '40px system-ui'; ctx.fillText('🔧', c.x, c.y - WP * m * 0.55); }
