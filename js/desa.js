@@ -521,7 +521,7 @@ export async function novaPartida() {
   const c = await getConfig();
   if (modeProva) {
     localStorage.removeItem(CLAU_MERCAT); localStorage.removeItem(CLAU_XAT); localStorage.removeItem(CLAU_AVISOS); localStorage.removeItem('fem-empresa-locals');
-    await setConfig({ partida: (c.partida || 1) + 1, reptes: [], anunci: '' });
+    await setConfig({ partida: (c.partida || 1) + 1, reptes: [], anunci: '', esdeveniment: null });
     return;
   }
   await buidarColleccio('mercat');
@@ -530,7 +530,7 @@ export async function novaPartida() {
   await buidarColleccio('locals');
   const { fs, db } = await carregarFirebase();
   await fs.setDoc(fs.doc(db, 'mon', 'comptador'), { n: 0 });
-  await setConfig({ partida: (c.partida || 1) + 1, reptes: [], anunci: '' });
+  await setConfig({ partida: (c.partida || 1) + 1, reptes: [], anunci: '', esdeveniment: null });
 }
 export async function buidarXat() {
   if (modeProva) { localStorage.removeItem(CLAU_XAT); return; }

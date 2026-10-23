@@ -7,6 +7,7 @@
 //  El parc funciona mentre el tens obert (es pot posar en pausa).
 // =============================================================
 import { h, avis } from './ui.js';
+import { faseEconomica } from './joc.js';
 import {
   MIDA_TOTAL as M, ORIGEN, COST_TRAM_MURALLA, COST_TORRE, ATRACTIU_MURALLA, BLOC, LIMITS_BLOCS, BLOCS_INICIALS, preuParcella, PLACES_CARRER, PART_EN_COTXE, PERSONES_PER_COTXE, ENTRADA, MINUTS_DIA, SEGONS_PER_MINUT, HORA_OBERTURA, ULTIMA_ENTRADA, INTERES_DIARI,
   COST_CAMI, RETORN_ENDERROC, PERSONAL_PARC, CATEGORIES, OBJECTES, srcObjecte, dibuixaObjecte,
@@ -41,11 +42,27 @@ const QUEIXES = {
   avaria: ['🔧', 'Hi ha atraccions espatllades', 'Contracta mecànics o repara-les tu.'],
   avorrit: ['🥱', 'S\'avorreixen: hi ha poques atraccions', 'Construeix atraccions noves.'],
   parquing: ['🚗', 'No troben lloc per aparcar (i se\'n tornen a casa)', 'Construeix un pàrquing: cada un té 20 places.'],
+  pluja: ['🌧️', 'Plou i no hi ha on aixoplugar-se', 'Els dies de pluja ve menys gent: aprofita per fer manteniment.'],
   mareig: ['🤢', 'Es maregen i no hi ha infermeria', 'Si tens atraccions fortes, construeix una infermeria.'],
 };
 
-export function obrirParc({ estat, desar, publicar, onTanca }) {
+// Esdeveniments que pot llançar el professorat (config.esdeveniment = { tipus, fins })
+export const ESDEVENIMENTS = {
+  calor: { nom: 'Onada de calor', ic: '☀️', text: 'Tothom té molta set: es venen moltes més begudes i gelats.', arribades: 1.05, set: 1.8 },
+  pluja: { nom: 'Dia de pluja', ic: '🌧️', text: 'Ve la meitat de gent i estan de pitjor humor.', arribades: 0.5, satisf: -0.03 },
+  festa: { nom: 'Festa Major', ic: '🎉', text: 'Hi ha festa a la comarca: ve molta més gent.', arribades: 1.4 },
+};
+
+export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLectura = false, pas = () => null, onFita = () => {}, obrePortes = () => {}, config = () => ({}) }) {
   const parc = estat.parc;
+  // Els diners del parc són els diners de l'empresa (un sol compte). Si el parc encara tenia diners
+  // propis (versió anterior), passen a l'empresa.
+  if (Object.prototype.hasOwnProperty.call(parc, 'diners') && Object.getOwnPropertyDescriptor(parc, 'diners').value !== undefined) {
+    estat.diners = (estat.diners || 0) + (parc.diners || 0); delete parc.diners;
+  }
+  Object.defineProperty(parc, 'diners', { get: () => estat.diners, set: (v) => { estat.diners = v; }, enumerable: false, configurable: true });
+  parc.obert ??= !!estat.constitucio?.constituida;
+  const esdeveniment = () => { const e = config()?.esdeveniment; return e && e.fins > Date.now() ? ESDEVENIMENTS[e.tipus] : null; };
   parc.brossa ??= {}; parc.historial ??= []; parc.personal ??= { mecanic: 0, netejador: 0, animador: 0 };
   parc.preus ??= { entrada: 5 }; parc.totals ??= { visitants: 0, ingressos: 0, despeses: 0 };
   for (const r of parc.historial) if (Array.isArray(r.queixes)) r.queixes = Object.fromEntries(r.queixes);
@@ -56,6 +73,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
 
   // ---------- DOM ----------
   const canvas = h('canvas', { class: 'parc-canvas', 'aria-label': 'El teu parc d\'atraccions' });
+  let vEsdev = null, botoObrir = null;
   const vDiners = h('strong', {}), vVisit = h('strong', {}), vSatisf = h('strong', {}), vDia = h('strong', {});
   const botoVel = [0, 1, 2, 4].map((v) => h('button', { class: 'parc-vel', title: v ? `Velocitat x${v}` : 'Pausa', onclick: () => posaVelocitat(v) }, v === 0 ? '⏸' : v === 1 ? '▶' : v === 2 ? '⏩' : '⏭'));
   const barra = h('header', { class: 'parc-barra' },
@@ -65,6 +83,11 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     h('span', { class: 'parc-dada', title: 'Visitants dins del parc' }, '👥 ', vVisit),
     h('span', { class: 'parc-dada', title: 'Satisfacció mitjana dels visitants' }, '😊 ', vSatisf),
     h('span', { class: 'parc-dada', title: 'Dia i hora' }, '📅 ', vDia),
+    vEsdev = h('span', { class: 'parc-esdev', hidden: true }),
+    botoObrir = h('button', { class: 'btn btn-principal parc-obrir', hidden: true, onclick: () => {
+      if (pas() !== 'obertura') return avis(pas() === 'atraccio' ? 'Abans d\'obrir, construeix una atracció i connecta-la amb un camí fins a l\'entrada.' : 'Abans d\'obrir, acaba els tràmits de l\'empresa.', 'error');
+      parc.obert = true; obrePortes(); guarda(true); refrescaBarra();
+    } }, '🎉 Obre el parc!'),
     h('span', { class: 'parc-vels' }, ...botoVel));
   const EINES = [
     ['mou', '✋', 'Mou'],
@@ -77,7 +100,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   ];
   const botonsEina = {};
   const eines = h('nav', { class: 'parc-eines' }, ...EINES.map(([id, ic, nom]) => {
-    const b = h('button', { class: 'parc-eina', title: nom, onclick: () => triaEina(id) },
+    const b = h('button', { class: 'parc-eina', title: nom, 'data-eina': id, onclick: () => triaEina(id) },
       ic.length > 3 ? h('img', { src: srcObjecte(ic), alt: '' }) : h('span', { class: 'parc-eina-ic' }, ic), h('span', {}, nom));
     botonsEina[id] = b;
     return b;
@@ -89,7 +112,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   const xip = h('div', { class: 'parc-xip', hidden: true });
   const zoom = h('div', { class: 'parc-zoom' },
     h('button', { onclick: () => zoomA(1.25) }, '+'), h('button', { onclick: () => zoomA(0.8) }, '−'), h('button', { onclick: encaixa, class: 'parc-zoom-text' }, 'Tot'));
-  const arrel = h('div', { class: 'parc' }, canvas, barra, eines, cataleg, info, ajuda, xip, zoom);
+  const arrel = h('div', { class: `parc${nomesLectura ? ' parc-lectura' : ''}` }, canvas, barra, eines, cataleg, info, ajuda, xip, zoom);
   document.body.append(arrel);
   const ctx = canvas.getContext('2d');
 
@@ -144,6 +167,12 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     for (const id of [...rt.keys()]) if (!parc.objectes.some((o) => o.id === id)) rt.delete(id);
   }
   recalcula();
+  // Fita de la constitució: hi ha almenys una atracció a la qual es pot arribar des de l'entrada
+  function comprovaFites() {
+    if (pas() !== 'atraccio' || !entradaAcces.length) return;
+    const [sx, sy] = entradaAcces[0];
+    if (parc.objectes.some((o) => OBJECTES[o.t].cat === 'atraccio' && accessible(o) && ruta(sx, sy, acces.get(o.id)))) onFita('atraccio');
+  }
   const objecte = (id) => parc.objectes.find((o) => o.id === id);
   const esEntrada = (o) => OBJECTES[o.t].cat === 'fix';
   const entrada = () => parc.objectes.find(esEntrada);
@@ -190,7 +219,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   }
   const preuJustEntrada = (a) => 2 + 1.5 * Math.pow(Math.max(a, 0.5), 0.7);
   function ritmeArribades(minut) {
-    if (minut >= ULTIMA_ENTRADA || !entradaAcces.length) return 0;
+    if (minut >= ULTIMA_ENTRADA || !entradaAcces.length || !parc.obert) return 0;
     const a = atractiu();
     if (a <= 0) return 0;
     const horaF = 0.45 + 0.85 * Math.sin(Math.PI * minut / ULTIMA_ENTRADA);
@@ -198,7 +227,9 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     const repF = 0.4 + parc.reputacio / 80;
     const parqF = placesPropies() && quants('parquing-caseta') ? clamp(1.15 - parc.preus.parquing / 10, 0.6, 1.15) : 1;
     const busF = 1 + 0.08 * Math.min(2, quants('parada-bus'));
-    return 0.065 * a * horaF * preuF * repF * parqF * busF;
+    const faseF = faseEconomica().vendes || 1;
+    const esdF = esdeveniment()?.arribades || 1;
+    return 0.065 * a * horaF * preuF * repF * parqF * busF * faseF * esdF;
   }
 
   // ---------- visitants ----------
@@ -423,7 +454,8 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
       v.temps += dm;
       for (const c of Object.keys(v.sense)) { v.sense[c] -= dm; if (v.sense[c] <= 0) delete v.sense[c]; }
       if (v.estat !== 'muntat') {
-        v.gana += 0.24 * dm; v.set += 0.3 * dm; v.lavabo += 0.14 * dm; v.energia -= 0.1 * dm;
+        const esd = esdeveniment();
+        v.gana += 0.24 * dm; v.set += 0.3 * dm * (esd?.set || 1); v.satisf += (esd?.satisf || 0) * dm; v.lavabo += 0.14 * dm; v.energia -= 0.1 * dm;
         if (v.gana > 85 || v.set > 85) v.satisf -= 0.15 * dm;
         if (v.lavabo > 90) v.satisf -= 0.3 * dm;
         if (v.energia < 15) v.satisf -= 0.15 * dm;
@@ -514,6 +546,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   // ---------- desar ----------
   function guarda(publica = false) {
     darrerDesat = Date.now();
+    if (nomesLectura) return;
     desar();
     if (publica) publicar?.({
       nom: parc.nom,
@@ -525,7 +558,8 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     });
   }
   let desatPendent = null;
-  function guardaAviat() { clearTimeout(desatPendent); desatPendent = setTimeout(() => { if (movent) guardaAviat(); else guarda(true); }, 1200); }
+  function guardaAviat() {
+    comprovaFites(); clearTimeout(desatPendent); desatPendent = setTimeout(() => { if (movent) guardaAviat(); else guarda(true); }, 1200); }
 
   // ---------- comprar terreny ----------
   function totsElsBlocs() {
@@ -1149,6 +1183,9 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     vSatisf.textContent = s == null ? '—' : `${Math.round(s)}%`;
     vDia.textContent = `Dia ${parc.dia} · ${hora(parc.minut)}`;
     botoVel.forEach((b, i) => b.classList.toggle('actiu', [0, 1, 2, 4][i] === velocitat));
+    const esd = esdeveniment();
+    vEsdev.hidden = !esd; if (esd) { vEsdev.textContent = `${esd.ic} ${esd.nom}`; vEsdev.title = esd.text; }
+    botoObrir.hidden = parc.obert || nomesLectura;
   }
   function posaVelocitat(v) { velocitat = v; refrescaBarra(); }
 
@@ -1180,10 +1217,16 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   // ---------- arrencada ----------
   encaixa();
   ajustaPersonal();
+  if (!nomesLectura) comprovaFites();
   triaEina('mou');
   refrescaBarra();
   requestAnimationFrame((t) => { darrerFrame = t; bucle(t); });
-  if (!parc.benvinguda) {
+  if (nomesLectura) {
+    ajuda.textContent = '👩‍🏫 Mode professorat: veus el parc tal com el té l\'alumne. Els canvis que facis aquí no es desen.';
+    const r = parc.historial[parc.historial.length - 1];
+    if (r) mostraInforme(r); else panell(parc.nom, h('p', { class: 'nota' }, 'Aquest parc encara no ha tancat cap dia.'));
+    informeObert = false;
+  } else if (!parc.benvinguda) {
     parc.benvinguda = true;
     panell('Benvingut/da al teu parc!',
       h('p', {}, `El banc t'ha deixat ${eur(parc.deute)} i ja has pagat el terreny. Ara tens ${eur(parc.diners)} per construir.`),

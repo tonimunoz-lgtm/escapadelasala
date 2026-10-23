@@ -168,7 +168,10 @@ $('#missio').addEventListener('click', () => {
   if (!constituida()) {
     const obj = objectiuActual();
     if (obj) ciutat.centrarEn(obj);
-    if (joc.pasActual(estat) === 'idea') obrirPasIdea();
+    const pas = joc.pasActual(estat);
+    if (pas === 'idea') obrirPasIdea();
+    else if (pas === 'terreny') { ciutat.vistaTot(); avis(textGuia(), 'ok'); }
+    else if (pas === 'atraccio' || pas === 'obertura') entrarAlParc();
     else avis(textGuia());
     return;
   }
@@ -181,11 +184,11 @@ $('#missio').addEventListener('click', () => {
 function textGuia() {
   const p = joc.pasActual(estat);
   if (!p) return '';
-  if (p === 'idea') return 'Parla amb la Marta: tria el nom i el sector del teu negoci';
+  if (p === 'idea') return 'Parla amb la Marta: tria el nom de la teva empresa';
   if (p === 'gestoria') return 'Ves a la Gestoria (al costat de l\'Ajuntament) per triar la forma jurídica';
-  if (p === 'local') return 'Busca un local amb el cartell ES LLOGA i signa el contracte';
-  if (p === 'obres') return estat.local?.estat === 'obres' ? 'Les obres estan en marxa...' : 'Ves al teu local i encarrega les obres d\'adequació';
-  if (p === 'obertura') return 'Ves al teu local i obre les portes!';
+  if (p === 'terreny') return 'Compra un terreny per al parc a les afores (botó Parc)';
+  if (p === 'atraccio') return 'Ves al parc: construeix una atracció i fes un camí fins a l\'entrada';
+  if (p === 'obertura') return 'Ves al parc i prem «Obre el parc!»';
   const servei = SERVEIS[PAS_SERVEI[p]];
   const ed = EDIFICIS_CIUTAT.find((e) => e[6] === PAS_SERVEI[p]);
   const lloc = ed && ed[2] >= 20 ? ' (a Terrassa, per la Carretera de Terrassa)' : '';
@@ -195,8 +198,8 @@ function objectiuActual() {
   if (constituida()) return null;
   const p = joc.pasActual(estat);
   if (p === 'gestoria') return 'gestoria';
-  if (p === 'obres' || p === 'obertura') return estat.local?.id || null;
-  if (p === 'local' || p === 'idea') return null;
+  if (p === 'atraccio' || p === 'obertura') return estat.parc?.terreny || null;
+  if (p === 'terreny' || p === 'idea') return null;
   return PAS_SERVEI[p] || null;
 }
 
@@ -206,6 +209,7 @@ function clicCiutat({ cella, local }) {
   if (cella.tipus === 'terreny') return obrirTerreny(cella.id);
   if (cella.tipus === 'edifici' && cella.servei) return obrirServei(cella.servei, cella);
   if (cella.tipus === 'edifici') return avis(cella.nom);
+  if (cella.tipus === 'local' && !local) return avis('Un comerç de la ciutat.');
   if (cella.tipus === 'local') {
     const info = localsPerId[cella.id];
     if ((estat.local && estat.local.id === cella.id) || (estat.nouLocal && estat.nouLocal.id === cella.id)) return obrirNegoci();
@@ -266,16 +270,14 @@ function obrirPasIdea() {
   }));
   obrirEscena({
     persona: 'img/personatges/guia-explica.webp', interior: 'ajuntament', nomPersona: 'La Marta, la teva mentora',
-    text: `Benvingut/da a Matadepera! Tens ${joc.diners(estat.estalvis)} d'estalvis i una idea de negoci. Primer de tot: com es dirà i a què es dedicarà? Després t'acompanyaré pels llocs on es fan els tràmits, com a la vida real.`,
+    text: `Benvingut/da a Matadepera! Tens ${joc.diners(estat.estalvis)} d'estalvis i un gran projecte: muntar un parc d'atraccions. Primer has de crear l'empresa que el gestionarà. Com es dirà? Després t'acompanyaré pels llocs on es fan els tràmits, com a la vida real.`,
     cos: [
-      h('label', { class: 'camp' }, h('span', {}, 'Nom del negoci'), nom),
-      h('strong', {}, 'Sector'), sectors,
+      h('label', { class: 'camp' }, h('span', {}, 'Nom de l\'empresa'), nom),
       h('strong', {}, 'Logo'), logos,
       h('button', { class: 'btn btn-principal btn-gran', onclick: () => {
         const t = nom.value.trim();
         if (t.length < 3) return avis('Escriu un nom de 3 lletres o més.', 'error');
-        if (!sectorTriat) return avis('Tria un sector.', 'error');
-        Object.assign(estat, { nomBase: t, nom: t, sector: sectorTriat, logo, tutorialVist: true });
+        Object.assign(estat, { nomBase: t, nom: t, sector: 'parc', logo, tutorialVist: true });
         joc.avancarPas(estat); desar(); dibuixarTot(); tancarEscena();
         avis('Molt bé! Ara ves a la Gestoria: et diran quina forma jurídica et convé.', 'ok');
         ciutat.centrarEn('gestoria');
@@ -292,7 +294,7 @@ function escenaGestoria() {
   }, h('strong', {}, f.nom),
   h('span', { class: 'nota' }, `${f.socisMin === f.socisMax ? '1 persona' : `${f.socisMin} socis o més`} · ${f.capitalMin ? `capital mínim ${joc.diners(f.capitalMin)}` : 'sense capital mínim'} · responsabilitat ${f.limitada ? 'limitada' : 'il·limitada'}`),
   h('span', { class: 'nota' }, f.avantatges))));
-  obrirEscena({ servei: 'gestoria', text: `Hola! Així que vols obrir ${SECTORS_NEGOCI[estat.sector].nom.toLowerCase()}... Primer hem de decidir la forma jurídica: d'això depèn qui paga si les coses van malament, quins impostos pagaràs i quins tràmits caldrà fer. Mira-les i tria'n una.`, cos: formes });
+  obrirEscena({ servei: 'gestoria', text: `Hola! Així que vols muntar ${estat.sector === 'parc' ? 'un parc d\'atraccions' : SECTORS_NEGOCI[estat.sector]?.nom.toLowerCase()}... Primer hem de decidir la forma jurídica: d'això depèn qui paga si les coses van malament, quins impostos pagaràs i quins tràmits caldrà fer. Mira-les i tria'n una.`, cos: formes });
 }
 function escenaCapital() {
   const f = FORMES[estat.forma];
@@ -315,7 +317,7 @@ function escenaCapital() {
     if (f.desemborsMin < 1 && des < cap * f.desemborsMin) err.push(`Cal desemborsar com a mínim el ${f.desemborsMin * 100}%.`);
     if (estat.forma === 'sll' && m > des / 3 + 0.5) err.push('En una societat laboral cap soci pot tenir més d\'un terç del capital.');
     info.replaceChildren(...[h('strong', {}, `L'empresa començarà amb ${joc.diners(des)}`),
-      h('span', { class: 'nota' }, `Amb aquests diners pagaràs la fiança del local, les obres i la primera matèria primera. Et quedaran ${joc.diners(estat.estalvis - m)} d'estalvis per als tràmits.`),
+      h('span', { class: 'nota' }, `Aquests diners seran el capital de l'empresa. El terreny del parc el pagaràs amb un préstec del banc. Et quedaran ${joc.diners(estat.estalvis - m)} d'estalvis per als tràmits.`),
       estat.forma === 'sl' && cap < 3000 ? h('span', { class: 'nota' }, 'Amb menys de 3.000 € de capital, el 20% dels beneficis va a reserva legal.') : null,
       !f.limitada ? h('span', { class: 'nota falta' }, 'Atenció: amb aquesta forma, si l\'empresa deu diners, en respons amb el teu patrimoni.') : null,
       ...err.map((t) => h('span', { class: 'nota falta' }, t))].filter(Boolean));
@@ -689,6 +691,16 @@ function secResum(cos) {
     h('div', { class: `fase fase-${fase.clau}` }, h('span', { class: 'nota' }, 'Fase econòmica'), h('strong', {}, fase.nom), h('p', { class: 'nota' }, fase.text, fase.forcada ? ' (fixada pel professorat)' : '')),
     f ? h('div', { class: 'targeta-legal' }, h('div', {}, h('strong', {}, estat.nom), h('span', { class: 'nota' }, `${f.nom}${estat.nif ? `. NIF ${estat.nif}` : ''}. ${SECTORS_NEGOCI[estat.sector]?.iae || ''}`)),
       h('dl', { class: 'dades' }, ...fila('Capital', joc.diners(estat.capital || 0)), ...fila('Responsabilitat', f.limitada ? 'Limitada' : 'Il·limitada'), ...fila('Els teus estalvis', joc.diners(estat.estalvis)))) : null,
+    estat.parc ? (() => {
+      const p = estat.parc, ahir = p.historial?.[p.historial.length - 1];
+      return h('div', { class: 'targeta-legal' }, h('div', {}, h('strong', {}, `🎢 ${p.nom}`), h('span', { class: 'nota' }, p.obert ? 'Obert al públic' : 'Encara no ha obert')),
+        h('dl', { class: 'dades' },
+          ...fila('Valor del parc', joc.diners(joc.valorParc(estat))),
+          ...fila('Préstec del parc', joc.diners(Math.round(p.deute || 0))),
+          ...fila('Reputació', `${Math.round(p.reputacio || 0)} / 100`),
+          ...(ahir ? [...fila(`Visitants (dia ${ahir.dia})`, String(ahir.visitants)), ...fila(`Benefici (dia ${ahir.dia})`, joc.diners(ahir.benefici))] : [])),
+        h('button', { class: 'btn btn-principal', onclick: () => { tancarPanell(); entrarAlParc(); } }, 'Ves al parc'));
+    })() : null,
     pyg(act, 'Compte de resultats d\'aquesta setmana'), pyg(ant, 'Setmana passada'),
     h('div', { class: 'resum-graella' },
       h('div', { class: 'grafic' }, h('span', { class: 'nota' }, 'Valor de l\'empresa'), grafic()),
@@ -811,6 +823,14 @@ async function comprovarProfessorat() {
       if (a.tipus === 'ajut') { estat.diners += a.import; missatgeProfessor(`${a.import >= 0 ? 'Subvenció' : 'Sanció'} de ${joc.diners(Math.abs(a.import))}. ${a.text || ''}`); }
       else if (a.tipus === 'missatge') missatgeProfessor(a.text);
       else if (a.tipus === 'reinici') { await reiniciarEmpresa(); return; }
+      else if (a.tipus === 'inspeccio' && estat.parc) {
+        // inspecció de sanitat: es compta la brossa que hi ha als camins del parc
+        const brossa = Object.values(estat.parc.brossa || {}).reduce((t, n) => t + n, 0);
+        const lavabos = (estat.parc.objectes || []).some((o) => o.t === 'lavabos');
+        const multa = (brossa > 8 ? 1500 + brossa * 50 : 0) + (lavabos ? 0 : 1000);
+        if (multa) { estat.diners -= multa; missatgeProfessor(`Inspecció de sanitat: ${brossa > 8 ? `hi ha ${brossa} restes de brossa als camins` : ''}${brossa > 8 && !lavabos ? ' i ' : ''}${lavabos ? '' : 'no hi ha lavabos'}. Multa de ${joc.diners(multa)}.`); }
+        else { estat.diners += 500; missatgeProfessor('Inspecció de sanitat superada: el parc està net i té lavabos. Premi de 500 €.'); }
+      }
     }
     if (avs.length) { await desar(); dibuixarTot(); }
   } catch (err) { console.error(err); }
@@ -863,6 +883,21 @@ function entrarAlParc() {
   parcObert = obrirParc({
     estat,
     desar,
+    config: () => config,
+    pas: () => (constituida() ? null : joc.pasActual(estat)),
+    onFita: (nom) => {
+      if (!constituida() && joc.pasActual(estat) === nom) {
+        joc.avancarPas(estat); desar(); dibuixarCapcalera();
+        avis('Molt bé! Ja hi ha una atracció connectada amb l\'entrada. Ara prem «Obre el parc!» a dalt.', 'ok');
+      }
+    },
+    obrePortes: () => {
+      estat.constitucio.constituida = true;
+      if (joc.pasActual(estat) === 'obertura') joc.avancarPas(estat);
+      estat.simT = Date.now(); estat.despesesT = Date.now();
+      desar(); dibuixarCapcalera();
+      avis(`Felicitats! ${estat.nom} ja és una empresa constituïda i el parc obre les portes. Ara comencen a arribar visitants!`, 'ok');
+    },
     publicar: (dades) => desa.actualitzarLocal(usuari.uid, estat.parc.terreny, { tipus: 'parc', logo: estat.logo || 1, ...dades })
       .then(() => { locals[estat.parc.terreny] = { ...(locals[estat.parc.terreny] || {}), uid: usuari.uid, tipus: 'parc', ...dades }; ciutat?.setLocals(locals, usuari.uid); })
       .catch((err) => console.error(err)),
@@ -882,10 +917,14 @@ function obrirTerreny(id) {
     return obrirEscena({ persona: 'img/personatges/guia-explica.webp', interior: 'ajuntament', nomPersona: 'La Marta',
       text: 'Ja tens un parc d\'atraccions. Cada empresa en pot tenir només un.', cos: [h('button', { class: 'btn btn-principal', onclick: entrarAlParc }, 'Ves al meu parc')] });
   }
+  if (!constituida() && joc.pasActual(estat) !== 'terreny') {
+    return obrirEscena({ persona: 'img/personatges/guia-explica.webp', interior: 'ajuntament', nomPersona: 'La Marta',
+      text: `Aquest terreny (${t[4]}) està en venda. Però abans de comprar-lo necessites una empresa amb compte al banc.\n\nAra mateix t'has d'ocupar d'això: ${textGuia()}.`, cos: [] });
+  }
   const nom = h('input', { class: 'camp-text', maxlength: 28, placeholder: 'Ex.: Món Màgic', value: estat.nomBase ? `${estat.nomBase} Park` : '' });
   obrirEscena({
     persona: 'img/personatges/guia-explica.webp', interior: 'ajuntament', nomPersona: 'La Marta, la teva mentora',
-    text: `Terreny ${id} (${t[4]}). Aquí hi pots construir el teu propi parc d'atraccions!\n\nEl banc et presta ${joc.diners(PRESTEC_INICIAL)} per al projecte. El terreny costa ${joc.diners(PREU_TERRENY)}, així que et quedaran ${joc.diners(PRESTEC_INICIAL - PREU_TERRENY)} per construir. El préstec té interessos: com més aviat el tornis, menys pagaràs.`,
+    text: `Terreny ${id} (${t[4]}). Aquí hi pots construir el parc d'atraccions de ${estat.nom}!\n\nEl banc presta a l'empresa ${joc.diners(PRESTEC_INICIAL)} per al projecte. El terreny costa ${joc.diners(PREU_TERRENY)}: amb el que queda i els ${joc.diners(estat.diners)} que ja té l'empresa, podràs construir. El préstec té interessos cada dia que el parc està obert: com més aviat el tornis, menys pagaràs.`,
     cos: [
       h('label', { class: 'camp' }, h('span', {}, 'Nom del parc'), nom),
       h('button', { class: 'btn btn-principal btn-gran', onclick: async (ev) => {
@@ -896,7 +935,10 @@ function obrirTerreny(id) {
         try {
           await desa.reservarLocal(usuari.uid, id, { tipus: 'parc', nom: n, logo: estat.logo || 1, camins: parc.camins.join(';'), objectes: 'entrada,9,19', atraccions: 0, reputacio: 50 });
         } catch (err) { ev.target.disabled = false; avis(err.message || 'Aquest terreny ja és d\'algú.', 'error'); carregarLocals(); return; }
+        delete parc.diners;
         estat.parc = parc;
+        estat.diners += PRESTEC_INICIAL - PREU_TERRENY;   // el préstec entra al compte de l'empresa i es paga el terreny
+        if (joc.pasActual(estat) === 'terreny') joc.avancarPas(estat);
         locals[id] = { uid: usuari.uid, tipus: 'parc', nom: n, logo: estat.logo || 1, camins: parc.camins.join(';'), objectes: 'entrada,9,19' };
         await desar();
         tancarEscena();

@@ -307,7 +307,8 @@ export function passosConstitucio(forma) {
   const t = [...(f ? f.tramits : [])];
   if (!t.includes('banc')) t.unshift('bancAutonom');
   const iLocal = t.includes('notari') ? t.indexOf('notari') : t.indexOf('comunicacio');
-  t.splice(iLocal, 0, 'local');
-  t.push('llicencia', 'obres', 'obertura');
+  // El negoci de l'empresa és un parc d'atraccions: el domicili social és el terreny del parc
+  t.splice(iLocal, 0, 'terreny');
+  t.push('llicencia', 'atraccio', 'obertura');
   return ['idea', 'gestoria', ...t];
 }

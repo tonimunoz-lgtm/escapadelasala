@@ -756,3 +756,7 @@ select.input-preu.ample { width: 100%; text-align: left; }
 body:has(.parc) .avisos { left: 50%; transform: translateX(-50%); top: calc(70px + env(safe-area-inset-top, 0px)); }
 @media (max-width: 1100px) { .parc-nom { font-size: 1rem; } .parc-dada strong { font-size: 1rem; } }
 @media (max-height: 640px) { .parc-eina { padding: 3px; } .parc-eina img, .parc-eina-ic { height: 26px; line-height: 26px; } .parc-eines { gap: 4px; bottom: 60px; } }
+/* mode professorat: només es pot mirar (i consultar els diners i el personal) */
+.parc-lectura .parc-eina:not([data-eina="mou"]):not([data-eina="finances"]):not([data-eina="personal"]) { display: none; }
+.parc-esdev { padding: .25em .7em; border-radius: 99px; background: #f2c12e; color: var(--tinta); font-weight: 800; white-space: nowrap; }
+.parc-obrir { padding: .35em .9em .3em; white-space: nowrap; }

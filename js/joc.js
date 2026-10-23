@@ -10,6 +10,7 @@ import {
   FORMES, PERSONAL, SS_EMPRESA, GESTORIA, RISC_SANCIO, SETMANES_PER_MES, ESTALVIS_INICIALS,
   OPCIONS_ESTATUTS, costTramit, passosConstitucio,
 } from './legal.js';
+import { OBJECTES as OBJECTES_PARC, PREU_TERRENY, BLOCS_INICIALS, preuParcella } from './parc-dades.js';
 
 const HORA = 3600000;
 
@@ -344,14 +345,26 @@ export function retornarPrestec(e, q) {
 }
 
 // ---------- valor, balanç, nivell ----------
+// Valor del parc d'atraccions: terreny (amb les parcel·les comprades) i el 80 % del que han costat
+// les instal·lacions (es van desgastant). És part de l'actiu no corrent de l'empresa.
+export function valorParc(e) {
+  const p = e?.parc;
+  if (!p) return 0;
+  const extres = Math.max(0, (p.blocs?.length || BLOCS_INICIALS.length) - BLOCS_INICIALS.length);
+  let terreny = PREU_TERRENY;
+  for (let k = 0; k < extres; k++) terreny += preuParcella(k);
+  const installacions = (p.objectes || []).reduce((t, o) => t + (OBJECTES_PARC[o.t]?.preu || 0), 0) * 0.8;
+  return Math.round(terreny + installacions);
+}
 export function balanc(e) {
   const s = SECTORS_NEGOCI[e.sector];
   const estoc = s ? (e.negoci?.materia || 0) * s.materia.cost + (e.negoci?.producte || 0) * s.materia.cost : 0;
   const fianca = e.local?.fianca || 0;
+  const parc = valorParc(e);
   const corrents = Math.round((e.diners || 0) + estoc);
-  const noCorrents = Math.round((e.actius || 0) + fianca);
-  const passius = Math.round(e.deute || 0);
-  return { diners: Math.round(e.diners || 0), estoc: Math.round(estoc), corrents, noCorrents, passius, net: corrents + noCorrents - passius };
+  const noCorrents = Math.round((e.actius || 0) + fianca + parc);
+  const passius = Math.round((e.deute || 0) + (e.parc?.deute || 0));   // inclou el préstec del parc
+  return { diners: Math.round(e.diners || 0), estoc: Math.round(estoc), parc, corrents, noCorrents, passius, net: corrents + noCorrents - passius };
 }
 export const valorEmpresa = (e) => (e && e.constitucio ? balanc(e).net : Math.round(e?.valor || 0));
 export function nivellDeValor(v) { let n = 1; NIVELLS_EMPRESA.forEach((l, k) => { if (v >= l) n = k + 1; }); return n; }
@@ -378,17 +391,21 @@ export function cobrarMissio(e) {
   e.diners += m.premi; e.missio = (e.missio || 0) + 1; return m;
 }
 export function progresRepte(e, r) {
-  const x = Number(r.xifra) || 0, st = (k) => e.stats?.[k] || 0;
+  const x = Number(r.xifra) || 0;
+  const dies = e.parc?.historial || [], max = (f) => dies.reduce((m, d) => Math.max(m, f(d) ?? 0), 0);
   switch (r.tipus) {
     case 'valor': return [valorEmpresa(e), x];
     case 'diners': return [Math.round(e.diners), x];
     case 'nivell': return [nivellEmpresa(e), x];
-    case 'vendes': return [Math.floor(st('unitatsVenudes')), x];
-    case 'ingressos': return [Math.round(st('ingressos')), x];
-    case 'benefici': return [st('setmanesAmbBenefici'), x];
-    case 'fase': return [e.local?.fase || 0, x];
-    case 'treballadors': return [treballadors(e), x];
-    case 'senseDeute': return [(e.deute || 0) < 1 && e.constitucio?.constituida ? 1 : 0, 1];
+    case 'ingressos': return [Math.round(e.parc?.totals?.ingressos || 0), x];
+    case 'benefici': return [dies.filter((d) => d.benefici > 0).length, x];
+    case 'treballadors': return [Object.values(e.parc?.personal || {}).reduce((a, b) => a + b, 0), x];
+    case 'senseDeute': return [(e.deute || 0) + (e.parc?.deute || 0) < 1 && e.constitucio?.constituida ? 1 : 0, 1];
+    case 'parcVisitants': return [max((d) => d.visitants), x];
+    case 'parcBeneficiDia': return [max((d) => d.benefici), x];
+    case 'parcReputacio': return [Math.round(e.parc?.reputacio || 0), x];
+    case 'parcSatisfaccio': return [max((d) => d.satisf), x];
+    case 'parcAtraccions': return [(e.parc?.objectes || []).filter((o) => OBJECTES_PARC[o.t]?.cat === 'atraccio').length, x];
     default: return [0, 1];
   }
 }

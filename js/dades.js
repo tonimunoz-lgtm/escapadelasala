@@ -1,3 +1,4 @@
+import { OBJECTES } from './parc-dades.js';
 // =============================================================
 //  DADES DEL JOC (versió 2: negocis en una ciutat comuna)
 //  El professorat pot ajustar l'economia en aquest fitxer.
@@ -12,6 +13,12 @@ export const imgLogo = (n) => `img/avatars/logo-empresa-${String(n).padStart(2, 
 // ---------- Sectors ----------
 // Imports per unitat. demanda i capacitat són "per setmana" (1 hora real).
 export const SECTORS_NEGOCI = {
+  // El negoci de cada empresa: un parc d'atraccions (no surt a la llista de botigues)
+  parc: {
+    nom: 'Parc d\'atraccions', iae: 'Epígraf 981.3 - Explotació de parcs d\'atraccions', noBotiga: true,
+    materia: { nom: '—', cost: 0, img: '' }, producte: { nom: 'Entrades', preuRef: 0, img: '' },
+    demanda: 0, capacitat: 0, ofici: 'Personal del parc', text: 'Un parc d\'atraccions.',
+  },
   fleca: {
     nom: 'Fleca', iae: 'Epígraf 644.1 - Comerç al detall de pa i pastisseria',
     materia: { nom: 'Farina i ingredients', cost: 0.45, img: 'img/productes/materia-fleca.webp' },
@@ -134,8 +141,8 @@ export const ASSEGURANCA_MENSUAL = 60;
 export const FASE_MINUTS = 20;
 export const FASES = {
   normal:   { nom: 'Normalitat', produccio: 1, vendes: 1, text: 'L\'economia va com sempre.' },
-  expansio: { nom: 'Expansió', produccio: 1, vendes: 1.25, text: 'La gent gasta més: entren més clients.' },
-  recessio: { nom: 'Recessió', produccio: 1, vendes: 0.75, text: 'La gent gasta menys: entren menys clients.' },
+  expansio: { nom: 'Expansió', produccio: 1, vendes: 1.25, text: 'La gent gasta més: ve més gent als parcs.' },
+  recessio: { nom: 'Recessió', produccio: 1, vendes: 0.75, text: 'La gent gasta menys: ve menys gent als parcs.' },
 };
 
 // ---------- Nivells d'empresa i desbloquejos ----------
@@ -153,14 +160,18 @@ export const DIRECTORS = {
 
 // ---------- Missions després d'obrir ----------
 const st = (e, k) => (e.stats && e.stats[k]) || 0;
+// Missions del parc d'atraccions (una darrere l'altra, amb premi)
+const objectesParc = (e) => e.parc?.objectes || [];
+const diesParc = (e) => e.parc?.historial || [];
 export const MISSIONS = [
-  { text: 'Compra matèria primera al proveïdor', premi: 300, fet: (e) => st(e, 'comprat') >= 1 },
-  { text: 'Contracta la primera persona', premi: 300, fet: (e) => (e.plantilla?.treballadors || 0) >= 1 },
-  { text: 'Ven 100 unitats', premi: 500, fet: (e) => st(e, 'unitatsVenudes') >= 100 },
-  { text: 'Tanca una setmana amb benefici', premi: 800, fet: (e) => st(e, 'setmanesAmbBenefici') >= 1 },
-  { text: 'Fes publicitat del negoci', premi: 300, fet: (e) => (e.negoci?.publicitat || 0) >= 1 },
-  { text: 'Amplia el negoci a la fase 2', premi: 2000, fet: (e) => (e.local?.fase || 0) >= 2 },
-  { text: 'Arriba al nivell 4 d\'empresa', premi: 3000, fet: (e) => (e.nivellMax || 1) >= 4 },
+  { text: 'Posa una parada de menjar o begudes al parc', premi: 1000, fet: (e) => objectesParc(e).some((o) => OBJECTES[o.t]?.cat === 'menjar') },
+  { text: 'Construeix uns lavabos', premi: 1000, fet: (e) => objectesParc(e).some((o) => o.t === 'lavabos') },
+  { text: 'Rep 100 visitants en un dia', premi: 2000, fet: (e) => diesParc(e).some((d) => d.visitants >= 100) },
+  { text: 'Contracta un netejador o un mecànic', premi: 1000, fet: (e) => (e.parc?.personal?.netejador || 0) + (e.parc?.personal?.mecanic || 0) >= 1 },
+  { text: 'Tanca un dia del parc amb benefici', premi: 2000, fet: (e) => diesParc(e).some((d) => d.benefici > 0) },
+  { text: 'Arriba a 70 de reputació', premi: 3000, fet: (e) => (e.parc?.reputacio || 0) >= 70 },
+  { text: 'Compra una parcel·la nova per ampliar el parc', premi: 5000, fet: (e) => (e.parc?.blocs?.length || 9) > 9 },
+  { text: 'Arriba al nivell 4 d\'empresa', premi: 8000, fet: (e) => (e.nivellMax || 1) >= 4 },
 ];
 
 // ---------- Reptes que pot crear el professorat ----------
@@ -168,11 +179,14 @@ export const TIPUS_REPTE = {
   valor:        { nom: 'Valor de l\'empresa', params: ['xifra'], text: (r) => `Arriba a ${Number(r.xifra).toLocaleString('ca-ES')} € de valor d'empresa` },
   diners:       { nom: 'Diners a la caixa', params: ['xifra'], text: (r) => `Tingues ${Number(r.xifra).toLocaleString('ca-ES')} € a la caixa` },
   nivell:       { nom: 'Nivell d\'empresa', params: ['xifra'], text: (r) => `Arriba al nivell ${r.xifra} d'empresa` },
-  vendes:       { nom: 'Unitats venudes', params: ['xifra'], text: (r) => `Ven ${Number(r.xifra).toLocaleString('ca-ES')} unitats` },
-  ingressos:    { nom: 'Ingressos totals', params: ['xifra'], text: (r) => `Factura ${Number(r.xifra).toLocaleString('ca-ES')} € en total` },
-  benefici:     { nom: 'Setmanes amb benefici', params: ['xifra'], text: (r) => `Tanca ${r.xifra} setmanes amb benefici` },
-  fase:         { nom: 'Fase del negoci', params: ['xifra'], text: (r) => `Amplia el negoci fins a la fase ${r.xifra}` },
-  treballadors: { nom: 'Plantilla', params: ['xifra'], text: (r) => `Tingues ${r.xifra} persones contractades` },
+  ingressos:    { nom: 'Ingressos totals del parc', params: ['xifra'], text: (r) => `Factura ${Number(r.xifra).toLocaleString('ca-ES')} € en total` },
+  benefici:     { nom: 'Dies amb benefici', params: ['xifra'], text: (r) => `Tanca ${r.xifra} dies del parc amb benefici` },
+  treballadors: { nom: 'Personal del parc', params: ['xifra'], text: (r) => `Tingues ${r.xifra} persones contractades al parc` },
+  parcVisitants: { nom: 'Visitants en un dia', params: ['xifra'], text: (r) => `Rep ${Number(r.xifra).toLocaleString('ca-ES')} visitants en un sol dia` },
+  parcBeneficiDia: { nom: 'Benefici en un dia', params: ['xifra'], text: (r) => `Tanca un dia amb ${Number(r.xifra).toLocaleString('ca-ES')} € de benefici` },
+  parcReputacio: { nom: 'Reputació del parc', params: ['xifra'], text: (r) => `Arriba a ${r.xifra} de reputació` },
+  parcSatisfaccio: { nom: 'Satisfacció', params: ['xifra'], text: (r) => `Tanca un dia amb una satisfacció de ${r.xifra} o més` },
+  parcAtraccions: { nom: 'Atraccions', params: ['xifra'], text: (r) => `Tingues ${r.xifra} atraccions al parc` },
   senseDeute:   { nom: 'Sense deutes', params: [], text: () => 'Torna tots els préstecs del banc' },
 };
 

@@ -7,6 +7,27 @@ import * as desa from './desa.js';
 import * as joc from './joc.js';
 import { FASES, TIPUS_REPTE, SECTORS_NEGOCI, imgLogo } from './dades.js';
 import { FORMES } from './legal.js';
+import { obrirParc, ESDEVENIMENTS } from './parc.js';
+import { OBJECTES as OBJECTES_PARC } from './parc-dades.js';
+
+// Resum del parc d'una empresa per a la taula
+function resumParc(e) {
+  const p = e.parc;
+  if (!p) return null;
+  const ahir = p.historial?.[p.historial.length - 1];
+  return {
+    nom: p.nom, obert: !!p.obert,
+    atraccions: (p.objectes || []).filter((o) => OBJECTES_PARC[o.t]?.cat === 'atraccio').length,
+    visitants: ahir?.visitants ?? 0, benefici: ahir?.benefici ?? 0, satisf: ahir?.satisf ?? null,
+    reputacio: Math.round(p.reputacio || 0), dies: (p.dia || 1) - 1, totalVisitants: p.totals?.visitants || 0,
+    ingressos: Math.round(p.totals?.ingressos || 0), deute: Math.round(p.deute || 0),
+  };
+}
+// Obre el parc d'un alumne en mode només lectura (una còpia: res del que es faci es desa)
+function veureParc(e) {
+  const copia = JSON.parse(JSON.stringify(e));
+  obrirParc({ estat: copia, nomesLectura: true, config: () => ctx.config });
+}
 
 let ctx = null;      // { usuari, config, jugar }
 let empreses = [];
@@ -95,10 +116,12 @@ function pEmpreses() {
       h('td', {}, String(joc.nivellDeValor(valor))),
       h('td', { class: 'num' }, joc.diners(valor)),
       h('td', { class: 'num' }, joc.diners(e.diners || 0)),
-      h('td', { class: 'num' }, joc.diners(Math.round(e.deute || 0))),
-      h('td', { class: 'num' }, String((e.plantilla?.treballadors || 0) + (e.plantilla?.rrhh || 0))),
+      h('td', { class: 'num' }, joc.diners(Math.round((e.deute || 0) + (e.parc?.deute || 0)))),
+      h('td', {}, (() => { const r = resumParc(e); return r ? h('div', {}, h('strong', {}, `🎢 ${r.nom}`),
+        h('span', { class: 'nota', style: 'display:block' }, `${r.obert ? '' : 'Tancat · '}${r.atraccions} ${r.atraccions === 1 ? 'atracció' : 'atraccions'} · rep. ${r.reputacio}${r.dies ? ` · ahir: ${r.visitants} visitants, ${joc.diners(r.benefici)}` : ''}`)) : h('span', { class: 'nota' }, 'Sense parc'); })()),
       h('td', {}, haFa(e.actualitzada)),
       h('td', {}, h('div', { class: 'fila-botons' },
+        e.parc ? h('button', { class: 'btn btn-petit', onclick: () => veureParc(e) }, 'Veure parc') : null,
         h('button', { class: 'btn btn-petit', onclick: () => zonaForm.replaceChildren(formulariAvis(e.uid, e.nom, () => zonaForm.replaceChildren())) }, 'Ajut / missatge'),
         h('button', {
           class: 'btn btn-petit',
@@ -119,26 +142,31 @@ function pEmpreses() {
     h('div', { class: 'prof-xifres' },
       h('div', {}, h('span', { class: 'nota' }, 'Empreses'), h('strong', {}, `${constituides.length} / ${empreses.length}`)),
       h('div', {}, h('span', { class: 'nota' }, 'Valor total'), h('strong', {}, joc.diners(total))),
-      h('div', {}, h('span', { class: 'nota' }, 'Valor mitjà'), h('strong', {}, joc.diners(constituides.length ? total / constituides.length : 0)))),
+      h('div', {}, h('span', { class: 'nota' }, 'Valor mitjà'), h('strong', {}, joc.diners(constituides.length ? total / constituides.length : 0))),
+      h('div', {}, h('span', { class: 'nota' }, 'Parcs oberts'), h('strong', {}, String(empreses.filter((e) => e.parc?.obert).length))),
+      h('div', {}, h('span', { class: 'nota' }, 'Visitants ahir (total)'), h('strong', {}, String(empreses.reduce((t, e) => t + (resumParc(e)?.visitants || 0), 0))))),
     h('div', { class: 'fila-botons' },
       h('button', { class: 'btn', onclick: carregar }, 'Actualitza'),
       h('button', { class: 'btn btn-principal', onclick: () => zonaForm.replaceChildren(formulariAvis('*', 'totes les empreses', () => zonaForm.replaceChildren())) }, 'Ajut o missatge a tothom'),
       h('button', { class: 'btn', onclick: descarregarCsv }, 'Descarrega CSV')),
     zonaForm,
     h('div', { class: 'taula-scroll' }, h('table', { class: 'prof-taula' },
-      h('thead', {}, h('tr', {}, ...['#', 'Empresa', 'Nv', 'Valor', 'Diners', 'Deute', 'Plantilla', 'Darrera activitat', ''].map((t) => h('th', {}, t)))),
+      h('thead', {}, h('tr', {}, ...['#', 'Empresa', 'Nv', 'Valor', 'Diners', 'Deute', 'Parc', 'Darrera activitat', ''].map((t) => h('th', {}, t)))),
       h('tbody', {}, ...files))),
     empreses.length ? null : h('p', { class: 'nota' }, 'Encara no hi ha cap empresa.'));
 }
 
 function descarregarCsv() {
-  const cap = ['empresa', 'sector', 'forma', 'nif', 'constituida', 'fase_negoci', 'nivell', 'valor', 'diners', 'deute', 'treballadors', 'capital', 'estalvis_personals', 'unitats_venudes', 'ingressos', 'setmanes_amb_benefici', 'missions', 'reptes_cobrats', 'sancions'];
+  const cap = ['empresa', 'forma', 'nif', 'constituida', 'nivell', 'valor', 'diners', 'deute_banc', 'capital', 'estalvis_personals', 'missions', 'reptes_cobrats', 'sancions',
+    'parc', 'parc_obert', 'dies_obert', 'atraccions', 'reputacio', 'visitants_totals', 'ingressos_parc', 'prestec_parc', 'visitants_ultim_dia', 'benefici_ultim_dia', 'satisfaccio_ultim_dia', 'dies_amb_benefici'];
   const files = empreses.map((e) => {
     const valor = e.valor ?? joc.valorEmpresa(e);
-    return [e.nom, SECTORS_NEGOCI[e.sector]?.nom || '', FORMES[e.forma]?.curt || '', e.nif || '', e.constitucio?.constituida ? 'sí' : 'no', e.local?.fase || 0,
-      joc.nivellDeValor(valor), Math.round(valor), Math.round(e.diners || 0), Math.round(e.deute || 0), e.plantilla?.treballadors || 0, e.capital || 0,
-      Math.round(e.estalvis || 0), Math.round(e.stats?.unitatsVenudes || 0), Math.round(e.stats?.ingressos || 0), e.stats?.setmanesAmbBenefici || 0,
-      e.missio || 0, (e.reptesCobrats || []).length, e.sancions || 0];
+    const r = resumParc(e) || {};
+    return [e.nom, FORMES[e.forma]?.curt || '', e.nif || '', e.constitucio?.constituida ? 'sí' : 'no',
+      joc.nivellDeValor(valor), Math.round(valor), Math.round(e.diners || 0), Math.round(e.deute || 0), e.capital || 0,
+      Math.round(e.estalvis || 0), e.missio || 0, (e.reptesCobrats || []).length, e.sancions || 0,
+      r.nom || '', r.obert ? 'sí' : 'no', r.dies ?? 0, r.atraccions ?? 0, r.reputacio ?? 0, r.totalVisitants ?? 0, r.ingressos ?? 0, r.deute ?? 0,
+      r.visitants ?? 0, r.benefici ?? 0, r.satisf ?? '', (e.parc?.historial || []).filter((d) => d.benefici > 0).length];
   });
   const csv = [cap, ...files].map((f) => f.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
   const a = h('a', { href: URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' })), download: 'fem-empresa-classe.csv' });
@@ -207,9 +235,33 @@ function pEconomia() {
   return h('div', { class: 'bloc' },
     h('div', { class: 'prof-form' },
       h('strong', {}, 'Fase econòmica'),
-      h('p', { class: 'nota' }, 'Fixa una fase per treballar-la a classe: en recessió es ven més lent i es produeix més ràpid; en expansió les botigues venen més.'),
+      h('p', { class: 'nota' }, 'Fixa una fase per treballar-la a classe: en expansió ve un 25 % més de gent als parcs; en recessió, un 25 % menys.'),
       fase,
       h('button', { class: 'btn btn-principal', onclick: async () => { try { await desa.setConfig({ fase: fase.value }); fet('Fase canviada'); } catch (err) { error(err); } } }, 'Aplica')),
+    (() => {
+      const esd = c.esdeveniment && c.esdeveniment.fins > Date.now() ? c.esdeveniment : null;
+      const tipus = h('select', { class: 'camp-select' }, ...Object.entries(ESDEVENIMENTS).map(([id, x]) => h('option', { value: id }, `${x.ic} ${x.nom}: ${x.text}`)));
+      const minuts = h('input', { type: 'number', min: 1, max: 120, value: 12, class: 'input-preu', 'aria-label': 'Minuts' });
+      return h('div', { class: 'prof-form' },
+        h('strong', {}, 'Esdeveniments als parcs'),
+        h('p', { class: 'nota' }, esd ? `Ara mateix: ${ESDEVENIMENTS[esd.tipus].ic} ${ESDEVENIMENTS[esd.tipus].nom} (s'acaba ${new Date(esd.fins).toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' })}).` : 'Afecta tots els parcs de la classe durant els minuts que triïs (un dia del parc dura 4 minuts).'),
+        tipus, h('label', { class: 'fila-preu' }, 'Durada (minuts reals)', minuts),
+        h('div', { class: 'fila-botons' },
+          esd ? h('button', { class: 'btn', onclick: async () => { try { await desa.setConfig({ esdeveniment: null }); fet('Esdeveniment aturat'); } catch (err) { error(err); } } }, 'Atura\'l') : null,
+          h('button', { class: 'btn btn-principal', onclick: async () => {
+            try { await desa.setConfig({ esdeveniment: { tipus: tipus.value, fins: Date.now() + Math.max(1, Number(minuts.value) || 12) * 60000 } }); fet('Esdeveniment en marxa'); } catch (err) { error(err); }
+          } }, 'Comença')),
+        h('strong', {}, 'Inspecció de sanitat'),
+        h('p', { class: 'nota' }, 'Es revisa cada parc: si té brossa als camins o no té lavabos, rep una multa; si està net, un premi de 500 €.'),
+        h('button', { class: 'btn', onclick: async () => {
+          if (!confirm('Enviar una inspecció de sanitat a tots els parcs?')) return;
+          try {
+            const desti = empreses.filter((e) => e.parc).map((e) => e.uid);
+            await Promise.all(desti.map((uid) => desa.enviarAvis(uid, { tipus: 'inspeccio', text: 'Inspecció de sanitat' })));
+            fet(`Inspecció enviada a ${desti.length} parcs.`);
+          } catch (err) { error(err); }
+        } }, 'Fes una inspecció'));
+    })(),
     h('div', { class: 'prof-form' },
       h('strong', {}, 'Anunci per a tota la classe'),
       h('p', { class: 'nota' }, 'Surt a dalt de la pantalla de tots els alumnes.'),

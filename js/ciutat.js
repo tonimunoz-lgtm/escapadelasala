@@ -423,7 +423,14 @@ export function crearCiutat({ canvas, onClic }) {
 
   function srcLocal(c) {
     const l = locals[c.id];
-    if (!l) return c.sub === 'solar' ? 'img/locals/solar-en-venda.webp' : c.sub === 'nau' ? 'img/locals/nau-es-lloga.webp' : 'img/locals/local-es-lloga.webp';
+    // els locals que no són de cap alumne són comerços de la ciutat (les empreses de la classe tenen un parc)
+    if (!l) {
+      if (c.sub === 'solar') return 'img/locals/solar-en-venda.webp';
+      if (c.sub === 'nau') return 'img/ciutat/nau-industrial.webp';
+      const s = ['fleca', 'cafeteria', 'roba', 'bicis', 'floristeria', 'fruiteria', 'gelateria', 'informatica', 'llibreria', 'perruqueria', 'restaurant', 'gimnas'];
+      const h = hash(c.X, c.Y);
+      return imgNegoci(s[h % s.length], 1 + ((h >> 4) % 3));
+    }
     if (l.estat === 'construint') return `img/locals/construccio-${Math.min(3, l.faseObra || 1)}.webp`;
     if (l.estat === 'obres' || l.estat === 'contracte') return c.sub === 'solar' ? 'img/locals/solar-en-venda.webp' : 'img/locals/local-obres.webp';
     return imgNegoci(l.sector, l.fase);
