@@ -37,6 +37,7 @@ export const PERSONAL_PARC = {
 export const CATEGORIES = [
   ['atraccio', 'Atraccions', 'carrusel'],
   ['menjar', 'Menjar i begudes', 'gelats'],
+  ['botiga', 'Botigues', 'botiga-records'],
   ['servei', 'Serveis', 'lavabos'],
   ['decoracio', 'Decoració', 'arbre'],
 ];
@@ -52,6 +53,25 @@ export const OBJECTES = {
     capacitat: 10, durada: 3, atractiu: 5, emocio: 4, preuJust: 4, text: 'La preferida dels adolescents. Cara, però atrau molta gent.' },
   'llits-elastics': { nom: 'Llits elàstics', cat: 'atraccio', img: 'llits-elastics', mida: 1, frac: 0.97, preu: 6000, manteniment: 60,
     capacitat: 6, durada: 4, atractiu: 2, emocio: 2, preuJust: 2, text: 'Barata i petita. Ideal per començar.' },
+  // fase 2: atraccions més grans (les d'emoció 6 o més poden marejar: cal una infermeria)
+  'sinia-petita': { nom: 'Sínia petita', cat: 'atraccio', img: 'sinia-petita', mida: 2, frac: 0.97, preu: 18000, manteniment: 160,
+    capacitat: 16, durada: 5, atractiu: 4, emocio: 2, preuJust: 3.5, text: 'Vistes boniques i cap ensurt. Agrada a tothom.' },
+  'vaixell-pirata': { nom: 'Vaixell pirata', cat: 'atraccio', img: 'vaixell-pirata', mida: 2, frac: 0.97, preu: 26000, manteniment: 240,
+    capacitat: 20, durada: 3, atractiu: 6, emocio: 5, preuJust: 4.5, text: 'Es gronxa amunt i avall. Molta capacitat.' },
+  'casa-terror': { nom: 'Casa del terror', cat: 'atraccio', img: 'casa-terror', mida: 2, frac: 0.97, preu: 30000, manteniment: 260,
+    capacitat: 12, durada: 4, atractiu: 6, emocio: 5, preuJust: 5, text: 'Fantasmes i crits. Els adolescents en fan cua.' },
+  'torre-caiguda': { nom: 'Torre de caiguda', cat: 'atraccio', img: 'torre-caiguda', mida: 1, frac: 0.97, preu: 35000, manteniment: 320,
+    capacitat: 12, durada: 2, atractiu: 7, emocio: 7, preuJust: 5.5, text: 'Ocupa poc espai i és molt emocionant. Pot marejar.' },
+  'sinia-gran': { nom: 'Sínia gran', cat: 'atraccio', img: 'sinia-gran', mida: 3, frac: 0.97, preu: 55000, manteniment: 450,
+    capacitat: 40, durada: 6, atractiu: 8, emocio: 3, preuJust: 5, text: 'Es veu des de lluny i hi caben 40 persones alhora.' },
+  'muntanya-russa-petita': { nom: 'Muntanya russa familiar', cat: 'atraccio', img: 'muntanya-russa-petita', mida: 3, frac: 0.97, preu: 60000, manteniment: 500,
+    capacitat: 20, durada: 3, atractiu: 9, emocio: 6, preuJust: 6, text: 'La primera muntanya russa! Atrau molta gent. Pot marejar.' },
+  'rius-rapids': { nom: 'Rius ràpids', cat: 'atraccio', img: 'rius-rapids', mida: 4, frac: 0.97, preu: 100000, manteniment: 850,
+    capacitat: 24, durada: 5, atractiu: 12, emocio: 6, preuJust: 7, text: 'Barques rodones entre cascades. Ideal a l\'estiu. Pot marejar.' },
+  troncs: { nom: 'Troncs d\'aigua', cat: 'atraccio', img: 'troncs', mida: 4, frac: 0.97, preu: 110000, manteniment: 900,
+    capacitat: 24, durada: 4, atractiu: 13, emocio: 7, preuJust: 7.5, text: 'Una gran baixada i... xof! Pot marejar.' },
+  'muntanya-russa-gegant': { nom: 'Muntanya russa gegant', cat: 'atraccio', img: 'muntanya-russa-gegant', mida: 4, frac: 0.97, preu: 140000, manteniment: 1100,
+    capacitat: 28, durada: 3, atractiu: 16, emocio: 10, preuJust: 9, text: 'L\'atracció estrella: loopings i velocitat. Molt cara i molt rendible. Mareja molt!' },
 
   gelats: { nom: 'Parada de gelats', cat: 'menjar', img: 'gelats', mida: 1, frac: 0.84, preu: 3000, manteniment: 50,
     cost: 0.9, preuJust: 3, efecte: { gana: 25, set: 25 }, text: 'Treu la gana i la set una mica. Cada gelat et costa 0,90 €.' },
@@ -62,8 +82,17 @@ export const OBJECTES = {
   begudes: { nom: 'Parada de begudes', cat: 'menjar', img: 'begudes', mida: 1, frac: 0.84, preu: 2500, manteniment: 40,
     cost: 0.4, preuJust: 2.5, efecte: { set: 75 }, text: 'Imprescindible si fa calor. Cada beguda et costa 0,40 €.' },
 
+  globus: { nom: 'Parada de globus', cat: 'botiga', img: 'globus', mida: 1, frac: 0.86, preu: 2000, manteniment: 30,
+    cost: 1, preuJust: 4, text: 'Un caprici: els visitants contents en compren. Cada globus et costa 1 €.' },
+  'botiga-records': { nom: 'Botiga de records', cat: 'botiga', img: 'botiga-records', mida: 1, frac: 0.9, preu: 6000, manteniment: 60,
+    cost: 4, preuJust: 10, text: 'Peluixos, gorres i tasses. Marge alt, però només hi compra qui s\'ho ha passat bé. Cada record et costa 4 €.' },
+
   lavabos: { nom: 'Lavabos', cat: 'servei', img: 'lavabos', mida: 1, frac: 0.92, preu: 4000, manteniment: 45,
     text: 'Sense lavabos, els visitants s\'enfaden molt (i marxen).' },
+  'primers-auxilis': { nom: 'Infermeria', cat: 'servei', img: 'primers-auxilis', mida: 1, frac: 0.9, preu: 8000, manteniment: 90,
+    text: 'Si tens atraccions fortes, alguns visitants es maregen. Sense infermeria, marxen enfadats.' },
+  caixer: { nom: 'Caixer automàtic', cat: 'servei', img: 'caixer', mida: 1, frac: 0.84, preu: 3000, manteniment: 25,
+    text: 'Qui es queda sense diners en treu més i continua gastant. El banc et paga 0,50 € per cada ús.' },
   informacio: { nom: 'Punt d\'informació', cat: 'servei', img: 'informacio', mida: 1, frac: 0.8, preu: 2000, manteniment: 30,
     text: 'Els visitants s\'orienten millor i el parc té més bona fama.' },
 
@@ -73,6 +102,9 @@ export const OBJECTES = {
     text: 'Si n\'hi ha a prop, la gent no llença brossa a terra.' },
   fanal: { nom: 'Fanal', cat: 'decoracio', img: 'fanal', mida: 1, frac: 0.22, preu: 200, bellesa: 1, text: 'Decora els camins.' },
   arbre: { nom: 'Arbre', cat: 'decoracio', img: 'arbre', mida: 1, frac: 0.78, preu: 250, bellesa: 2, text: 'Fa el parc més agradable.' },
+  bardissa: { nom: 'Bardissa', cat: 'decoracio', img: 'bardissa', mida: 1, frac: 0.8, preu: 150, bellesa: 1, text: 'Per fer tanques verdes al voltant dels camins.' },
+  estatua: { nom: 'Estàtua', cat: 'decoracio', img: 'estatua', mida: 1, frac: 0.84, preu: 1500, bellesa: 4, text: 'Decoració elegant.' },
+  font: { nom: 'Font', cat: 'decoracio', img: 'font', mida: 1, frac: 0.9, preu: 2000, bellesa: 5, text: 'La decoració més bonica.' },
   flors: { nom: 'Parterre de flors', cat: 'decoracio', img: 'flors', mida: 1, frac: 0.82, preu: 300, bellesa: 3, text: 'La decoració que més agrada.' },
 };
 export const srcObjecte = (t) => `img/parc/${OBJECTES[t].img}.webp`;

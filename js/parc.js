@@ -35,6 +35,7 @@ const QUEIXES = {
   cua: ['⏳', 'Les cues són massa llargues', 'Construeix més atraccions perquè la gent es reparteixi.'],
   avaria: ['🔧', 'Hi ha atraccions espatllades', 'Contracta mecànics o repara-les tu.'],
   avorrit: ['🥱', 'S\'avorreixen: hi ha poques atraccions', 'Construeix atraccions noves.'],
+  mareig: ['🤢', 'Es maregen i no hi ha infermeria', 'Si tens atraccions fortes, construeix una infermeria.'],
 };
 
 export function obrirParc({ estat, desar, publicar, onTanca }) {
@@ -72,14 +73,16 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   const cataleg = h('div', { class: 'parc-cataleg', hidden: true });
   const info = h('aside', { class: 'parc-info', hidden: true });
   const ajuda = h('div', { class: 'parc-ajuda' });
+  // barra petita que surt mentre col·loques o mous alguna cosa (el catàleg s'amaga perquè no tapi el mapa)
+  const xip = h('div', { class: 'parc-xip', hidden: true });
   const zoom = h('div', { class: 'parc-zoom' },
     h('button', { onclick: () => zoomA(1.25) }, '+'), h('button', { onclick: () => zoomA(0.8) }, '−'), h('button', { onclick: encaixa, class: 'parc-zoom-text' }, 'Tot'));
-  const arrel = h('div', { class: 'parc' }, canvas, barra, eines, cataleg, info, ajuda, zoom);
+  const arrel = h('div', { class: 'parc' }, canvas, barra, eines, cataleg, info, ajuda, xip, zoom);
   document.body.append(arrel);
   const ctx = canvas.getContext('2d');
 
   // ---------- estat d'execució (no es desa) ----------
-  let velocitat = 1, eina = 'mou', aColocar = null, hover = null;
+  let velocitat = 1, eina = 'mou', aColocar = null, hover = null, movent = null;
   let escala = 0.5; const despl = { x: 0, y: 0 };
   const visitants = [], personal = [], textos = [];
   const rt = new Map();          // estat de cada atracció/parada: cua, muntats...
@@ -87,9 +90,10 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   let entradaAcces = [];
   let pendentArribada = 0, darrerFrame = performance.now(), viu = true, darrerDesat = Date.now(), informeObert = false;
   parc.avui ??= nouDia();
+  parc.avui.botigues ??= 0; parc.avui.altres ??= 0;
 
   function nouDia() {
-    return { visitants: 0, entrades: 0, atraccions: 0, menjar: 0, costMenjar: 0, satisfSum: 0, satisfN: 0, queixes: {} };
+    return { visitants: 0, entrades: 0, atraccions: 0, menjar: 0, botigues: 0, altres: 0, costMenjar: 0, satisfSum: 0, satisfN: 0, queixes: {} };
   }
 
   // ---------- caches de la graella ----------
@@ -157,7 +161,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
       const d = OBJECTES[o.t];
       if (!accessible(o)) continue;
       if (d.cat === 'atraccio' && !o.avariat) a += d.atractiu;
-      if (d.cat === 'menjar') tipus.add(o.t);
+      if (d.cat === 'menjar' || d.cat === 'botiga') tipus.add(o.t);
       if (o.t === 'informacio') a += 1;
     }
     return a + tipus.size * 0.4;
@@ -198,20 +202,26 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     v.objectiu = null;
     const cansat = v.energia < 8, tard = minut >= MINUTS_DIA - 40, sensePressupost = v.pressupost < 1.5;
     if (tard || cansat || sensePressupost || v.satisf < 12 || (v.temps > 320 && Math.random() < 0.4)) return marxa(v);
-    const cerca = (filtre, clau) => {
+    const cerca = (filtre, clau, silenci = false) => {
       const cands = parc.objectes.filter((o) => filtre(o) && accessible(o) && !o.avariat);
-      if (!cands.length) { if (!v.sense[clau]) { pensa(v, clau); v.satisf -= 6; v.sense[clau] = 40; } return false; }
+      if (!cands.length) { if (!v.sense[clau]) { if (!silenci) { pensa(v, clau); v.satisf -= 6; } v.sense[clau] = 40; } return false; }
       const obj = new Map();
       for (const o of cands) for (const a of acces.get(o.id)) obj.set(k2(...a), o);
       const r = ruta(v.x, v.y, [...obj.keys()].map((s) => s.split(',').map(Number)));
-      if (!r) { if (!v.sense[clau]) { pensa(v, clau); v.satisf -= 4; v.sense[clau] = 40; } return false; }
+      if (!r) { if (!v.sense[clau]) { if (!silenci) { pensa(v, clau); v.satisf -= 4; } v.sense[clau] = 40; } return false; }
       const fi = r[r.length - 1];
       v.objectiu = obj.get(k2(...fi)).id; v.ruta = r; v.pas = 0; v.estat = 'camina';
       return true;
     };
+    if (v.marejat) {
+      if (cerca((o) => o.t === 'primers-auxilis', 'mareig')) return;
+      v.satisf -= 10; v.marejat = false; return marxa(v);
+    }
     if (v.lavabo > 65 && !v.sense.lavabo && cerca((o) => o.t === 'lavabos', 'lavabo')) return;
-    if (v.set > 60 && !v.sense.set && cerca((o) => o.t === 'begudes' || o.t === 'gelats', 'set')) return;
-    if (v.gana > 60 && !v.sense.gana && cerca((o) => OBJECTES[o.t].cat === 'menjar' && o.t !== 'begudes', 'gana')) return;
+    if (v.pressupost < 6 && v.temps < 280 && v.satisf > 45 && !v.sense.caixer && !v.caixer && cerca((o) => o.t === 'caixer', 'caixer', true)) return;
+    if (v.satisf > 60 && v.temps > 90 && v.pressupost > 8 && !v.comprat && !v.sense.botiga && Math.random() < 0.08 && cerca((o) => OBJECTES[o.t].cat === 'botiga', 'botiga', true)) return;
+    if (v.set > 55 && !v.sense.set && cerca((o) => o.t === 'begudes' || o.t === 'gelats', 'set')) return;
+    if (v.gana > 55 && !v.sense.gana && cerca((o) => OBJECTES[o.t].cat === 'menjar' && o.t !== 'begudes', 'gana')) return;
     if (v.energia < 30 && !v.sense.cansat && cerca((o) => OBJECTES[o.t].seient, 'cansat')) return;
     // una atracció: les que encara no ha provat tenen més opcions
     const atr = parc.objectes.filter((o) => OBJECTES[o.t].cat === 'atraccio' && accessible(o) && !o.avariat);
@@ -241,11 +251,11 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     if (!o || o.avariat) { if (o?.avariat) { pensa(v, 'avaria'); v.satisf -= 4; } v.estat = 'idle'; return; }
     const d = OBJECTES[o.t];
     if (d.seient) { v.estat = 'seu'; v.espera = 8; return; }
-    if (d.cat === 'atraccio' || d.cat === 'menjar' || o.t === 'lavabos') {
-      const preu = o.preu ?? (d.cat === 'atraccio' ? 0 : d.preuJust);
+    if (d.cat === 'atraccio' || d.cat === 'menjar' || d.cat === 'botiga' || o.t === 'lavabos' || o.t === 'caixer' || o.t === 'primers-auxilis') {
+      const preu = d.cat === 'servei' ? 0 : o.preu ?? (d.cat === 'atraccio' ? 0 : d.preuJust);
       if (preu > 0) {
         const vol = clamp(1.75 - preu / d.preuJust, 0, 1);
-        if (v.pressupost < preu || Math.random() > vol) { pensa(v, 'car'); v.satisf -= 5; v.estat = 'idle'; if (d.cat !== 'atraccio') v.sense[d.cat === 'menjar' ? (o.t === 'begudes' ? 'set' : 'gana') : 'lavabo'] = 25; return; }
+        if (v.pressupost < preu || Math.random() > vol) { pensa(v, 'car'); v.satisf -= 5; v.estat = 'idle'; if (d.cat !== 'atraccio') v.sense[d.cat === 'menjar' ? (o.t === 'begudes' ? 'set' : 'gana') : d.cat === 'botiga' ? 'botiga' : 'lavabo'] = 25; return; }
       }
       v.estat = 'cua'; v.espera = 0; rt.get(o.id).cua.push(v);
       return;
@@ -255,10 +265,10 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   // Paga i gaudeix d'una atracció o d'una parada
   function serveix(v, o) {
     const d = OBJECTES[o.t];
-    const preu = d.cat === 'atraccio' ? (o.preu ?? 0) : o.t === 'lavabos' ? 0 : (o.preu ?? d.preuJust);
+    const preu = d.cat === 'atraccio' ? (o.preu ?? 0) : d.cat === 'servei' ? 0 : (o.preu ?? d.preuJust);
     if (preu > 0) {
       v.pressupost -= preu; parc.diners += preu; o.ingressos = (o.ingressos || 0) + preu; parc.totals.ingressos += preu;
-      if (d.cat === 'atraccio') parc.avui.atraccions += preu; else parc.avui.menjar += preu;
+      if (d.cat === 'atraccio') parc.avui.atraccions += preu; else if (d.cat === 'botiga') parc.avui.botigues += preu; else parc.avui.menjar += preu;
       flota(o.x + d.mida / 2, o.y + d.mida / 2, `+${eur2(preu)}`, '#2a7423');
     }
     if (d.cat === 'menjar') {
@@ -268,8 +278,20 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
       v.brossa = 1; v.passos = 0; v.satisf += 4 * clamp(d.preuJust / Math.max(preu, 0.5), 0.5, 1.4);
       o.usos = (o.usos || 0) + 1;
     }
+    if (d.cat === 'botiga') {
+      parc.diners -= d.cost; parc.avui.costMenjar += d.cost; parc.totals.despeses += d.cost;
+      v.comprat = true; v.satisf += 6; o.usos = (o.usos || 0) + 1;
+    }
     if (o.t === 'lavabos') { v.lavabo = 0; v.satisf += 3; o.usos = (o.usos || 0) + 1; }
-    if (d.cat === 'atraccio') { v.vist.add(o.id); v.satisf += (5 + d.emocio * 2.5) * clamp(Math.sqrt(d.preuJust / Math.max(preu, d.preuJust * 0.5)), 0.6, 1.3); v.energia -= 4; }
+    if (o.t === 'primers-auxilis') { v.marejat = false; v.satisf += 5; v.energia += 15; o.usos = (o.usos || 0) + 1; }
+    if (o.t === 'caixer') {
+      v.caixer = true; v.pressupost += 20 + Math.random() * 30; o.usos = (o.usos || 0) + 1;
+      parc.diners += 0.5; parc.avui.altres += 0.5; parc.totals.ingressos += 0.5; o.ingressos = (o.ingressos || 0) + 0.5;
+    }
+    if (d.cat === 'atraccio') {
+      v.vist.add(o.id); v.set += 3; v.satisf += (3 + d.emocio * 1.6) * clamp(Math.sqrt(d.preuJust / Math.max(preu, d.preuJust * 0.5)), 0.6, 1.3); v.energia -= 4;
+      if (d.emocio >= 6 && Math.random() < 0.015 * (d.emocio - 5)) { v.marejat = true; pensa(v, '🤢'); }
+    }
     v.satisf = clamp(v.satisf, 0, 100);
   }
 
@@ -325,7 +347,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     parc.minut += dm;
     // arribades
     pendentArribada += ritmeArribades(m0) * dm;
-    while (pendentArribada >= 1 && visitants.length < 320) { pendentArribada -= 1; nouVisitant(); }
+    while (pendentArribada >= 1 && visitants.length < 400) { pendentArribada -= 1; nouVisitant(); }
     if (pendentArribada > 3) pendentArribada = 0;
     const animadors = personal.filter((p) => p.rol === 'animador');
 
@@ -351,7 +373,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
         if (o.avariat && s.cua.length) { for (const v of s.cua) { pensa(v, 'avaria'); v.satisf -= 6; v.estat = 'idle'; } s.cua = []; }
       } else if (s.cua.length) {
         s.servei += dm;
-        const t = o.t === 'lavabos' ? 0.6 : 1;
+        const t = o.t === 'lavabos' ? 0.3 : o.t === 'caixer' ? 0.4 : o.t === 'primers-auxilis' ? 0.5 : 0.6;   // minuts per persona
         while (s.cua.length && s.servei >= t) { s.servei -= t; const v = s.cua.shift(); serveix(v, o); v.estat = 'idle'; }
       } else s.servei = 0;
     }
@@ -362,7 +384,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
       v.temps += dm;
       for (const c of Object.keys(v.sense)) { v.sense[c] -= dm; if (v.sense[c] <= 0) delete v.sense[c]; }
       if (v.estat !== 'muntat') {
-        v.gana += 0.12 * dm; v.set += 0.16 * dm; v.lavabo += 0.08 * dm; v.energia -= 0.1 * dm;
+        v.gana += 0.24 * dm; v.set += 0.3 * dm; v.lavabo += 0.14 * dm; v.energia -= 0.1 * dm;
         if (v.gana > 85 || v.set > 85) v.satisf -= 0.15 * dm;
         if (v.lavabo > 90) v.satisf -= 0.3 * dm;
         if (v.energia < 15) v.satisf -= 0.15 * dm;
@@ -432,10 +454,10 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     const interessos = Math.round(parc.deute * INTERES_DIARI);
     parc.diners -= manteniment + sous + interessos;
     parc.totals.despeses += manteniment + sous + interessos;
-    const ingressos = a.entrades + a.atraccions + a.menjar;
+    const ingressos = a.entrades + a.atraccions + a.menjar + (a.botigues || 0) + (a.altres || 0);
     const despeses = manteniment + sous + interessos + a.costMenjar;
     const informe = {
-      dia: parc.dia, visitants: a.visitants, entrades: a.entrades, atraccions: a.atraccions, menjar: a.menjar,
+      dia: parc.dia, visitants: a.visitants, entrades: a.entrades, atraccions: a.atraccions, menjar: a.menjar, botigues: Math.round((a.botigues || 0) + (a.altres || 0)),
       costMenjar: Math.round(a.costMenjar), manteniment, sous, interessos, ingressos: Math.round(ingressos), despeses: Math.round(despeses),
       benefici: Math.round(ingressos - despeses), satisf: a.satisfN ? Math.round(a.satisfSum / a.satisfN) : null, reputacio: Math.round(parc.reputacio),
       queixes: Object.entries(a.queixes).sort((x, y) => y[1] - x[1]).slice(0, 3),
@@ -454,13 +476,13 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     if (publica) publicar?.({
       nom: parc.nom,
       camins: parc.camins.join(';'),
-      objectes: parc.objectes.map((o) => `${o.t},${o.x},${o.y}`).join(';'),
+      objectes: parc.objectes.filter((o) => o.x >= 0).map((o) => `${o.t},${o.x},${o.y}`).join(';'),
       atraccions: parc.objectes.filter((o) => OBJECTES[o.t].cat === 'atraccio').length,
       reputacio: Math.round(parc.reputacio),
     });
   }
   let desatPendent = null;
-  function guardaAviat() { clearTimeout(desatPendent); desatPendent = setTimeout(() => guarda(true), 1200); }
+  function guardaAviat() { clearTimeout(desatPendent); desatPendent = setTimeout(() => { if (movent) guardaAviat(); else guarda(true); }, 1200); }
 
   // ---------- construcció ----------
   function potColocar(t, x, y) {
@@ -476,7 +498,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     if (parc.diners < d.preu) return avis(`No tens prou diners: costa ${eur(d.preu)}.`, 'error');
     parc.diners -= d.preu; parc.totals.despeses += d.preu;
     const o = { id: parc.seguentId++, t, x, y };
-    if (d.cat === 'atraccio') o.preu = 0; else if (d.cat === 'menjar') o.preu = d.preuJust;
+    if (d.cat === 'atraccio') o.preu = 0; else if (d.cat === 'menjar' || d.cat === 'botiga') o.preu = d.preuJust;
     parc.objectes.push(o);
     recalcula();
     flota(x + d.mida / 2, y + d.mida / 2, `−${eur(d.preu)}`, '#d6402f');
@@ -514,8 +536,9 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
 
   // ---------- eines i panells ----------
   function triaEina(id) {
+    if (movent) cancelaMoure();
     for (const [k, b] of Object.entries(botonsEina)) b.classList.toggle('actiu', k === id);
-    aColocar = null;
+    aColocar = null; xip.hidden = true; ajuda.hidden = false;
     if (id === 'finances') { eina = 'mou'; botonsEina.mou.classList.add('actiu'); botonsEina.finances.classList.remove('actiu'); cataleg.hidden = true; return obreFinances(); }
     if (id === 'personal') { eina = 'mou'; botonsEina.mou.classList.add('actiu'); botonsEina.personal.classList.remove('actiu'); cataleg.hidden = true; return obrePersonal(); }
     eina = id;
@@ -532,9 +555,45 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     if (cataleg.hidden) return;
     cataleg.replaceChildren(...Object.entries(OBJECTES).filter(([, d]) => d.cat === eina).map(([t, d]) => h('button', {
       class: `parc-carta${aColocar === t ? ' triada' : ''}`, disabled: parc.diners < d.preu, title: d.text || '', 'data-preu': d.preu,
-      onclick: () => { aColocar = t; refrescaCataleg(); ajuda.textContent = `${d.nom}: toca la gespa on la vols posar${d.mida > 1 ? ` (ocupa ${d.mida}x${d.mida} caselles)` : ''}. Ha de tocar un camí.`; },
+      onclick: () => { aColocar = t; mostraXip(); },
     }, h('img', { src: srcObjecte(t), alt: '' }), h('strong', {}, d.nom), h('span', {}, eur(d.preu)),
-    d.atractiu ? h('span', { class: 'nota' }, `${'★'.repeat(d.atractiu)} · ${d.capacitat} places`) : d.cat === 'menjar' ? h('span', { class: 'nota' }, `Cost: ${eur2(d.cost)} / unitat`) : null)));
+    d.atractiu ? h('span', { class: 'nota' }, `Atractiu ${d.atractiu} · ${d.capacitat} places · ${d.mida}x${d.mida}`) : d.cost ? h('span', { class: 'nota' }, `Cost: ${eur2(d.cost)} / unitat`) : null)));
+  }
+  function mostraXip() {
+    const d = OBJECTES[aColocar];
+    cataleg.hidden = true; ajuda.hidden = true; xip.hidden = false;
+    const text = movent
+      ? `Mou ${d.nom}: toca on la vols posar${movent.cost ? ` (costarà ${eur(movent.cost)})` : ' (gratis)'}.`
+      : `${d.nom} (${eur(d.preu)}): toca la gespa on la vols posar${d.mida > 1 ? ` (${d.mida}x${d.mida})` : ''}. Pots arrossegar el mapa.`;
+    xip.replaceChildren(...[h('img', { src: srcObjecte(aColocar), alt: '' }), h('span', {}, text),
+      movent ? null : h('button', { class: 'btn', onclick: () => { aColocar = null; xip.hidden = true; cataleg.hidden = false; refrescaCataleg(); } }, 'Canvia'),
+      h('button', { class: 'btn btn-principal', onclick: () => { if (movent) cancelaMoure(); else { aColocar = null; xip.hidden = true; cataleg.hidden = false; refrescaCataleg(); } } }, movent ? 'Cancel·la' : 'Fet')].filter(Boolean));
+  }
+  // Moure un objecte ja construït: gratis si encara no l'ha fet servir ningú (o és decoració)
+  function costMoure(o) { const d = OBJECTES[o.t]; return d.cat === 'decoracio' || !(o.usos > 0) ? 0 : Math.round(d.preu * 0.1); }
+  function comencaMoure(o) {
+    const s = rt.get(o.id);
+    if (s) { for (const v of [...s.cua, ...s.muntats]) { v.estat = 'idle'; v.amagat = false; } s.cua = []; s.muntats = []; }
+    movent = { o, x0: o.x, y0: o.y, cost: costMoure(o) };
+    o.x = -100; o.y = -100;
+    recalcula(); tancaInfo();
+    for (const [k, b] of Object.entries(botonsEina)) b.classList.toggle('actiu', k === 'mou');
+    eina = 'mou'; aColocar = o.t; mostraXip();
+  }
+  function acabaMoure(x, y) {
+    const { o, cost } = movent;
+    if (!potColocar(o.t, x, y)) return avis('Aquí no hi cap: ha de ser sobre gespa lliure.', 'error');
+    if (parc.diners < cost) return avis(`No tens prou diners per moure-la (${eur(cost)}).`, 'error');
+    o.x = x; o.y = y; parc.diners -= cost; parc.totals.despeses += cost;
+    movent = null; aColocar = null; xip.hidden = true; ajuda.hidden = false;
+    recalcula(); guardaAviat();
+    if (!accessible(o) && OBJECTES[o.t].cat !== 'decoracio') avis('Recorda connectar-la amb un camí.', 'info');
+  }
+  function cancelaMoure() {
+    if (!movent) return;
+    movent.o.x = movent.x0; movent.o.y = movent.y0;
+    movent = null; aColocar = null; xip.hidden = true; ajuda.hidden = false;
+    recalcula();
   }
   function tancaInfo() { info.hidden = true; info.replaceChildren(); }
   function panell(titol, ...cos) {
@@ -574,7 +633,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
             } }, `Repara-la (${eur(cost)})`));
         }
       }
-      if (d.cat === 'menjar') {
+      if (d.cat === 'menjar' || d.cat === 'botiga') {
         cos.push(h('dl', { class: 'dades' },
           h('dt', {}, 'Unitats venudes'), h('dd', {}, fmt.format(o.usos || 0)),
           h('dt', {}, 'Ingressos totals'), h('dd', {}, eur(o.ingressos || 0)),
@@ -583,8 +642,12 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
         h('label', { class: 'fila-preu' }, 'Preu de venda (€)', campPreu(o.preu ?? d.preuJust, (n) => { o.preu = n; }, 0.1)),
         h('p', { class: 'nota' }, `Marge per unitat: preu de venda − cost. Als visitants els sembla just pagar uns ${eur2(d.preuJust)}.`));
       }
-      if (o.t === 'lavabos') cos.push(h('p', { class: 'nota' }, `Usos: ${fmt.format(o.usos || 0)} · Manteniment: ${eur(d.manteniment)} / dia`));
-      cos.push(h('button', { class: 'btn', onclick: () => enderroca(o.x, o.y) }, `Enderroca (recuperes ${eur(Math.round(d.preu * RETORN_ENDERROC))})`));
+      if (d.cat === 'servei') cos.push(h('p', { class: 'nota' }, `Usos: ${fmt.format(o.usos || 0)} · Manteniment: ${eur(d.manteniment)} / dia${o.t === 'caixer' ? ` · Comissions: ${eur2(o.ingressos || 0)}` : ''}`));
+      const cm = costMoure(o);
+      cos.push(h('div', { class: 'fila-botons' },
+        h('button', { class: 'btn', onclick: () => comencaMoure(o) }, cm ? `Mou-la (${eur(cm)})` : 'Mou-la (gratis)'),
+        h('button', { class: 'btn', onclick: () => enderroca(o.x, o.y) }, `Enderroca (+${eur(Math.round(d.preu * RETORN_ENDERROC))})`)),
+      h('p', { class: 'nota' }, cm ? 'Com que ja s\'ha fet servir, moure-la costa un 10 % del preu (desmuntar i tornar a muntar).' : 'Encara no l\'ha fet servir ningú: la pots moure gratis.'));
     }
     panell(d.nom, ...cos);
   }
@@ -606,7 +669,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     for (const o of parc.objectes) {
       const d = OBJECTES[o.t];
       if (d.cat === 'atraccio') preus.push(h('label', { class: 'fila-preu' }, `${d.nom} (just: ${eur2(d.preuJust)})`, campPreu(o.preu ?? 0, (n) => { o.preu = n; })));
-      if (d.cat === 'menjar') preus.push(h('label', { class: 'fila-preu' }, `${d.nom} (cost ${eur2(d.cost)}, just ${eur2(d.preuJust)})`, campPreu(o.preu ?? d.preuJust, (n) => { o.preu = n; }, 0.1)));
+      if (d.cat === 'menjar' || d.cat === 'botiga') preus.push(h('label', { class: 'fila-preu' }, `${d.nom} (cost ${eur2(d.cost)}, just ${eur2(d.preuJust)})`, campPreu(o.preu ?? d.preuJust, (n) => { o.preu = n; }, 0.1)));
     }
     const taula = hist.length ? h('table', { class: 'parc-taula' },
       h('thead', {}, h('tr', {}, h('th', {}, 'Dia'), h('th', {}, 'Visitants'), h('th', {}, 'Ingressos'), h('th', {}, 'Despeses'), h('th', {}, 'Benefici'))),
@@ -632,8 +695,9 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
         h('dt', {}, 'Entrades'), h('dd', {}, eur(r.entrades)),
         h('dt', {}, 'Atraccions'), h('dd', {}, eur(r.atraccions)),
         h('dt', {}, 'Menjar i begudes'), h('dd', {}, eur(r.menjar)),
+        r.botigues ? [h('dt', {}, 'Botigues i caixers'), h('dd', {}, eur(r.botigues))] : null,
         h('dt', {}, h('strong', {}, 'Total ingressos')), h('dd', {}, h('strong', {}, eur(r.ingressos))),
-        h('dt', {}, 'Cost del menjar venut'), h('dd', {}, `−${eur(r.costMenjar)}`),
+        h('dt', {}, 'Cost dels productes venuts'), h('dd', {}, `−${eur(r.costMenjar)}`),
         h('dt', {}, 'Manteniment'), h('dd', {}, `−${eur(r.manteniment)}`),
         h('dt', {}, 'Sous del personal'), h('dd', {}, `−${eur(r.sous)}`),
         h('dt', {}, 'Interessos del préstec'), h('dd', {}, `−${eur(r.interessos)}`),
@@ -706,7 +770,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   canvas.addEventListener('pointercancel', acaba);
   canvas.addEventListener('pointerleave', () => { hover = null; });
   canvas.addEventListener('wheel', (ev) => { ev.preventDefault(); const r = canvas.getBoundingClientRect(); zoomA(ev.deltaY < 0 ? 1.12 : 1 / 1.12, ev.clientX - r.left, ev.clientY - r.top); }, { passive: false });
-  const tecla = (ev) => { if (ev.key === 'Escape') { if (aColocar) { aColocar = null; refrescaCataleg(); } else triaEina('mou'); } };
+  const tecla = (ev) => { if (ev.key === 'Escape') { if (movent) cancelaMoure(); else if (aColocar) { aColocar = null; xip.hidden = true; cataleg.hidden = false; refrescaCataleg(); } else triaEina('mou'); } };
   window.addEventListener('keydown', tecla);
   const redim = () => encaixa();
   window.addEventListener('resize', redim);
@@ -716,11 +780,25 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     if (eina === 'cami') posaCami(x, y); else enderroca(x, y);
   }
   function clic(ev) {
-    if (aColocar) { const m = OBJECTES[aColocar].mida; const { x, y } = casella(ev.clientX, ev.clientY, m); coloca(aColocar, x, y); return; }
-    const { x, y } = casella(ev.clientX, ev.clientY);
-    if (!dins(x, y)) return;
-    const c = ocup[y * N + x];
-    if (eina === 'mou' && c > 0) obreObjecte(objecte(c));
+    if (aColocar) { const m = OBJECTES[aColocar].mida; const { x, y } = casella(ev.clientX, ev.clientY, m); if (movent) acabaMoure(x, y); else coloca(aColocar, x, y); return; }
+    if (eina !== 'mou') return;
+    const o = objecteA(ev.clientX, ev.clientY);
+    if (o) obreObjecte(o);
+  }
+  // Quin objecte hi ha sota el dit: primer mira la imatge (de davant cap enrere), després la casella
+  function objecteA(sx, sy) {
+    const r = canvas.getBoundingClientRect();
+    const wx = (sx - r.left - despl.x) / escala, wy = (sy - r.top - despl.y) / escala;
+    const ordre = [...parc.objectes].filter((o) => o.x >= 0).sort((a, b) => (b.x + b.y + 2 * OBJECTES[b.t].mida) - (a.x + a.y + 2 * OBJECTES[a.t].mida));
+    for (const o of ordre) {
+      const d = OBJECTES[o.t], im = img(srcObjecte(o.t));
+      if (!im) continue;
+      const c = iso(o.x + d.mida / 2, o.y + d.mida / 2), w = WP * d.mida * d.frac, hh = w * (im.naturalHeight / im.naturalWidth);
+      const baix = c.y + (WP * d.mida / 4) * d.frac;
+      if (wx >= c.x - w * 0.42 && wx <= c.x + w * 0.42 && wy >= baix - hh * 0.95 && wy <= baix) return o;
+    }
+    const { x, y } = casella(sx, sy);
+    return dins(x, y) && ocup[y * N + x] > 0 ? objecte(ocup[y * N + x]) : null;
   }
 
   // ---------- dibuix ----------
@@ -765,7 +843,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     // previsualització del que es col·loca
     if (hover && (aColocar || eina === 'cami' || eina === 'enderroca')) {
       const m = aColocar ? OBJECTES[aColocar].mida : 1;
-      const ok = aColocar ? potColocar(aColocar, hover.x, hover.y) && parc.diners >= OBJECTES[aColocar].preu : eina === 'cami' ? dins(hover.x, hover.y) && ocup[hover.y * N + hover.x] === 0 : dins(hover.x, hover.y);
+      const ok = aColocar ? potColocar(aColocar, hover.x, hover.y) && parc.diners >= (movent ? movent.cost : OBJECTES[aColocar].preu) : eina === 'cami' ? dins(hover.x, hover.y) && ocup[hover.y * N + hover.x] === 0 : dins(hover.x, hover.y);
       rombe(hover.x, hover.y, m, m);
       ctx.fillStyle = eina === 'enderroca' ? 'rgba(214,64,47,.4)' : ok ? 'rgba(60,157,50,.45)' : 'rgba(214,64,47,.45)'; ctx.fill();
     }
@@ -781,11 +859,11 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     if (hover && aColocar) afegeix(hover.x + hover.y + 2 * (OBJECTES[aColocar].mida - 1) + 0.9, () => {
       const im = img(srcObjecte(aColocar)); if (!im) return;
       const m = OBJECTES[aColocar].mida, c = iso(hover.x + m / 2, hover.y + m / 2);
-      const ok = potColocar(aColocar, hover.x, hover.y) && parc.diners >= OBJECTES[aColocar].preu;
+      const ok = potColocar(aColocar, hover.x, hover.y) && parc.diners >= (movent ? movent.cost : OBJECTES[aColocar].preu);
       ctx.globalAlpha = ok ? 0.75 : 0.35; dibuixaObjecte(ctx, im, aColocar, c.x, c.y, WP * m); ctx.globalAlpha = 1;
       // contorn de la base per sobre de la imatge: verd si hi cap, vermell si no
       rombe(hover.x, hover.y, m, m); ctx.lineWidth = 5; ctx.strokeStyle = ok ? '#3c9d32' : '#d6402f'; ctx.stroke();
-      if (!ok) { ctx.font = '800 22px "Baloo 2", system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#d6402f'; ctx.fillText(parc.diners < OBJECTES[aColocar].preu ? 'No tens prou diners' : 'Aquí no hi cap', c.x, c.y + 8); }
+      if (!ok) { ctx.font = '800 22px "Baloo 2", system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#d6402f'; ctx.fillText(parc.diners < (movent ? movent.cost : OBJECTES[aColocar].preu) ? 'No tens prou diners' : 'Aquí no hi cap', c.x, c.y + 8); }
     });
     for (const d of [...capes.keys()].sort((a, b) => a - b)) for (const f of capes.get(d)) f();
     // textos flotants (diners)
@@ -801,6 +879,7 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
     ctx.globalAlpha = 1;
   }
   function dibuixaObj(o) {
+    if (o.x < 0) return;
     const d = OBJECTES[o.t], m = d.mida, im = img(srcObjecte(o.t));
     const c = iso(o.x + m / 2, o.y + m / 2);
     if (im) dibuixaObjecte(ctx, im, o.t, c.x, c.y, WP * m);
@@ -852,17 +931,18 @@ export function obrirParc({ estat, desar, publicar, onTanca }) {
   function bucle(ara) {
     if (!viu) return;
     const dt = Math.min(0.25, (ara - darrerFrame) / 1000); darrerFrame = ara;
-    if (velocitat && !informeObert) {
+    if (velocitat && !informeObert && !movent) {   // mentre mous una cosa, el temps s'atura
       let dm = (dt / SEGONS_PER_MINUT) * velocitat;
       while (dm > 0) { const pas = Math.min(0.5, dm); simula(pas); dm -= pas; if (informeObert) break; }
     }
     dibuixa();
     if ((comptadorBarra += dt) > 0.25) { comptadorBarra = 0; refrescaBarra(); if (!cataleg.hidden) for (const b of cataleg.children) b.disabled = parc.diners < Number(b.dataset.preu || 0); }
-    if (Date.now() - darrerDesat > 30000) guarda(false);
+    if (Date.now() - darrerDesat > 30000 && !movent) guarda(false);
     requestAnimationFrame(bucle);
   }
 
   function tancar() {
+    cancelaMoure();
     viu = false;
     window.removeEventListener('keydown', tecla); window.removeEventListener('resize', redim);
     clearTimeout(desatPendent);
