@@ -1398,13 +1398,24 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     let angle = 0;
     if (s?.muntats.length && s.fi) {
       const f = clamp(1 - (s.fi - parc.minut) / d.durada, 0, 1);
-      angle = (a.angle * Math.PI / 180) * Math.sin(Math.PI * f) * Math.sin(2 * Math.PI * tempsAnim / a.periode);
+      // cada atracció té el seu propi ritme (si no, totes es mourien exactament igual)
+      angle = (a.angle * Math.PI / 180) * Math.sin(Math.PI * f) * Math.sin(2 * Math.PI * (tempsAnim + o.id * 0.37) / a.periode);
     }
     ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
     ctx.drawImage(base, esq, dalt, w, hb);
     ctx.save();
     ctx.translate(esq + a.pivotBase[0] * k, dalt + a.pivotBase[1] * k); ctx.rotate(angle);
     ctx.drawImage(peca, -a.pivotPeca[0] * k, -a.pivotPeca[1] * k, peca.naturalWidth * k, peca.naturalHeight * k);
+    // passatgers asseguts: se'n veu el cos de cintura amunt i es mouen amb la peça
+    if (a.seients && s?.muntats.length) {
+      s.muntats.slice(0, a.seients.length).forEach((v, i) => {
+        const im = img(`img/animacions/${v.img}.webp`);
+        if (!im) return;
+        const fw = im.naturalWidth / 4, fh = im.naturalHeight / 4, [sx, sy] = a.seients[i];
+        const x = (sx - a.pivotPeca[0]) * k, y = (sy - a.pivotPeca[1]) * k;
+        ctx.drawImage(im, 0, fh, fw, fh * 0.6, x - 9, y - 16, 18, 16.2);
+      });
+    }
     ctx.restore();
     ctx.drawImage(dav, esq, dalt, w, hb);
     ctx.restore();
