@@ -80,7 +80,9 @@ export const OBJECTES = {
   'sinia-petita': { nom: 'Sínia petita', cat: 'atraccio', img: 'sinia-petita', mida: 2, frac: 0.97, preu: 18000, manteniment: 160,
     capacitat: 16, durada: 5, atractiu: 4, emocio: 2, intensitat: 1, mareig: 1, preuJust: 3.5, text: 'Vistes boniques i cap ensurt. Agrada a tothom.' },
   'vaixell-pirata': { nom: 'Vaixell pirata', cat: 'atraccio', img: 'vaixell-pirata', mida: 2, frac: 0.97, preu: 26000, manteniment: 240,
-    capacitat: 20, durada: 3, atractiu: 6, emocio: 5, intensitat: 5, mareig: 5, preuJust: 4.5, text: 'Es gronxa amunt i avall. Molta capacitat.' },
+    // peces mòbils: la base, la barca que es gronxa (penjada de l'eix) i la porta que queda per davant
+    anim: { tipus: 'gronxa', base: 'vaixell-base', peca: 'vaixell-barca', davant: 'vaixell-base-davant', pivotBase: [408.5, 73.8], pivotPeca: [214, 71.7], angle: 32, periode: 1.7 },
+    capacitat: 40, durada: 8, atractiu: 6, emocio: 5, intensitat: 5, mareig: 5, preuJust: 4.5, text: 'Es gronxa amunt i avall. Molta capacitat.' },
   'casa-terror': { nom: 'Casa del terror', cat: 'atraccio', img: 'casa-terror', mida: 2, frac: 0.97, preu: 30000, manteniment: 260,
     capacitat: 12, durada: 4, atractiu: 6, emocio: 5, intensitat: 3, mareig: 1, preuJust: 5, text: 'Fantasmes i crits. Els adolescents en fan cua.' },
   'torre-caiguda': { nom: 'Torre de caiguda', cat: 'atraccio', img: 'torre-caiguda', mida: 1, frac: 0.97, preu: 35000, manteniment: 320,

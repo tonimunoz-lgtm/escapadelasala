@@ -1386,13 +1386,38 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     ctx.globalAlpha = 1;
   }
 
+  // Atraccions amb peces mòbils (de moment, el vaixell pirata): base + peça que es mou + capa de davant
+  function dibuixaAnimat(o, d, c) {
+    const a = d.anim, src = (n) => `img/parc/${n}.webp`;
+    const base = img(src(a.base)), peca = img(src(a.peca)), dav = img(src(a.davant));
+    if (!base || !peca || !dav) return false;
+    const m = d.mida, w = WP * m * d.frac, k = w / base.naturalWidth, hb = base.naturalHeight * k;
+    const baix = c.y + (WP * m / 4) * d.frac, esq = -w * (d.punta ?? 0.5), dalt = baix - hb;
+    // angle: només mentre hi ha gent; arrenca suau i frena al final del viatge
+    const s = rt.get(o.id);
+    let angle = 0;
+    if (s?.muntats.length && s.fi) {
+      const f = clamp(1 - (s.fi - parc.minut) / d.durada, 0, 1);
+      angle = (a.angle * Math.PI / 180) * Math.sin(Math.PI * f) * Math.sin(2 * Math.PI * tempsAnim / a.periode);
+    }
+    ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
+    ctx.drawImage(base, esq, dalt, w, hb);
+    ctx.save();
+    ctx.translate(esq + a.pivotBase[0] * k, dalt + a.pivotBase[1] * k); ctx.rotate(angle);
+    ctx.drawImage(peca, -a.pivotPeca[0] * k, -a.pivotPeca[1] * k, peca.naturalWidth * k, peca.naturalHeight * k);
+    ctx.restore();
+    ctx.drawImage(dav, esq, dalt, w, hb);
+    ctx.restore();
+    return true;
+  }
+
   function dibuixaObj(o) {
     if (o.x < 0) return;
     const d = OBJECTES[o.t], m = d.mida, im = img(srcObjecte(o.t));
     const c = iso(o.x + m / 2, o.y + m / 2);
     const [darrere, davant] = d.cat === 'atraccio' && rt.get(o.id) ? passatgers(o, rt.get(o.id)) : [[], []];
     darrere.forEach(dibuixaPassatger);
-    if (im) dibuixaObjecte(ctx, im, o.t, c.x, c.y, WP * m, o.gir);
+    if (!(d.anim && dibuixaAnimat(o, d, c)) && im) dibuixaObjecte(ctx, im, o.t, c.x, c.y, WP * m, o.gir);
     davant.forEach(dibuixaPassatger);
     if (o.t === 'parquing') dibuixaCotxes(o);
     const s = rt.get(o.id);
@@ -1458,10 +1483,11 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   function posaVelocitat(v) { velocitat = v; refrescaBarra(); }
 
   // ---------- bucle ----------
-  let comptadorBarra = 0;
+  let comptadorBarra = 0, tempsAnim = 0;   // tempsAnim: segons d'animació (s'atura amb la pausa)
   function bucle(ara) {
     if (!viu) return;
     const dt = Math.min(0.25, (ara - darrerFrame) / 1000); darrerFrame = ara;
+    if (velocitat && !informeObert) tempsAnim += dt * Math.min(2, velocitat);
     if (velocitat && !informeObert && !movent) {   // mentre mous una cosa, el temps s'atura
       let dm = (dt / SEGONS_PER_MINUT) * velocitat;
       while (dm > 0) { const pas = Math.min(0.5, dm); simula(pas); dm -= pas; if (informeObert) break; }
