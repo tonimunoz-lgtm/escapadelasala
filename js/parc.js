@@ -10,7 +10,7 @@ import { h, avis } from './ui.js';
 import { faseEconomica } from './joc.js';
 import {
   RECERCA_NIVELLS, RECERCA_ORDRE, PER_INVESTIGAR, CAMPANYES, NOMS_VISITANTS,
-  MIDA_TOTAL as M, ORIGEN, COST_TRAM_MURALLA, COST_TORRE, ATRACTIU_MURALLA, BLOC, LIMITS_BLOCS, BLOCS_INICIALS, preuParcella, PLACES_CARRER, PART_EN_COTXE, PERSONES_PER_COTXE, ENTRADA, MINUTS_DIA, SEGONS_PER_MINUT, HORA_OBERTURA, ULTIMA_ENTRADA, INTERES_DIARI,
+  MIDA_TOTAL, RESSORT, ORIGEN, COST_TRAM_MURALLA, COST_TORRE, ATRACTIU_MURALLA, BLOC, LIMITS_BLOCS, BLOCS_INICIALS, preuParcella, PLACES_CARRER, PART_EN_COTXE, PERSONES_PER_COTXE, ENTRADA, MINUTS_DIA, SEGONS_PER_MINUT, HORA_OBERTURA, ULTIMA_ENTRADA, INTERES_DIARI,
   COST_CAMI, RETORN_ENDERROC, PERSONAL_PARC, CATEGORIES, OBJECTES, srcObjecte, dibuixaObjecte,
 } from './parc-dades.js';
 
@@ -18,6 +18,8 @@ const WP = 128;                       // amplada d'una casella del parc (unitats
 const iso = (u, v) => ({ x: (u - v) * WP / 2, y: (u + v) * WP / 4 });
 const k2 = (x, y) => `${x},${y}`;
 // Les caselles van de (-7,-14) a (27,20): l'espai màxim del parc. idx() les passa a un índex de taula.
+// La graella fa 14 caselles més d'ample que l'espai màxim del parc: és on va el ressort (a la dreta).
+const M = MIDA_TOTAL + 14;
 const OX = ORIGEN.x, OY = ORIGEN.y;
 const aLaGraella = (x, y) => x >= -OX && y >= -OY && x < M - OX && y < M - OY;
 const idx = (x, y) => (y + OY) * M + (x + OX);
@@ -87,9 +89,16 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   parc.preus ??= { entrada: 5 }; parc.totals ??= { visitants: 0, ingressos: 0, despeses: 0 };
   for (const r of parc.historial) if (Array.isArray(r.queixes)) r.queixes = Object.fromEntries(r.queixes);
   parc.blocs ??= [...BLOCS_INICIALS]; parc.preus.parquing ??= 3;
-  let blocs = new Set(parc.blocs);
-  // una casella és del parc si és dins d'una parcel·la comprada
+  // ressort: 2x2 parcel·les a la dreta del parc (bx, bx+1) x (1, 2)
+  const blocsRessort = () => parc.ressort ? [0, 1].flatMap((dx) => [1, 2].map((by) => `${parc.ressort.bx + dx},${by}`)) : [];
+  const origenRessort = () => parc.ressort ? [parc.ressort.bx * BLOC, BLOC] : [0, 0];
+  const aRessort = (u, v) => { const [x0, y0] = origenRessort(); return [x0 + u, y0 + v]; };
+  let blocs = new Set([...parc.blocs, ...blocsRessort()]);
+  let blocsParc = new Set(parc.blocs);
+  // una casella és «dins» si és del parc o del ressort; «dinsParc», només del parc (per a la muralla)
   const dins = (x, y) => aLaGraella(x, y) && blocs.has(blocDe(x, y));
+  const dinsParc = (x, y) => aLaGraella(x, y) && blocsParc.has(blocDe(x, y));
+  const esZonaRessort = (x, y) => !!parc.ressort && blocsRessort().includes(blocDe(x, y));
 
   // ---------- DOM ----------
   const canvas = h('canvas', { class: 'parc-canvas', 'aria-label': 'El teu parc d\'atraccions' });
@@ -121,6 +130,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     ['opinions', '💭', 'Opinions'],
     ['marqueting', '📣', 'Màrqueting'],
     ['recerca', '🔬', 'Recerca'],
+    ['ressort', '🏨', 'Ressort'],
   ];
   const botonsEina = {};
   const eines = h('nav', { class: 'parc-eines' }, ...EINES.map(([id, ic, nom]) => {
@@ -158,18 +168,21 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   }
 
   // ---------- caches de la graella ----------
-  const camins = () => new Set(parc.camins);
+  // els camins del ressort són «virtuals»: no es dibuixen (ja surten a la imatge) ni es poden treure
+  const camins = () => new Set([...parc.camins, ...(parc.ressort ? RESSORT.camins.map(([u, v]) => k2(...aRessort(u, v))) : [])]);
   let setCamins = camins();
   const esCami = (x, y) => setCamins.has(k2(x, y));
   function recalcula() {
     setCamins = camins();
-    blocs = new Set(parc.blocs);
+    blocs = new Set([...parc.blocs, ...blocsRessort()]); blocsParc = new Set(parc.blocs);
     ocup = new Int32Array(M * M);
     for (const p of setCamins) { const [x, y] = p.split(',').map(Number); if (dins(x, y)) ocup[idx(x, y)] = -1; }
     for (const o of parc.objectes) {
       const m = OBJECTES[o.t].mida;
       for (let dx = 0; dx < m; dx++) for (let dy = 0; dy < m; dy++) if (dins(o.x + dx, o.y + dy)) ocup[idx(o.x + dx, o.y + dy)] = o.id;
     }
+    // els camins del ressort són caselles de camí (encara que siguin dins de la seva imatge)
+    if (parc.ressort) for (const [u, v] of RESSORT.camins) { const [x, y] = aRessort(u, v); if (aLaGraella(x, y)) ocup[idx(x, y)] = -1; }
     acces = new Map();
     bellesa = new Float32Array(M * M); paperera = new Uint8Array(M * M);
     for (const o of parc.objectes) {
@@ -274,11 +287,12 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     for (const o of parc.objectes) {
       const d = OBJECTES[o.t];
       if (!accessible(o)) continue;
-      if (d.cat === 'atraccio' && !o.avariat) a += d.atractiu;
+      if (d.cat === 'atraccio' && !o.avariat && !d.ressort) a += d.atractiu;
       if (d.cat === 'menjar' || d.cat === 'botiga') tipus.add(o.t);
       if (o.t === 'informacio') a += 1;
     }
     const ent = entrada();
+    if (parc.ressort) a += RESSORT.atractiu;
     return a + tipus.size * 0.4 + (ent ? OBJECTES[ent.t].atractiu || 0 : 0) + (parc.muralla ? ATRACTIU_MURALLA : 0);
   }
   const preuJustEntrada = (a) => 2 + 1.5 * Math.pow(Math.max(a, 0.5), 0.7);
@@ -298,7 +312,28 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   }
 
   // ---------- visitants ----------
-  function nouVisitant() {
+  // origen: 'parc' (per l'entrada del parc), 'arc' (per l'entrada del ressort) o 'hotel' (hostes que hi han dormit)
+  function nouVisitant(origen = 'parc') {
+    if (origen !== 'parc') {
+      let llocs;
+      if (origen === 'hotel') llocs = hotelsRessort().flatMap((o) => acces.get(o.id) || []);
+      else llocs = [aRessort(...RESSORT.entrada)];
+      if (!llocs.length) return;
+      const [sx, sy] = llocs[Math.floor(Math.random() * llocs.length)];
+      const hoste = origen === 'hotel', preuE = hoste ? 0 : parc.preus.entrada;
+      const v = {
+        x: sx, y: sy, fx: sx + 0.5, fy: sy + 0.5, ruta: [[sx, sy]], pas: 0, estat: 'idle', objectiu: null, img: `persona-${1 + Math.floor(Math.random() * PERSONES)}`, dir: 2,
+        gana: 5 + Math.random() * 35, set: 5 + Math.random() * 35, lavabo: Math.random() * 25, energia: 80 + Math.random() * 20,
+        satisf: hoste ? 72 : 64, pressupost: 25 + Math.random() * 50, brossa: 0, passos: 0, temps: 0, vist: new Set(), sense: {}, espera: 0,
+        nom: NOMS_VISITANTS[Math.floor(Math.random() * NOMS_VISITANTS.length)], num: (parc.totals.visitants || 0) + 1,
+        intMax: 3 + Math.random() * 7.5, mareigF: 0.5 + Math.random(), viatges: 0, gastat: preuE, hoste, reserva: hoste,
+      };
+      v.intMin = Math.max(0, v.intMax - 6);
+      if (preuE) { parc.diners += preuE; v.pressupost -= preuE; parc.avui.entrades += preuE; parc.totals.ingressos += preuE; flota(sx, sy, `+${eur(preuE)}`, '#2a7423'); }
+      parc.avui.visitants += 1; parc.totals.visitants += 1;
+      visitants.push(v);
+      return;
+    }
     // la majoria arriben en cotxe: si no hi ha lloc per aparcar, se'n tornen
     let enCotxe = Math.random() < Math.max(0.4, PART_EN_COTXE - 0.15 * quants('parada-bus')), pagaParquing = 0;
     if (enCotxe) {
@@ -367,6 +402,12 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (v.set > 55 && !v.sense.set && cerca((o) => o.t === 'begudes' || o.t === 'gelats', 'set')) return;
     if (v.gana > 55 && !v.sense.gana && cerca((o) => OBJECTES[o.t].cat === 'menjar' && o.t !== 'begudes', 'gana')) return;
     if (v.energia < 30 && !v.sense.cansat && cerca((o) => OBJECTES[o.t].seient, 'cansat')) return;
+    // al vespre, els visitants contents poden reservar una nit a l'hotel del ressort (com més car, menys)
+    if (parc.ressort && minut >= 420 && !v.reserva && !v.sense.hotel && v.satisf > 60 && (parc.ressort.dema || 0) < RESSORT.habitacions) {
+      const preuN = parc.preus.hotel ?? RESSORT.preuNit, vol = clamp(1.7 - preuN / RESSORT.preuNit * 0.9, 0.02, 1);
+      if (Math.random() < 0.3 * vol && cerca((o) => o.t === 'resort-hotel', 'hotel', true)) return;
+      v.sense.hotel = 999;
+    }
     // una atracció: les que encara no ha provat tenen més opcions
     const atr = parc.objectes.filter((o) => OBJECTES[o.t].cat === 'atraccio' && accessible(o) && !o.avariat);
     if (atr.length) {
@@ -400,6 +441,15 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (!o || o.avariat) { if (o?.avariat) { pensa(v, 'avaria'); v.satisf -= 4; } v.estat = 'idle'; return; }
     const d = OBJECTES[o.t];
     if (d.seient) { v.estat = 'seu'; v.espera = 8; return; }
+    if (d.cat === 'hotel') {
+      if ((parc.ressort?.dema || 0) >= RESSORT.habitacions) { v.sense.hotel = 999; v.estat = 'idle'; return; }
+      const preuN = parc.preus.hotel ?? RESSORT.preuNit;
+      parc.diners += preuN; parc.totals.ingressos += preuN; parc.avui.hotel = (parc.avui.hotel || 0) + preuN; parc.avui.nits = (parc.avui.nits || 0) + 1;
+      parc.ressort.dema = (parc.ressort.dema || 0) + 1; v.reserva = true;
+      flota(o.x + 0.5, o.y + 0.5, `+${eur(preuN)}`, '#2a7423');
+      v.estat = 'surt'; v.fade = 1;   // se'n va a dormir
+      return;
+    }
     if (d.cat === 'atraccio' || d.cat === 'menjar' || d.cat === 'botiga' || o.t === 'lavabos' || o.t === 'caixer' || o.t === 'primers-auxilis') {
       const preu = d.cat === 'servei' ? 0 : o.preu ?? (d.cat === 'atraccio' ? 0 : d.preuJust);
       if (preu > 0) {
@@ -509,7 +559,10 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     parc.minut += dm;
     // arribades
     pendentArribada += ritmeArribades(m0) * dm;
-    while (pendentArribada >= 1 && visitants.length < 400) { pendentArribada -= 1; nouVisitant(); }
+    // una part entra per l'arc del ressort (si està connectat amb el parc)
+    while (pendentArribada >= 1 && visitants.length < 400) { pendentArribada -= 1; nouVisitant(parc.ressort && Math.random() < 0.2 ? 'arc' : 'parc'); }
+    // els hostes que han dormit al ressort surten de l'hotel al matí
+    if (parc.ressort?.pendents > 0 && parc.obert && parc.minut < 180 && visitants.length < 400 && Math.random() < 0.6 * dm) { parc.ressort.pendents -= 1; nouVisitant('hotel'); }
     if (pendentArribada > 3) pendentArribada = 0;
     const animadors = personal.filter((p) => p.rol === 'animador');
 
@@ -644,10 +697,11 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const valoracioDia = valoracio();
     parc.diners -= manteniment + sous + interessos + publicitat + despRecerca;
     parc.totals.despeses += manteniment + sous + interessos + publicitat + despRecerca;
-    const ingressos = a.entrades + a.atraccions + a.menjar + (a.botigues || 0) + (a.altres || 0) + (a.parquing || 0);
+    const ingressos = a.entrades + a.atraccions + a.menjar + (a.botigues || 0) + (a.altres || 0) + (a.parquing || 0) + (a.hotel || 0);
+    if (parc.ressort) { parc.ressort.pendents = parc.ressort.dema || 0; parc.ressort.dema = 0; }
     const despeses = manteniment + sous + interessos + a.costMenjar + publicitat + despRecerca;
     const informe = {
-      parquing: Math.round(a.parquing || 0), senseParquing: a.senseParquing || 0, publicitat, recerca: despRecerca, descobert, valoracio: valoracioDia,
+      parquing: Math.round(a.parquing || 0), senseParquing: a.senseParquing || 0, hotel: Math.round(a.hotel || 0), nits: a.nits || 0, publicitat, recerca: despRecerca, descobert, valoracio: valoracioDia,
       elogis: Object.fromEntries(Object.entries(a.elogis || {}).sort((x, y) => y[1] - x[1]).slice(0, 3)),
       dia: parc.dia, visitants: a.visitants, entrades: a.entrades, atraccions: a.atraccions, menjar: a.menjar, botigues: Math.round((a.botigues || 0) + (a.altres || 0)),
       costMenjar: Math.round(a.costMenjar), manteniment, sous, interessos, ingressos: Math.round(ingressos), despeses: Math.round(despeses),
@@ -691,13 +745,13 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (blocs.has(b)) return false;
     const [bx, by] = b.split(',').map(Number);
     if (bx < LIMITS_BLOCS.bx[0] || bx > LIMITS_BLOCS.bx[1] || by < LIMITS_BLOCS.by[0] || by > LIMITS_BLOCS.by[1]) return false;
-    return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => blocs.has(`${bx + dx},${by + dy}`));
+    return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => blocsParc.has(`${bx + dx},${by + dy}`));
   }
   function compraParcella(b) {
     if (!esComprable(b)) return avis(blocs.has(b) ? 'Aquesta parcel·la ja és teva.' : 'Només pots comprar parcel·les que toquin el teu parc (les marcades en taronja).', 'error');
     let preu = preuParcella(parc.blocs.length - BLOCS_INICIALS.length), extra = 0;
     if (parc.muralla) {
-      const abans = muralla().cost; blocs.add(b); extra = Math.max(0, muralla().cost - abans); blocs.delete(b);
+      extra = Math.max(0, muralla([...parc.blocs, b]).cost - muralla().cost);
     }
     if (parc.diners < preu + extra) return avis(`No tens prou diners: aquesta parcel·la costa ${eur(preu)}${extra ? ` (més ${eur(extra)} per allargar la muralla)` : ''}.`, 'error');
     if (!confirm(`Vols comprar aquesta parcel·la de 7x7 caselles per ${eur(preu)}${extra ? `, més ${eur(extra)} per allargar la muralla` : ''}?`)) return;
@@ -732,19 +786,21 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   // ---------- muralla ----------
   // Trams: costats de les caselles del parc que donen a fora (excepte davant de l'entrada).
   // Torres: als punts on la muralla gira o s'acaba.
-  function muralla() {
+  function muralla(llistaBlocs = parc.blocs) {
     const ent = entrada(), me = ent ? OBJECTES[ent.t].mida : 0;
     const forat = (x, yLinia) => ent && yLinia === ent.y + me && x >= ent.x && x < ent.x + me;
     const trams = [], extrems = new Map();
     const punt = (x, y, dir) => { const k = k2(x, y); if (!extrems.has(k)) extrems.set(k, new Set()); extrems.get(k).add(dir); };
-    for (const b of blocs) {
+    const blocsM = new Set(llistaBlocs), dinsM = (x, y) => aLaGraella(x, y) && blocsM.has(blocDe(x, y));
+    const portaR = parc.ressort ? aRessort(...RESSORT.porta) : null;
+    for (const b of blocsM) {
       const [bx, by] = b.split(',').map(Number);
       for (let i = 0; i < BLOC; i++) {
         const x = bx * BLOC + i, y = by * BLOC + i;
-        if (!dins(x, by * BLOC - 1)) { trams.push(['x', x, by * BLOC]); punt(x, by * BLOC, 'x'); punt(x + 1, by * BLOC, 'x'); }
-        if (!dins(x, (by + 1) * BLOC) && !forat(x, (by + 1) * BLOC)) { trams.push(['x', x, (by + 1) * BLOC]); punt(x, (by + 1) * BLOC, 'x'); punt(x + 1, (by + 1) * BLOC, 'x'); }
-        if (!dins(bx * BLOC - 1, y)) { trams.push(['y', bx * BLOC, y]); punt(bx * BLOC, y, 'y'); punt(bx * BLOC, y + 1, 'y'); }
-        if (!dins((bx + 1) * BLOC, y)) { trams.push(['y', (bx + 1) * BLOC, y]); punt((bx + 1) * BLOC, y, 'y'); punt((bx + 1) * BLOC, y + 1, 'y'); }
+        if (!dinsM(x, by * BLOC - 1)) { trams.push(['x', x, by * BLOC]); punt(x, by * BLOC, 'x'); punt(x + 1, by * BLOC, 'x'); }
+        if (!dinsM(x, (by + 1) * BLOC) && !forat(x, (by + 1) * BLOC)) { trams.push(['x', x, (by + 1) * BLOC]); punt(x, (by + 1) * BLOC, 'x'); punt(x + 1, (by + 1) * BLOC, 'x'); }
+        if (!dinsM(bx * BLOC - 1, y)) { trams.push(['y', bx * BLOC, y]); punt(bx * BLOC, y, 'y'); punt(bx * BLOC, y + 1, 'y'); }
+        if (!dinsM((bx + 1) * BLOC, y) && !(portaR && portaR[0] === (bx + 1) * BLOC && portaR[1] === y)) { trams.push(['y', (bx + 1) * BLOC, y]); punt((bx + 1) * BLOC, y, 'y'); punt((bx + 1) * BLOC, y + 1, 'y'); }
       }
     }
     // un punt és cantonada si hi arriben trams de les dues direccions, o extrem si només n'hi arriba un
@@ -797,6 +853,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   }
   function enderroca(x, y) {
     if (!dins(x, y)) return;
+    if (esZonaRessort(x, y)) return avis('El ressort no es pot enderrocar per trossos.', 'error');
     const c = ocup[idx(x, y)];
     if (c === -1) {
       parc.camins = parc.camins.filter((p) => p !== k2(x, y)); delete parc.brossa[k2(x, y)];
@@ -825,7 +882,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     aColocar = null; xip.hidden = true; ajuda.hidden = false;
     if (id === 'finances') { eina = 'mou'; botonsEina.mou.classList.add('actiu'); botonsEina.finances.classList.remove('actiu'); cataleg.hidden = true; return obreFinances(); }
     if (id === 'personal') { eina = 'mou'; botonsEina.mou.classList.add('actiu'); botonsEina.personal.classList.remove('actiu'); cataleg.hidden = true; return obrePersonal(); }
-    const panells = { opinions: obreOpinions, marqueting: obreMarqueting, recerca: obreRecerca };
+    const panells = { opinions: obreOpinions, marqueting: obreMarqueting, recerca: obreRecerca, ressort: obreRessort };
     if (panells[id]) { eina = 'mou'; botonsEina.mou.classList.add('actiu'); botonsEina[id].classList.remove('actiu'); cataleg.hidden = true; return panells[id](); }
     const abans = eina;
     eina = id;
@@ -845,7 +902,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const cartaMuralla = eina === 'decoracio' ? h('button', { class: `parc-carta${parc.muralla ? ' triada' : ''}`, onclick: construeixMuralla, title: 'Envolta tot el parc amb una muralla' },
       h('img', { src: 'img/parc/muralla-tram.webp', alt: '' }), h('strong', {}, parc.muralla ? 'Muralla (feta)' : 'Muralla'),
       h('span', {}, parc.muralla ? 'Toca per treure-la' : eur(muralla().cost)), h('span', { class: 'nota' }, `Tot el parc · +${ATRACTIU_MURALLA} d'atractiu`)) : null;
-    cataleg.replaceChildren(...[cartaMuralla].filter(Boolean), ...Object.entries(OBJECTES).filter(([, d]) => d.cat === eina).map(([t, d]) => !investigat(t) ? h('button', {
+    cataleg.replaceChildren(...[cartaMuralla].filter(Boolean), ...Object.entries(OBJECTES).filter(([, d]) => d.cat === eina && !d.ressort).map(([t, d]) => !investigat(t) ? h('button', {
       class: 'parc-carta bloquejada', title: 'Encara s\'ha d\'investigar', onclick: () => obreRecerca(),
     }, h('img', { src: srcObjecte(t), alt: '' }), h('strong', {}, d.nom), h('span', {}, '🔒 Per investigar'), h('span', { class: 'nota' }, seguentRecerca()?.[0] === t ? 'S\'està investigant ara' : 'Toca per veure la recerca')) : h('button', {
       class: `parc-carta${aColocar === t ? ' triada' : ''}`, disabled: parc.diners < d.preu, title: d.text || '', 'data-preu': d.preu,
@@ -907,6 +964,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     return inp;
   }
   function obreObjecte(o) {
+    if (OBJECTES[o.t]?.ressort) return obreRessort();
     const d = OBJECTES[o.t], s = rt.get(o.id);
     const cos = [h('img', { src: srcObjecte(o.t), alt: '', class: 'parc-info-img' })];
     if (esEntrada(o)) {
@@ -1089,6 +1147,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
         h('dt', {}, 'Menjar i begudes'), h('dd', {}, eur(r.menjar)),
         r.botigues ? [h('dt', {}, 'Botigues i caixers'), h('dd', {}, eur(r.botigues))] : null,
         r.parquing ? [h('dt', {}, 'Pàrquing'), h('dd', {}, eur(r.parquing))] : null,
+        r.hotel ? [h('dt', {}, `Hotel del ressort (${r.nits} nits, ${Math.round(r.nits / RESSORT.habitacions * 100)} % d'ocupació)`), h('dd', {}, eur(r.hotel))] : null,
         h('dt', {}, h('strong', {}, 'Total ingressos')), h('dd', {}, h('strong', {}, eur(r.ingressos))),
         h('dt', {}, 'Cost dels productes venuts'), h('dd', {}, `−${eur(r.costMenjar)}`),
         h('dt', {}, 'Manteniment'), h('dd', {}, `−${eur(r.manteniment)}`),
@@ -1271,6 +1330,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     // camins
     for (const p of setCamins) {
       const [x, y] = p.split(',').map(Number);
+      if (esZonaRessort(x, y)) continue;
       rombe(x, y); ctx.fillStyle = '#e9dbb8'; ctx.fill();
       ctx.strokeStyle = '#c4ad7f'; ctx.lineWidth = 3; ctx.beginPath();
       const a = iso(x, y), b = iso(x + 1, y), c = iso(x + 1, y + 1), d = iso(x, y + 1);
@@ -1288,6 +1348,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
         }
       }
     }
+    dibuixaRessort();
     // previsualització del que es col·loca
     if (hover && (aColocar || eina === 'cami' || eina === 'enderroca')) {
       const m = aColocar ? OBJECTES[aColocar].mida : 1;
@@ -1356,6 +1417,81 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     ctx.drawImage(im, 0, 0);
     ctx.restore();
   }
+  // ---------- ressort ----------
+  // La imatge s'encaixa exactament sobre les 14x14 caselles (cantonades esquerra, baix i dreta).
+  function dibuixaRessort() {
+    if (!parc.ressort) return;
+    const im = img(`img/parc/${RESSORT.img}.webp`); if (!im) return;
+    const [[lx, ly], [bx, by], [rx, ry]] = RESSORT.punts, [x0, y0] = origenRessort(), N = RESSORT.mida;
+    const L = iso(x0, y0 + N), B = iso(x0 + N, y0 + N), R = iso(x0 + N, y0);
+    // resol la transformació afí imatge -> món amb els tres punts
+    const det = (bx - lx) * (ry - ly) - (rx - lx) * (by - ly);
+    const a = ((B.x - L.x) * (ry - ly) - (R.x - L.x) * (by - ly)) / det;
+    const c = ((R.x - L.x) * (bx - lx) - (B.x - L.x) * (rx - lx)) / det;
+    const b = ((B.y - L.y) * (ry - ly) - (R.y - L.y) * (by - ly)) / det;
+    const d = ((R.y - L.y) * (bx - lx) - (B.y - L.y) * (rx - lx)) / det;
+    ctx.save(); ctx.transform(a, b, c, d, L.x - a * lx - c * ly, L.y - b * lx - d * ly);
+    ctx.drawImage(im, 0, 0); ctx.restore();
+  }
+  // gent nedant a les piscines: només se'ls veu el cap i les espatlles, i suren amunt i avall
+  function dibuixaBanyistes(o) {
+    const s = rt.get(o.id); if (!s?.muntats.length) return;
+    const piscines = parc.objectes.filter((q) => q.t === 'resort-piscina');
+    const llocs = RESSORT.aigua[piscines.indexOf(o)] || RESSORT.aigua[0], [x0, y0] = origenRessort(), t = tempsAnim;
+    s.muntats.slice(0, llocs.length * 2).forEach((v, i) => {
+      const [u, w] = llocs[i % llocs.length], du = i >= llocs.length ? 0.25 : 0;
+      const p = iso(x0 + u + du + Math.sin(t * 0.7 + i) * 0.12, y0 + w + Math.cos(t * 0.6 + i * 2) * 0.12);
+      const pim = img(`img/animacions/${v.img}.webp`); if (!pim) return;
+      const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4, y = p.y + Math.sin(t * 2.4 + i) * 1.5;
+      ctx.drawImage(pim, 0, 0, fw, fh * 0.4, p.x - 9, y - 14, 18, 12);
+      ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(p.x, y - 2, 11, 4, 0, 0, Math.PI * 2); ctx.stroke();
+    });
+  }
+  function hotelsRessort() { return parc.objectes.filter((o) => o.t === 'resort-hotel'); }
+  function compraRessort() {
+    if (parc.ressort) return;
+    if (parc.diners < RESSORT.preu) return avis(`No tens prou diners: el ressort costa ${eur(RESSORT.preu)}.`, 'error');
+    // va just a la dreta del parc, a les dues files de davant
+    const bx = 1 + Math.max(...parc.blocs.map((b) => b.split(',').map(Number)).filter(([, by]) => by >= 1).map(([x]) => x));
+    if (!confirm(`Vols construir el Ressort del Far West per ${eur(RESSORT.preu)}? Anirà en un terreny nou de 14x14 caselles, a la dreta del parc, amb una porta directa al parc. Costa ${eur(RESSORT.manteniment)} al dia de manteniment.`)) return;
+    parc.diners -= RESSORT.preu; parc.totals.despeses += RESSORT.preu;
+    parc.ressort = { bx, pendents: 0, dema: 0 };
+    parc.preus.hotel ??= RESSORT.preuNit;
+    const [x0, y0] = origenRessort();
+    parc.objectes.push({ id: parc.seguentId++, t: 'resort', x: x0, y: y0 });
+    for (const [t, u, v] of RESSORT.llocs) parc.objectes.push({ id: parc.seguentId++, t, x: x0 + u, y: y0 + v, preu: t === 'resort-restaurant' ? OBJECTES[t].preuJust : 0 });
+    // camí del parc fins a la porta (si la casella és lliure)
+    const [px, py] = aRessort(...RESSORT.porta), q = k2(px - 1, py);
+    if (!parc.camins.includes(q) && !parc.objectes.some((o) => { const m = OBJECTES[o.t].mida; return px - 1 >= o.x && px - 1 < o.x + m && py >= o.y && py < o.y + m; })) parc.camins.push(q);
+    recalcula(); guarda(true); encaixa(); obreRessort();
+    avis('Ja tens el ressort! Connecta amb un camí la porta (a la cantonada de davant a l\'esquerra) amb la resta del parc.', 'ok');
+  }
+  function obreRessort() {
+    if (!parc.ressort) {
+      return panell('Ressort del Far West',
+        h('img', { src: 'img/parc/resort.webp', alt: '', class: 'parc-info-img' }),
+        h('p', {}, OBJECTES.resort.text),
+        h('p', { class: 'nota' }, `Ocupa un terreny nou de 14x14 caselles a la dreta del parc, amb entrada pròpia i una porta directa al parc. Té ${RESSORT.habitacions} habitacions: els visitants contents s'hi poden quedar a dormir (i pagar la nit), i l'endemà ja són dins del parc.`),
+        h('dl', { class: 'dades' }, h('dt', {}, 'Preu'), h('dd', {}, eur(RESSORT.preu)), h('dt', {}, 'Manteniment'), h('dd', {}, `${eur(RESSORT.manteniment)} / dia`)),
+        h('button', { class: 'btn btn-principal', onclick: compraRessort, disabled: nomesLectura }, `Construir-lo (${eur(RESSORT.preu)})`));
+    }
+    const ahir = parc.historial.at(-1) || {};
+    panell('Ressort del Far West',
+      h('img', { src: 'img/parc/resort.webp', alt: '', class: 'parc-info-img' }),
+      h('dl', { class: 'dades' },
+        h('dt', {}, 'Habitacions'), h('dd', {}, String(RESSORT.habitacions)),
+        h('dt', {}, 'Reserves per aquesta nit'), h('dd', {}, String(parc.ressort.dema || 0)),
+        h('dt', {}, 'Hostes que han dormit aquí'), h('dd', {}, String(parc.ressort.pendents || 0)),
+        h('dt', {}, 'Ocupació d\'ahir'), h('dd', {}, ahir.nits != null ? `${Math.round(ahir.nits / RESSORT.habitacions * 100)} %` : '—'),
+        h('dt', {}, 'Ingressos de l\'hotel ahir'), h('dd', {}, eur(ahir.hotel || 0)),
+        h('dt', {}, 'Manteniment'), h('dd', {}, `${eur(RESSORT.manteniment)} / dia`)),
+      h('label', { class: 'fila-preu' }, 'Preu per nit (€)', campPreu(parc.preus.hotel ?? RESSORT.preuNit, (n) => { parc.preus.hotel = n; }, 5)),
+      h('p', { class: 'nota' }, 'Com més car, menys gent s\'hi queda. Les piscines i les terrasses del ressort es gestionen com les atraccions i les parades: toca-les per canviar-ne el preu.'),
+      ...parc.objectes.filter((o) => o.t === 'resort-piscina' || o.t === 'resort-restaurant').map((o, i) =>
+        h('label', { class: 'fila-preu' }, `${OBJECTES[o.t].nom} ${i + 1}`, campPreu(o.preu ?? 0, (n) => { o.preu = n; }, 0.5))));
+  }
+
   // ---------- atraccions en marxa ----------
   // Gent que es veu damunt de l'atracció mentre funciona. Retorna [darrere, davant] per poder
   // dibuixar els de darrere abans de la imatge i els de davant després (sembla que hi són a dins).
@@ -1920,6 +2056,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
 
   function dibuixaObj(o) {
     if (o.x < 0) return;
+    if (OBJECTES[o.t].terra) return;
+    if (OBJECTES[o.t].invisible) { if (o.t === 'resort-piscina') dibuixaBanyistes(o); return; }
     const d = OBJECTES[o.t], m = d.mida, im = img(srcObjecte(o.t));
     const c = iso(o.x + m / 2, o.y + m / 2);
     const [darrere, davant] = d.cat === 'atraccio' && !d.anim && rt.get(o.id) ? passatgers(o, rt.get(o.id)) : [[], []];   // les animades ja hi dibuixen la seva gent

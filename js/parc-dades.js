@@ -300,3 +300,47 @@ export const CAMPANYES = {
 // Noms dels visitants (per quan en toques un)
 export const NOMS_VISITANTS = ['Pau', 'Martina', 'Jan', 'Júlia', 'Marc', 'Laia', 'Pol', 'Aina', 'Arnau', 'Carla', 'Biel', 'Noa', 'Àlex', 'Ona', 'Nil', 'Emma',
   'Joan', 'Maria', 'Hugo', 'Sara', 'Oriol', 'Paula', 'Roc', 'Abril', 'Èric', 'Clàudia', 'Jordi', 'Núria', 'Iker', 'Mireia', 'Toni', 'Montse', 'Ferran', 'Rosa'];
+
+// ---------- RESSORT DEL FAR WEST ----------
+// Un terreny a part (2x2 parcel·les = 14x14 caselles) enganxat a la dreta del parc, amb la seva pròpia
+// entrada (l'arc) i una porta directa al parc. La gent s'hi passeja, es banya a les piscines, menja a
+// les terrasses i s'hi pot quedar a dormir (ingrés per nit). Tot es dona en caselles relatives (u, v).
+export const RESSORT = {
+  preu: 280000, manteniment: 2600, mida: 14, habitacions: 90, preuNit: 75, atractiu: 6,
+  img: 'resort',
+  // cantonades de terra a la imatge (esquerra, baix, dreta) per encaixar-la sobre les 14x14 caselles
+  punts: [[13.7, 370.6], [654.2, 828.1], [1390.8, 366]],
+  // caselles per on es pot caminar (els camins de la imatge)
+  camins: [
+    [4, 6], [4, 7], [4, 8], [5, 6], [5, 8], [6, 6], [6, 7], [6, 8],          // plaça de la font
+    [4, 5], [5, 5], [6, 5],                                                  // davant de l'hotel
+    [7, 5], [7, 6], [8, 5], [8, 4], [9, 4], [9, 3], [10, 3], [10, 2], [11, 2], [12, 2], [12, 3],   // cap a la piscina i l'hotel de l'est
+    [13, 3], [13, 4], [13, 5], [13, 6], [13, 7], [13, 8], [13, 9], [13, 10], // passeig de la dreta fins a l'arc
+    [12, 10], [11, 10], [10, 10], [9, 10], [8, 10], [7, 10], [6, 10], [6, 9], [8, 9], [8, 8],  // avinguda del sud
+    [4, 9], [4, 10], [4, 11], [3, 12], [2, 12], [2, 13], [1, 13], [0, 13],   // cap al saloon i la porta del parc
+  ],
+  porta: [0, 13],      // casella del ressort que toca el parc (la porta directa)
+  entrada: [13, 9],    // on arriben els que entren per l'arc del ressort
+  // instal·lacions: (u, v) de la casella; la gent hi arriba des d'un camí del costat
+  llocs: [
+    ['resort-hotel', 4, 4], ['resort-hotel', 11, 1], ['resort-hotel', 5, 10],
+    ['resort-piscina', 9, 5], ['resort-piscina', 12, 4], ['resort-piscina', 3, 8],
+    ['resort-restaurant', 3, 11], ['resort-restaurant', 9, 8],
+  ],
+  // on neden (posicions dins l'aigua) per a cada piscina, en el mateix ordre que les piscines de 'llocs'
+  aigua: [
+    [[9.7, 5.5], [10.4, 5.2], [10.9, 5.7], [10.5, 6.3], [11.3, 5.4]],
+    [[12.2, 4.6], [12.3, 5.5], [11.9, 5.1], [12.5, 7.2], [11.9, 7.0]],
+    [[3.3, 8.3], [2.7, 8.5], [3.6, 8.8], [2.9, 8.9]],
+  ],
+};
+Object.assign(OBJECTES, {
+  resort: { nom: 'Ressort del Far West', cat: 'ressort', img: 'resort', mida: 14, frac: 1, preu: RESSORT.preu, manteniment: RESSORT.manteniment, ressort: true, terra: true,
+    text: 'Hotels, cabanes, piscines i restaurants. La gent s\'hi passeja, s\'hi banya i s\'hi queda a dormir.' },
+  'resort-piscina': { nom: 'Piscina del ressort', cat: 'atraccio', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
+    capacitat: 25, durada: 25, atractiu: 7, emocio: 3, intensitat: 0, mareig: 0, preuJust: 3, text: 'Un bon bany per refrescar-se.' },
+  'resort-restaurant': { nom: 'Terrassa del ressort', cat: 'menjar', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
+    cost: 3, preuJust: 9, efecte: { gana: 70, set: 40 }, satisfa: 9, rapid: true, text: 'Menjar del Far West a la terrassa.' },
+  'resort-hotel': { nom: 'Hotel del ressort', cat: 'hotel', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
+    text: 'Habitacions per passar-hi la nit.' },
+});

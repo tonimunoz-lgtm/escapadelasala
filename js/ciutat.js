@@ -535,7 +535,7 @@ export function crearCiutat({ canvas, onClic }) {
       const [t, px, py, gir] = o.split(','); const m = OBJECTES[t]?.mida || 1;
       const [lx, ly] = giraObjecte(Number(px), Number(py), m, costat);
       return { t, lx, ly, m, gir: gir === '1' ? 1 : 0 };
-    }).filter((o) => OBJECTES[o.t]).sort((a, b) => (a.lx + a.ly + a.m) - (b.lx + b.ly + b.m));
+    }).filter((o) => OBJECTES[o.t] && !OBJECTES[o.t].ressort).sort((a, b) => (a.lx + a.ly + a.m) - (b.lx + b.ly + b.m));
     for (const o of objs) {
       const im = imgParc(srcObjecte(o.t));
       if (!im) continue;
