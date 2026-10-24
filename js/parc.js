@@ -1513,6 +1513,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       ctx.restore();
     }
     ctx.drawImage(dav, esq, dalt, w, hb);
+    dibuixaLlums(a.llums, esq, dalt, k, !!(s?.muntats.length && s.fi), o.id);
     ctx.restore();
     return true;
   }
