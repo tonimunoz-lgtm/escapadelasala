@@ -109,7 +109,11 @@ export const OBJECTES = {
   'muntanya-russa-petita': { nom: 'Muntanya russa familiar', cat: 'atraccio', img: 'muntanya-russa-petita', mida: 3, frac: 0.97, preu: 60000, manteniment: 500,
     capacitat: 20, durada: 3, atractiu: 9, emocio: 6, intensitat: 5, mareig: 3, preuJust: 6, text: 'La primera muntanya russa! Atrau molta gent. Pot marejar.' },
   'rius-rapids': { nom: 'Rius ràpids', cat: 'atraccio', img: 'rius-rapids', mida: 4, frac: 0.97, preu: 100000, manteniment: 850,
-    capacitat: 24, durada: 5, atractiu: 12, emocio: 6, intensitat: 4, mareig: 2, preuJust: 7, text: 'Barques rodones entre cascades. Ideal a l\'estiu. Pot marejar.' },
+    // peces mòbils: 4 barques rodones (vistes des de dalt) que baixen pel riu girant sobre si mateixes
+    anim: { tipus: 'raiers', base: 'rius-rapids-base', davant: 'rius-rapids-davant', vehicle: 'rius-rapids-barca', barques: 4, diametre: 78,
+      velocitats: { canal: 0.8, pujada: 0.35, cim: 0.5, baixada: 2.4, esquitx: 1.2 }, girs: { canal: 0.9, pujada: 0.2, cim: 0.5, baixada: 3.5, esquitx: 2.5 },
+      cami: [[856.1, 266.8, "canal"], [744.4, 266.8, "canal"], [657.6, 248.1, "canal"], [558.3, 235.7, "canal"], [459.1, 241.9, "canal"], [347.4, 235.7, "canal"], [260.5, 254.3, "canal"], [248.1, 287.8, "canal"], [297.8, 320.1, "cim"], [317.6, 359.8, "baixada"], [297.8, 399.5, "esquitx"], [223.3, 419.4, "canal"], [161.3, 434.2, "canal"], [134.0, 469.0, "canal"], [186.1, 502.5, "canal"], [285.4, 521.1, "canal"], [409.4, 536.0, "canal"], [521.1, 552.1, "canal"], [620.4, 568.2, "canal"], [719.6, 573.2, "canal"], [806.5, 555.8, "canal"], [893.3, 521.1, "canal"], [940.5, 471.5, "canal"], [945.4, 403.2, "pujada"], [920.6, 349.9, "pujada"], [883.4, 307.7, "pujada"]], llums: [[809.0, 292.2], [631.7, 383.5], [981.4, 461.2], [41.3, 561.6], [20.6, 571.1], [60.9, 568.5], [247.8, 627.9], [609.6, 636.6], [961.0, 667.5], [935.0, 695.3], [584.9, 699.4], [828.2, 695.3], [256.7, 700.1], [396.3, 756.6], [475.9, 779.1], [646.1, 807.7], [683.1, 845.2], [745.4, 826.1]] },
+    capacitat: 72, durada: 15, atractiu: 12, emocio: 6, intensitat: 4, mareig: 2, preuJust: 7, text: 'Barques rodones entre cascades. Ideal a l\'estiu. Pot marejar.' },
   troncs: { nom: 'Troncs d\'aigua', cat: 'atraccio', img: 'troncs', mida: 4, frac: 0.97, preu: 110000, manteniment: 900,
     // peces mòbils: 3 barques-tronc que recorren el canal (cadascuna al seu ritme) i esquitxen a baix de la caiguda
     anim: { tipus: 'barques', base: 'troncs-base', davant: 'troncs-davant', vehicle: 'troncs-tronc', barques: 3, llargada: 84,

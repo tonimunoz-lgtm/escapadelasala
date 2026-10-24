@@ -1393,6 +1393,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (d.anim.tipus === 'barques') return dibuixaBarques(o, d, c);
     if (d.anim.tipus === 'carrusel') return dibuixaCarrusel(o, d, c);
     if (d.anim.tipus === 'tasses') return dibuixaTasses(o, d, c);
+    if (d.anim.tipus === 'raiers') return dibuixaRaiers(o, d, c);
     const a = d.anim, src = (n) => `img/parc/${n}.webp`;
     const base = img(src(a.base)), peca = img(src(a.peca)), dav = img(src(a.davant));
     if (!base || !peca || !dav) return false;
@@ -1651,6 +1652,68 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     tasses.filter((q) => q.sn >= 0).sort((p, q) => p.y - q.y).forEach(dibuixaTassa);
     ctx.drawImage(dav, esq, dalt, w, hb);
     dibuixaLlums(a.llums, esq, dalt, k, enMarxa, o.id);
+    ctx.restore();
+    return true;
+  }
+
+  // Rius ràpids: barques rodones vistes des de dalt. Es fan girar sobre si mateixes i s'aixafen a la
+  // meitat d'alçada (perspectiva isomètrica), així el gir és de veritat. 6 persones per barca.
+  function dibuixaRaiers(o, d, c) {
+    const a = d.anim, src = (n) => `img/parc/${n}.webp`;
+    const base = img(src(a.base)), dav = img(src(a.davant)), veh = img(src(a.vehicle));
+    if (!base || !dav || !veh) return false;
+    const m = d.mida, w = WP * m * d.frac, k = w / base.naturalWidth, hb = base.naturalHeight * k;
+    const baix = c.y + (WP * m / 4) * d.frac, esq = -w * (d.punta ?? 0.5), dalt = baix - hb;
+    const cm = preparaCami(a), s = rt.get(o.id), enMarxa = !!(s?.muntats.length && s.fi);
+    const f = enMarxa ? 1 - (s.fi - parc.minut) / d.durada : 0;
+    const puntEsquitx = cm.seg.find((g) => g.t === 'esquitx')?.L ?? -1;
+    s && (s.girs ??= Array.from({ length: a.barques }, (_, j) => j * 1.3));
+    const dtA = tempsAnim - (s?.tA ?? tempsAnim); if (s) s.tA = tempsAnim;
+    const D = a.diametre * k, barques = [];
+    for (let j = 0; j < a.barques; j++) {
+      const dist = distanciaPerTemps(cm, (f + j / a.barques) % 1), p = puntCami(cm, dist);
+      if (s && enMarxa) s.girs[j] += dtA * (a.girs[p.seg] ?? 0.8);
+      barques.push({ j, x: esq + p.x * k, y: dalt + p.y * k, gir: s?.girs[j] || j, dist, alt: p.seg === 'baixada' });
+    }
+    ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
+    ctx.drawImage(base, esq, dalt, w, hb);
+    for (const b of barques.sort((p, q) => p.y - q.y)) {
+      // ombra suau a l'aigua
+      ctx.fillStyle = 'rgba(0,40,80,.18)'; ctx.beginPath(); ctx.ellipse(b.x, b.y + D * 0.06, D * 0.52, D * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+      // gruix del flotador (la imatge és des de dalt i, sense això, quedaria plana)
+      ctx.fillStyle = '#1f2326'; ctx.beginPath(); ctx.ellipse(b.x, b.y + D * 0.07, D * 0.49, D * 0.245, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3a4045'; ctx.beginPath(); ctx.ellipse(b.x, b.y + D * 0.035, D * 0.49, D * 0.245, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.translate(b.x, b.y); ctx.scale(1, 0.5); ctx.rotate(b.gir);
+      ctx.drawImage(veh, -D / 2, -D / 2, D, D);
+      ctx.restore();
+      // passatgers: a cada seient (giren amb la barca, però sempre drets)
+      const qui = [];
+      for (let q = 0; q < 6; q++) {
+        const v = s?.muntats[b.j * 6 + q]; if (!v) continue;
+        const ang = b.gir - Math.PI / 2 + q * Math.PI / 3;
+        qui.push({ v, x: b.x + Math.cos(ang) * D * 0.3, y: b.y + Math.sin(ang) * D * 0.15 });
+      }
+      for (const p of qui.sort((u, v) => u.y - v.y)) {
+        const pim = img(`img/animacions/${p.v.img}.webp`); if (!pim) continue;
+        const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4, pw = D * 0.2, ph = D * 0.27;
+        ctx.drawImage(pim, 0, 0, fw, fh * 0.55, p.x - pw / 2, p.y - ph + D * 0.04, pw, ph);
+      }
+    }
+    // esquitxada a baix de la cascada
+    for (const b of barques) {
+      const delta = (((b.dist - puntEsquitx) % cm.L) + cm.L) % cm.L;
+      if (!enMarxa || puntEsquitx < 0 || delta > 120) continue;
+      const fase = delta / 120, r = (8 + fase * 30) * k * 2.2;
+      ctx.globalAlpha = Math.max(0, (1 - fase) * 0.85);
+      for (let q = 0; q < 14; q++) {
+        const ang = Math.PI + (q / 13) * Math.PI, rr = r * (0.7 + (q % 3) * 0.18);
+        ctx.fillStyle = q % 2 ? '#ffffff' : '#bfe8ff';
+        ctx.beginPath(); ctx.ellipse(b.x + Math.cos(ang) * rr, b.y - D * 0.1 + Math.sin(ang) * rr + fase * fase * r, (3 + (q % 4)) * k * 2.4, (4 + (q % 3)) * k * 2.4, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.drawImage(dav, esq, dalt, w, hb);
+    dibuixaLlums(a.llums, esq, dalt, k, false, o.id);
     ctx.restore();
     return true;
   }
