@@ -1394,6 +1394,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (d.anim.tipus === 'carrusel') return dibuixaCarrusel(o, d, c);
     if (d.anim.tipus === 'tasses') return dibuixaTasses(o, d, c);
     if (d.anim.tipus === 'raiers') return dibuixaRaiers(o, d, c);
+    if (d.anim.tipus === 'xoc') return dibuixaXoc(o, d, c);
     const a = d.anim, src = (n) => `img/parc/${n}.webp`;
     const base = img(src(a.base)), peca = img(src(a.peca)), dav = img(src(a.davant));
     if (!base || !peca || !dav) return false;
@@ -1714,6 +1715,78 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     }
     ctx.drawImage(dav, esq, dalt, w, hb);
     dibuixaLlums(a.llums, esq, dalt, k, false, o.id);
+    ctx.restore();
+    return true;
+  }
+
+  // Cotxes de xoc: es mouen lliurement per la pista (un paral·lelogram), reboten a les vores i xoquen
+  // entre ells. Cada cotxe tria la vista (de cara o d'esquena) i el mirall segons cap on va.
+  function dibuixaXoc(o, d, c) {
+    const a = d.anim, src = (n) => `img/parc/${n}.webp`;
+    const base = img(src(a.base)), dav = img(src(a.davant));
+    const vistes = a.colors.map((col) => [img(src(`cotxes-xoc-${col}-davant`)), img(src(`cotxes-xoc-${col}-darrere`))]);
+    if (!base || !dav || vistes.flat().some((x) => !x)) return false;
+    const m = d.mida, w = WP * m * d.frac, k = w / base.naturalWidth, hb = base.naturalHeight * k;
+    const baix = c.y + (WP * m / 4) * d.frac, esq = -w * (d.punta ?? 0.5), dalt = baix - hb;
+    const s = rt.get(o.id), enMarxa = !!(s?.muntats.length && s.fi);
+    const [O, R, L] = a.pista, U = [R[0] - O[0], R[1] - O[1]], V = [L[0] - O[0], L[1] - O[1]];
+    const aPista = (u, v) => [O[0] + u * U[0] + v * V[0], O[1] + u * U[1] + v * V[1]];
+    if (s && !s.cotxes) s.cotxes = a.colors.map((_, i) => ({ u: 0.25 + i * 0.25, v: 0.3 + (i % 2) * 0.35, vu: [0.6, -0.5, 0.3][i], vv: [0.4, 0.5, -0.7][i] }));
+    if (s && !s.xocs) s.xocs = [];
+    const dtA = Math.min(0.1, tempsAnim - (s?.tA ?? tempsAnim)); if (s) s.tA = tempsAnim;
+    const cots = s?.cotxes || [];
+    if (enMarxa && dtA > 0) {
+      const r = 0.1, mn = 0.1, mx = 0.88;
+      for (const q of cots) {
+        const ang = (Math.random() - 0.5) * 2.5 * dtA, cs = Math.cos(ang), sn = Math.sin(ang);
+        [q.vu, q.vv] = [q.vu * cs - q.vv * sn, q.vu * sn + q.vv * cs];
+        const n = Math.hypot(q.vu, q.vv) || 1; q.vu /= n; q.vv /= n;
+        q.u += q.vu * a.velocitat * dtA; q.v += q.vv * a.velocitat * dtA;
+        if (q.u < mn) { q.u = mn; q.vu = Math.abs(q.vu); } if (q.u > mx) { q.u = mx; q.vu = -Math.abs(q.vu); }
+        if (q.v < mn) { q.v = mn; q.vv = Math.abs(q.vv); } if (q.v > mx) { q.v = mx; q.vv = -Math.abs(q.vv); }
+      }
+      for (let i = 0; i < cots.length; i++) for (let j = i + 1; j < cots.length; j++) {
+        const p = cots[i], q = cots[j], du = q.u - p.u, dv = q.v - p.v, dd = Math.hypot(du, dv);
+        if (dd < 2 * r && dd > 0) {
+          [p.vu, q.vu] = [q.vu, p.vu]; [p.vv, q.vv] = [q.vv, p.vv];   // xoc: s'intercanvien la velocitat
+          const sep = (2 * r - dd) / 2; p.u -= du / dd * sep; p.v -= dv / dd * sep; q.u += du / dd * sep; q.v += dv / dd * sep;
+          s.xocs.push({ p: aPista((p.u + q.u) / 2, (p.v + q.v) / 2), t: tempsAnim });
+        }
+      }
+    }
+    s && (s.xocs = s.xocs.filter((x) => tempsAnim - x.t < 0.7));
+    const cw = a.amplada * k, sostre = a.sostre * k;
+    ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
+    ctx.drawImage(base, esq, dalt, w, hb);
+    const llista = cots.map((q, i) => { const [x, y] = aPista(q.u, q.v); return { q, i, x: esq + x * k, y: dalt + y * k }; }).sort((p, q) => p.y - q.y);
+    for (const { q, i, x, y } of llista) {
+      const sx = q.vu * U[0] + q.vv * V[0], sy = q.vu * U[1] + q.vv * V[1];
+      const deCara = sy >= 0, im = vistes[i][deCara ? 0 : 1], mirall = deCara ? sx > 0 : sx < 0;
+      const ch = cw * im.naturalHeight / im.naturalWidth;
+      // barra de corrent fins al sostre (i alguna espurna a dalt)
+      ctx.strokeStyle = '#6b7178'; ctx.lineWidth = Math.max(1, cw * 0.025);
+      ctx.beginPath(); ctx.moveTo(x, y - ch * 0.55); ctx.lineTo(x, y - sostre); ctx.stroke();
+      if (enMarxa && Math.random() < 0.08) { ctx.fillStyle = '#fff7b0'; ctx.beginPath(); ctx.arc(x + (Math.random() - 0.5) * 4, y - sostre + 2, cw * 0.04, 0, Math.PI * 2); ctx.fill(); }
+      ctx.save(); ctx.translate(x, y); if (mirall) ctx.scale(-1, 1);
+      const v = s?.muntats[i], pim = v && img(`img/animacions/${v.img}.webp`);
+      const persona = () => { if (!pim) return; const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4; ctx.drawImage(pim, 0, deCara ? 0 : 2 * fh, fw, fh * 0.55, (deCara ? 0.12 : -0.16) * cw - cw * 0.14, -ch * (deCara ? 0.86 : 0.98), cw * 0.28, ch * 0.42); };
+      if (!deCara) persona();    // d'esquena, el respatller tapa l'esquena del conductor
+      ctx.drawImage(im, -cw / 2, -ch * 0.93, cw, ch);
+      if (deCara) persona();
+      ctx.restore();
+    }
+    ctx.drawImage(dav, esq, dalt, w, hb);
+    dibuixaLlums(a.llums, esq, dalt, k, enMarxa, o.id);
+    // xocs: espurnes i «Bum!»
+    for (const x of s?.xocs || []) {
+      const f = (tempsAnim - x.t) / 0.7, px = esq + x.p[0] * k, py = dalt + x.p[1] * k - cw * 0.3;
+      ctx.globalAlpha = 1 - f;
+      for (let q = 0; q < 8; q++) { const an = q * Math.PI / 4, rr = cw * (0.15 + f * 0.35); ctx.fillStyle = q % 2 ? '#ffd23f' : '#ffffff'; ctx.beginPath(); ctx.arc(px + Math.cos(an) * rr, py + Math.sin(an) * rr * 0.6, cw * 0.035, 0, Math.PI * 2); ctx.fill(); }
+      ctx.font = `800 ${Math.round(cw * 0.28)}px "Baloo 2", system-ui`; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.fillStyle = '#d6402f';
+      ctx.save(); if (o.gir) { ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0); }
+      ctx.strokeText('Bum!', px, py - cw * 0.25 - f * cw * 0.3); ctx.fillText('Bum!', px, py - cw * 0.25 - f * cw * 0.3); ctx.restore();
+      ctx.globalAlpha = 1;
+    }
     ctx.restore();
     return true;
   }
