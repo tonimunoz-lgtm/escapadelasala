@@ -1304,11 +1304,11 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     }
     if (parc.muralla) {
       const { trams, torres } = muralla();
-      const imT = img('img/parc/muralla-tram.webp'), imR = img('img/parc/muralla-torre.webp');
-      if (imT) for (const [dir, x, y] of trams) afegeix(x + y - 0.5, () => dibuixaTram(imT, dir, x, y));
+      const imR = img('img/parc/muralla-torre.webp');
+      for (const [dir, x, y] of trams) afegeix(x + y - 0.5, () => dibuixaTram(dir, x, y));
       if (imR) for (const [x, y] of torres) afegeix(x + y - 0.4, () => {
-        const p = iso(x, y), w = WP * 0.56, hh = w * imR.naturalHeight / imR.naturalWidth;
-        ctx.drawImage(imR, p.x - w / 2, p.y + 10 - hh, w, hh);
+        const p = iso(x, y), w = WP * 0.42, hh = w * imR.naturalHeight / imR.naturalWidth;
+        ctx.drawImage(imR, p.x - w / 2, p.y + w * 0.12 - hh, w, hh);
       });
     }
     for (const v of visitants) if (!v.amagat) afegeix(Math.floor(v.fx) + Math.floor(v.fy) + 0.5, () => dibuixaPersona(v));
@@ -1336,12 +1336,25 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     }
     ctx.globalAlpha = 1;
   }
-  // Un tram de muralla sobre el costat d'una casella: 'x' va cap avall a la dreta, 'y' (girat) cap avall a l'esquerra
-  function dibuixaTram(im, dir, x, y) {
-    const w = WP * 0.6, hh = w * im.naturalHeight / im.naturalWidth;
-    if (dir === 'x') { const q = iso(x + 1, y); ctx.drawImage(im, q.x - w * 0.96, q.y + 4 - hh, w, hh); return; }
-    const q = iso(x, y + 1);
-    ctx.save(); ctx.translate(q.x, 0); ctx.scale(-1, 1); ctx.drawImage(im, -w * 0.96, q.y + 4 - hh, w, hh); ctx.restore();
+  // Un tram de muralla sobre el costat d'una casella. Cada direcció té les seves imatges ('x' va cap avall
+  // a la dreta, 'y' cap avall a l'esquerra). La imatge s'inclina (sense girar-la) perquè la base coincideixi
+  // exactament amb la vora de la casella: així els trams seguits fan una línia recta, sense esglaons.
+  // Ancoratges: punt de terra del pilar esquerre i del dret, en píxels de cada imatge.
+  const TRAMS_MURALLA = {
+    x: [['muralla-tram-x1', [53.2, 169.3], [264.7, 308.7]], ['muralla-tram-x2', [38, 177], [261.5, 308.6]], ['muralla-tram-x3', [53.2, 164.4], [263.3, 311.2]]],
+    y: [['muralla-tram-y1', [36.6, 308], [245.8, 173.1]]],
+  };
+  function dibuixaTram(dir, x, y) {
+    const llista = TRAMS_MURALLA[dir], [nom, L, R] = llista[(x * 7 + y * 3) % llista.length];
+    const im = img(`img/parc/${nom}.webp`); if (!im) return;
+    // extrems de la vora a la pantalla: l'esquerre i el dret
+    const [pE, pD] = dir === 'x' ? [iso(x, y), iso(x + 1, y)] : [iso(x, y + 1), iso(x, y)];
+    const a = (pD.x - pE.x) / (R[0] - L[0]), dv = a * 0.85;          // escala (una mica més baixa que ample)
+    const b = (pD.y - pE.y - dv * (R[1] - L[1])) / (R[0] - L[0]);    // inclinació perquè la base vagi de pE a pD
+    ctx.save();
+    ctx.transform(a, b, 0, dv, pE.x - a * L[0], pE.y - b * L[0] - dv * L[1]);
+    ctx.drawImage(im, 0, 0);
+    ctx.restore();
   }
   // ---------- atraccions en marxa ----------
   // Gent que es veu damunt de l'atracció mentre funciona. Retorna [darrere, davant] per poder
