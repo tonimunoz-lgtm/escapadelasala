@@ -1391,6 +1391,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (d.anim.tipus === 'roda') return dibuixaRoda(o, d, c);
     if (d.anim.tipus === 'tren') return dibuixaTren(o, d, c);
     if (d.anim.tipus === 'barques') return dibuixaBarques(o, d, c);
+    if (d.anim.tipus === 'carrusel') return dibuixaCarrusel(o, d, c);
     const a = d.anim, src = (n) => `img/parc/${n}.webp`;
     const base = img(src(a.base)), peca = img(src(a.peca)), dav = img(src(a.davant));
     if (!base || !peca || !dav) return false;
@@ -1546,6 +1547,66 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     return true;
   }
 
+  // Carrusel: els cavalls giren en una el·lipse al voltant del pal. Els del darrere es dibuixen abans del pal
+  // (que els tapa), i els de davant després; als costats s'estrenyen (sembla que es vegin de cara).
+  function dibuixaCarrusel(o, d, c) {
+    const a = d.anim, src = (n) => `img/parc/${n}.webp`;
+    const base = img(src(a.base)), col = img(src(a.columna)), dav = img(src(a.davant));
+    const cav = a.cavalls.map((n) => img(src(n)));
+    if (!base || !col || !dav || cav.some((x) => !x)) return false;
+    const m = d.mida, w = WP * m * d.frac, k = w / base.naturalWidth, hb = base.naturalHeight * k;
+    const baix = c.y + (WP * m / 4) * d.frac, esq = -w * (d.punta ?? 0.5), dalt = baix - hb;
+    const s = rt.get(o.id), enMarxa = !!(s?.muntats.length && s.fi);
+    const dtA = tempsAnim - (s?.tA ?? tempsAnim);
+    if (s) {
+      s.tA = tempsAnim;
+      if (enMarxa) { const f = clamp(1 - (s.fi - parc.minut) / d.durada, 0, 1); s.angle = (s.angle || 0) + dtA * a.velocitat * Math.min(1, Math.sin(Math.PI * f) * 1.8); }
+    }
+    const gir = -(s?.angle || 0) + o.id * 0.7;
+    const cx = esq + a.centre[0] * k, cy = dalt + a.centre[1] * k, h = a.alcada * k;
+    const cavalls = [];
+    for (let i = 0; i < a.n; i++) {
+      const ang = gir + (i * 2 * Math.PI) / a.n, sn = Math.sin(ang);
+      const salt = enMarxa ? Math.abs(Math.sin(tempsAnim * 3 + i * 1.3)) * h * 0.06 : 0;
+      cavalls.push({ i, x: cx + Math.cos(ang) * a.rx * k, y: cy + sn * a.ry * k, salt, sn, im: cav[i % cav.length], v: s?.muntats[i] });
+    }
+    const dibuixaCavall = (q) => {
+      const hw = h * q.im.naturalWidth / q.im.naturalHeight, ample = hw * (0.35 + 0.65 * Math.abs(q.sn));
+      ctx.save(); ctx.translate(q.x, q.y - q.salt);
+      if (q.sn < 0) ctx.scale(-1, 1);   // els del darrere van cap a l'altre costat
+      ctx.drawImage(q.im, -ample / 2, -h, ample, h);
+      const pim = q.v && img(`img/animacions/${q.v.img}.webp`);
+      if (pim) { const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4, pw = h * 0.2 * (0.5 + 0.5 * Math.abs(q.sn)); ctx.drawImage(pim, fw, fh, fw, fh * 0.6, -ample * 0.04 - pw / 2, -h * 0.62 - h * 0.18, pw, h * 0.22); }
+      ctx.restore();
+    };
+    ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
+    ctx.drawImage(base, esq, dalt, w, hb);
+    cavalls.filter((q) => q.sn < 0).sort((p, q) => p.y - q.y).forEach(dibuixaCavall);
+    ctx.drawImage(col, esq, dalt, w, hb);
+    cavalls.filter((q) => q.sn >= 0).sort((p, q) => p.y - q.y).forEach(dibuixaCavall);
+    ctx.drawImage(dav, esq, dalt, w, hb);
+    dibuixaLlums(a.llums, esq, dalt, k, enMarxa, o.id);
+    ctx.restore();
+    return true;
+  }
+  // Bombetes: mentre l'atracció funciona fan «curses» (una de cada tres s'apaga i el patró avança);
+  // aturada, brillen poc. Preparat per al mode nit (com més fosc, més aura).
+  function dibuixaLlums(llums, esq, dalt, k, enMarxa, llavor = 0) {
+    if (!llums?.length) return;
+    const pas = Math.floor(tempsAnim * 7), r = 7 * k * (1 + foscor * 1.8);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < llums.length; i++) {
+      const on = enMarxa ? (i + pas + llavor) % 3 !== 0 : true;
+      const alfa = (enMarxa ? (on ? 0.85 : 0.1) : 0.3) * (0.6 + foscor * 0.8);
+      if (alfa < 0.05) continue;
+      const x = esq + llums[i][0] * k, y = dalt + llums[i][1] * k;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(255,250,210,${alfa})`); g.addColorStop(0.35, `rgba(255,214,90,${alfa * 0.6})`); g.addColorStop(1, 'rgba(255,180,40,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // Sínia: la roda gira dins el seu pla (lleugerament inclinat) i les cabines pengen sempre dretes
   function dibuixaRoda(o, d, c) {
     const a = d.anim, src = (n) => `img/parc/${n}.webp`;
@@ -1600,7 +1661,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (o.x < 0) return;
     const d = OBJECTES[o.t], m = d.mida, im = img(srcObjecte(o.t));
     const c = iso(o.x + m / 2, o.y + m / 2);
-    const [darrere, davant] = d.cat === 'atraccio' && rt.get(o.id) ? passatgers(o, rt.get(o.id)) : [[], []];
+    const [darrere, davant] = d.cat === 'atraccio' && !d.anim && rt.get(o.id) ? passatgers(o, rt.get(o.id)) : [[], []];   // les animades ja hi dibuixen la seva gent
     darrere.forEach(dibuixaPassatger);
     if (!(d.anim && dibuixaAnimat(o, d, c)) && im) dibuixaObjecte(ctx, im, o.t, c.x, c.y, WP * m, o.gir);
     davant.forEach(dibuixaPassatger);
@@ -1668,7 +1729,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   function posaVelocitat(v) { velocitat = v; refrescaBarra(); }
 
   // ---------- bucle ----------
-  let comptadorBarra = 0, tempsAnim = 0;   // tempsAnim: segons d'animació (s'atura amb la pausa)
+  let comptadorBarra = 0, tempsAnim = 0, foscor = 0;   // foscor: 0 = dia, 1 = nit (per al futur mode nit)   // tempsAnim: segons d'animació (s'atura amb la pausa)
   function bucle(ara) {
     if (!viu) return;
     const dt = Math.min(0.25, (ara - darrerFrame) / 1000); darrerFrame = ara;
