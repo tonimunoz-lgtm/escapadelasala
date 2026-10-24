@@ -1454,13 +1454,19 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     for (let i = 0; i < a.cabines; i++) {
       const ang = fi + (i * 2 * Math.PI) / a.cabines;
       const x = R * Math.cos(ang), y = R * Math.sin(ang);
-      const px = hx + x, py = hy + y + sh * x - chh * 0.03;
+      const px = hx + x, py = hy + y + sh * x - chh * (a.ganxo ?? 0.03);
       const v = passatgers[i];
-      if (v) {
-        const im = img(`img/animacions/${v.img}.webp`);
-        if (im) { const fw = im.naturalWidth / 4, fh = im.naturalHeight / 4; ctx.drawImage(im, 0, 0, fw, fh * 0.6, px - cw * 0.28, py + chh * 0.33, cw * 0.56, cw * 0.5); }
-      }
+      const persona = () => {
+        const im = v && img(`img/animacions/${v.img}.webp`);
+        if (!im) return;
+        const fw = im.naturalWidth / 4, fh = im.naturalHeight / 4;
+        if (a.vidre) { ctx.globalAlpha = 0.8; ctx.drawImage(im, 0, 0, fw, fh * 0.6, px - cw * 0.17, py + chh * 0.42, cw * 0.34, cw * 0.3); ctx.globalAlpha = 1; }
+        else ctx.drawImage(im, 0, 0, fw, fh * 0.6, px - cw * 0.28, py + chh * 0.33, cw * 0.56, cw * 0.5);
+      };
+      // cabines obertes: la persona es dibuixa abans (es veu per la finestra); de vidre: després, una mica transparent
+      if (!a.vidre) persona();
       ctx.drawImage(cab, px - cw / 2, py, cw, chh);
+      if (a.vidre) persona();
     }
     ctx.drawImage(dav, esq, dalt, w, hb);
     ctx.restore();

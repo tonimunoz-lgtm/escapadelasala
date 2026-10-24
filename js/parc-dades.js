@@ -93,7 +93,10 @@ export const OBJECTES = {
   'torre-caiguda': { nom: 'Torre de caiguda', cat: 'atraccio', img: 'torre-caiguda', mida: 1, frac: 0.97, preu: 35000, manteniment: 320,
     capacitat: 12, durada: 2, atractiu: 7, emocio: 7, intensitat: 9, mareig: 4, preuJust: 5.5, text: 'Ocupa poc espai i és molt emocionant. Pot marejar.' },
   'sinia-gran': { nom: 'Sínia gran', cat: 'atraccio', img: 'sinia-gran', mida: 3, frac: 0.97, preu: 55000, manteniment: 450,
-    capacitat: 40, durada: 6, atractiu: 8, emocio: 3, intensitat: 1, mareig: 1, preuJust: 5, text: 'Es veu des de lluny i hi caben 40 persones alhora.' },
+    // peces mòbils: 12 cabines de vidre (la gent es veu a través del vidre)
+    anim: { tipus: 'roda', base: 'sinia-gran-base', davant: 'sinia-gran-davant', roda: 'sinia-gran-roda', cabina: 'sinia-gran-cabina',
+      hub: [523.4, 65.8], radi: 306, radiRoda: 329.1, cabines: 12, ampladaCabina: 95, inclinacio: 0.2, velocitat: 0.4, ganxo: 0.05, vidre: true },
+    capacitat: 80, durada: 12, atractiu: 8, emocio: 3, intensitat: 1, mareig: 1, preuJust: 5, text: 'Es veu des de lluny i hi caben 80 persones alhora.' },
   'muntanya-russa-petita': { nom: 'Muntanya russa familiar', cat: 'atraccio', img: 'muntanya-russa-petita', mida: 3, frac: 0.97, preu: 60000, manteniment: 500,
     capacitat: 20, durada: 3, atractiu: 9, emocio: 6, intensitat: 5, mareig: 3, preuJust: 6, text: 'La primera muntanya russa! Atrau molta gent. Pot marejar.' },
   'rius-rapids': { nom: 'Rius ràpids', cat: 'atraccio', img: 'rius-rapids', mida: 4, frac: 0.97, preu: 100000, manteniment: 850,
