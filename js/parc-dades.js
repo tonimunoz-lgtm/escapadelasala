@@ -102,7 +102,8 @@ export const OBJECTES = {
     capacitat: 40, durada: 8, atractiu: 6, emocio: 5, intensitat: 5, mareig: 5, preuJust: 4.5, text: 'Es gronxa amunt i avall. Molta capacitat.' },
   'casa-terror': { nom: 'Casa del terror', cat: 'atraccio', img: 'casa-terror', mida: 2, frac: 0.97, preu: 30000, manteniment: 260,
     capacitat: 12, durada: 4, atractiu: 6, emocio: 5, intensitat: 3, mareig: 1, preuJust: 5, text: 'Fantasmes i crits. Els adolescents en fan cua.' },
-  'torre-caiguda': { nom: 'Torre de caiguda', cat: 'atraccio', img: 'torre-caiguda', mida: 1, frac: 0.97, preu: 35000, manteniment: 320,
+  // ocupa 2x2 caselles (abans 1x1): així la porta i la taquilla tenen la mateixa mida que a les altres atraccions
+  'torre-caiguda': { nom: 'Torre de caiguda', cat: 'atraccio', img: 'torre-caiguda', mida: 2, frac: 0.97, preu: 35000, manteniment: 320,
     capacitat: 12, durada: 2, atractiu: 7, emocio: 7, intensitat: 9, mareig: 4, preuJust: 5.5, text: 'Ocupa poc espai i és molt emocionant. Pot marejar.' },
   'sinia-gran': { nom: 'Sínia gran', cat: 'atraccio', img: 'sinia-gran', mida: 3, frac: 0.97, preu: 55000, manteniment: 450,
     // peces mòbils: 12 cabines de vidre (la gent es veu a través del vidre)

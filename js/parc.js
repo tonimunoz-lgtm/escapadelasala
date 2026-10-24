@@ -190,6 +190,27 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     entradaAcces = ent ? acces.get(ent.id) : [];
     for (const id of [...rt.keys()]) if (!parc.objectes.some((o) => o.id === id)) rt.delete(id);
   }
+  // La torre de caiguda ara ocupa 2x2. Les que ja hi havia (1x1) creixen cap a la dreta i cap avall;
+  // si no hi caben, es retiren i es tornen tots els diners.
+  (function migraTorres() {
+    const ocupat = new Set(parc.camins);
+    for (const o of parc.objectes) {
+      if (o.t === 'torre-caiguda') continue;
+      const mo = OBJECTES[o.t].mida;
+      for (let dx = 0; dx < mo; dx++) for (let dy = 0; dy < mo; dy++) ocupat.add(k2(o.x + dx, o.y + dy));
+    }
+    for (const o of [...parc.objectes]) {
+      if (o.t !== 'torre-caiguda' || o.mida2) continue;
+      const celles = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([dx, dy]) => [o.x + dx, o.y + dy]);
+      if (celles.every(([x, y]) => dins(x, y) && !ocupat.has(k2(x, y)))) {
+        o.mida2 = true; celles.forEach(([x, y]) => ocupat.add(k2(x, y)));
+      } else {
+        parc.objectes = parc.objectes.filter((x) => x !== o);
+        parc.diners += OBJECTES[o.t].preu;
+        setTimeout(() => avis(`La torre de caiguda ara és més gran (2x2) i no hi cabia: l'hem retirat i t'hem tornat ${eur(OBJECTES[o.t].preu)}. Torna-la a posar on hi hagi espai.`, 'info'), 800);
+      }
+    }
+  })();
   recalcula();
   // Fita de la constitució: hi ha almenys una atracció a la qual es pot arribar des de l'entrada
   function comprovaFites() {
@@ -759,6 +780,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (parc.diners < d.preu) return avis(`No tens prou diners: costa ${eur(d.preu)}.`, 'error');
     parc.diners -= d.preu; parc.totals.despeses += d.preu;
     const o = { id: parc.seguentId++, t, x, y };
+    if (t === 'torre-caiguda') o.mida2 = true;
     if (girNou) o.gir = 1;
     if (d.cat === 'atraccio') o.preu = 0; else if (d.cat === 'menjar' || d.cat === 'botiga') o.preu = d.preuJust;
     parc.objectes.push(o);
