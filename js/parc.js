@@ -1388,6 +1388,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
 
   // Atraccions amb peces mòbils (de moment, el vaixell pirata): base + peça que es mou + capa de davant
   function dibuixaAnimat(o, d, c) {
+    if (d.anim.tipus === 'roda') return dibuixaRoda(o, d, c);
     const a = d.anim, src = (n) => `img/parc/${n}.webp`;
     const base = img(src(a.base)), peca = img(src(a.peca)), dav = img(src(a.davant));
     if (!base || !peca || !dav) return false;
@@ -1417,6 +1418,50 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       });
     }
     ctx.restore();
+    ctx.drawImage(dav, esq, dalt, w, hb);
+    ctx.restore();
+    return true;
+  }
+
+  // Sínia: la roda gira dins el seu pla (lleugerament inclinat) i les cabines pengen sempre dretes
+  function dibuixaRoda(o, d, c) {
+    const a = d.anim, src = (n) => `img/parc/${n}.webp`;
+    const base = img(src(a.base)), roda = img(src(a.roda)), cab = img(src(a.cabina)), dav = img(src(a.davant));
+    if (!base || !roda || !cab || !dav) return false;
+    const m = d.mida, w = WP * m * d.frac, k = w / base.naturalWidth, hb = base.naturalHeight * k;
+    const baix = c.y + (WP * m / 4) * d.frac, esq = -w * (d.punta ?? 0.5), dalt = baix - hb;
+    // gir: només mentre hi ha gent; arrenca i frena suau
+    const s = rt.get(o.id);
+    const dtA = tempsAnim - (s?.tA ?? tempsAnim);
+    if (s) {
+      s.tA = tempsAnim;
+      if (s.muntats.length && s.fi) {
+        const f = clamp(1 - (s.fi - parc.minut) / d.durada, 0, 1);
+        s.angle = (s.angle || 0) + dtA * a.velocitat * Math.min(1, Math.sin(Math.PI * f) * 1.6);
+      }
+    }
+    const fi = (s?.angle || 0) + o.id * 0.4, hx = esq + a.hub[0] * k, hy = dalt + a.hub[1] * k, R = a.radi * k, sh = a.inclinacio;
+    ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
+    ctx.drawImage(base, esq, dalt, w, hb);
+    // roda
+    const rr = R / a.radiRoda, rw = roda.naturalWidth * rr, rh = roda.naturalHeight * rr;
+    ctx.save(); ctx.translate(hx, hy); ctx.transform(1, sh, 0, 1, 0, 0); ctx.rotate(fi);
+    ctx.drawImage(roda, -rw / 2, -rh / 2, rw, rh);
+    ctx.restore();
+    // cabines (i la gent que hi va a dins)
+    const cw = a.ampladaCabina * k, chh = cw * cab.naturalHeight / cab.naturalWidth;
+    const passatgers = s?.muntats || [];
+    for (let i = 0; i < a.cabines; i++) {
+      const ang = fi + (i * 2 * Math.PI) / a.cabines;
+      const x = R * Math.cos(ang), y = R * Math.sin(ang);
+      const px = hx + x, py = hy + y + sh * x - chh * 0.03;
+      const v = passatgers[i];
+      if (v) {
+        const im = img(`img/animacions/${v.img}.webp`);
+        if (im) { const fw = im.naturalWidth / 4, fh = im.naturalHeight / 4; ctx.drawImage(im, 0, 0, fw, fh * 0.6, px - cw * 0.28, py + chh * 0.33, cw * 0.56, cw * 0.5); }
+      }
+      ctx.drawImage(cab, px - cw / 2, py, cw, chh);
+    }
     ctx.drawImage(dav, esq, dalt, w, hb);
     ctx.restore();
     return true;

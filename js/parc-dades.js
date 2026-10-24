@@ -78,7 +78,10 @@ export const OBJECTES = {
     capacitat: 6, durada: 4, atractiu: 2, emocio: 2, intensitat: 2, mareig: 2, preuJust: 2, text: 'Barata i petita. Ideal per començar.' },
   // fase 2: atraccions més grans (les d'emoció 6 o més poden marejar: cal una infermeria)
   'sinia-petita': { nom: 'Sínia petita', cat: 'atraccio', img: 'sinia-petita', mida: 2, frac: 0.97, preu: 18000, manteniment: 160,
-    capacitat: 16, durada: 5, atractiu: 4, emocio: 2, intensitat: 1, mareig: 1, preuJust: 3.5, text: 'Vistes boniques i cap ensurt. Agrada a tothom.' },
+    // peces mòbils: la base (potes i porta), la roda que gira i les cabines que hi pengen sempre dretes
+    anim: { tipus: 'roda', base: 'sinia-petita-base', davant: 'sinia-petita-davant', roda: 'sinia-petita-roda', cabina: 'sinia-petita-cabina',
+      hub: [392.5, -11], radi: 212, radiRoda: 278, cabines: 8, ampladaCabina: 84, inclinacio: 0.18, velocitat: 0.6 },
+    capacitat: 32, durada: 10, atractiu: 4, emocio: 2, intensitat: 1, mareig: 1, preuJust: 3.5, text: 'Vistes boniques i cap ensurt. Agrada a tothom.' },
   'vaixell-pirata': { nom: 'Vaixell pirata', cat: 'atraccio', img: 'vaixell-pirata', mida: 2, frac: 0.97, preu: 26000, manteniment: 240,
     // peces mòbils: la base, la barca que es gronxa (penjada de l'eix) i la porta que queda per davant
     anim: { tipus: 'gronxa', base: 'vaixell-base', peca: 'vaixell-barca', davant: 'vaixell-base-davant', pivotBase: [408.5, 73.8], pivotPeca: [214, 71.7], angle: 32, periode: 1.7,
