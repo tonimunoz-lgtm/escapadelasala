@@ -1417,6 +1417,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (d.anim.tipus === 'tasses') return dibuixaTasses(o, d, c);
     if (d.anim.tipus === 'raiers') return dibuixaRaiers(o, d, c);
     if (d.anim.tipus === 'xoc') return dibuixaXoc(o, d, c);
+    if (d.anim.tipus === 'torre') return dibuixaTorre(o, d, c);
     const a = d.anim, src = (n) => `img/parc/${n}.webp`;
     const base = img(src(a.base)), peca = img(src(a.peca)), dav = img(src(a.davant));
     if (!base || !peca || !dav) return false;
@@ -1809,6 +1810,46 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       ctx.strokeText('Bum!', px, py - cw * 0.25 - f * cw * 0.3); ctx.fillText('Bum!', px, py - cw * 0.25 - f * cw * 0.3); ctx.restore();
       ctx.globalAlpha = 1;
     }
+    ctx.restore();
+    return true;
+  }
+
+  // Torre de caiguda: l'anell de cadires envolta la columna (meitat de darrere, columna, meitat de davant).
+  // Durant el viatge: espera a baix, puja a poc a poc, s'atura a dalt, cau de cop i rebota.
+  function alcadaTorre(f) {
+    if (f < 0.08) return 0;
+    if (f < 0.55) { const t = (f - 0.08) / 0.47; return t * t * (3 - 2 * t); }   // puja suau
+    if (f < 0.7) return 1;                                                      // espera a dalt
+    if (f < 0.76) { const t = (f - 0.7) / 0.06; return 1 - t * t; }              // caiguda lliure
+    if (f < 0.9) { const t = (f - 0.76) / 0.14; return Math.abs(Math.sin(t * Math.PI * 2)) * 0.07 * (1 - t); }   // rebots
+    return 0;
+  }
+  function dibuixaTorre(o, d, c) {
+    const a = d.anim, src = (n) => `img/parc/${n}.webp`;
+    const base = img(src(a.base)), col = img(src(a.columna)), dav = img(src(a.davant));
+    const ad = img(src(a.anellDarrere)), af = img(src(a.anellDavant));
+    if (!base || !col || !dav || !ad || !af) return false;
+    const m = d.mida, w = WP * m * d.frac, k = w / base.naturalWidth, hb = base.naturalHeight * k;
+    const baix = c.y + (WP * m / 4) * d.frac, esq = -w * (d.punta ?? 0.5), dalt = baix - hb;
+    const s = rt.get(o.id), enMarxa = !!(s?.muntats.length && s.fi);
+    const f = enMarxa ? clamp(1 - (s.fi - parc.minut) / d.durada, 0, 1) : 0, h = alcadaTorre(f);
+    const aw = a.amplada * k, ah = aw * ad.naturalHeight / ad.naturalWidth;
+    const cx = esq + a.eixX * k, cy = dalt + (a.baix + (a.dalt - a.baix) * h) * k;
+    const x0 = cx - aw * a.forat[0], y0 = cy - ah * a.forat[1];
+    ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
+    ctx.drawImage(base, esq, dalt, w, hb);
+    ctx.drawImage(ad, x0, y0, aw, ah);
+    ctx.drawImage(col, esq, dalt, w, hb);
+    ctx.drawImage(af, x0, y0, aw, ah);
+    // passatgers als seients de davant: amunt i durant la caiguda, amb les cames penjant
+    a.seients.forEach(([fx, fy], q) => {
+      const v = s?.muntats[q], pim = v && img(`img/animacions/${v.img}.webp`);
+      if (!pim) return;
+      const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4, pw = aw * 0.075, ph = pw * 1.5;
+      ctx.drawImage(pim, 0, 0, fw, fh, x0 + fx * aw - pw / 2, y0 + fy * ah - ph * 0.15, pw, ph);
+    });
+    ctx.drawImage(dav, esq, dalt, w, hb);
+    dibuixaLlums(a.llums, esq, dalt, k, enMarxa, o.id);
     ctx.restore();
     return true;
   }
