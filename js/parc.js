@@ -1392,6 +1392,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (d.anim.tipus === 'tren') return dibuixaTren(o, d, c);
     if (d.anim.tipus === 'barques') return dibuixaBarques(o, d, c);
     if (d.anim.tipus === 'carrusel') return dibuixaCarrusel(o, d, c);
+    if (d.anim.tipus === 'tasses') return dibuixaTasses(o, d, c);
     const a = d.anim, src = (n) => `img/parc/${n}.webp`;
     const base = img(src(a.base)), peca = img(src(a.peca)), dav = img(src(a.davant));
     if (!base || !peca || !dav) return false;
@@ -1605,6 +1606,53 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
+  }
+
+  // Tasses: donen voltes al voltant de la tetera i giren sobre si mateixes (la nansa va canviant de costat)
+  function dibuixaTasses(o, d, c) {
+    const a = d.anim, src = (n) => `img/parc/${n}.webp`;
+    const base = img(src(a.base)), tet = img(src(a.tetera)), dav = img(src(a.davant));
+    const tas = a.tasses.map((n) => img(src(n)));
+    if (!base || !tet || !dav || tas.some((x) => !x)) return false;
+    const m = d.mida, w = WP * m * d.frac, k = w / base.naturalWidth, hb = base.naturalHeight * k;
+    const baix = c.y + (WP * m / 4) * d.frac, esq = -w * (d.punta ?? 0.5), dalt = baix - hb;
+    const s = rt.get(o.id), enMarxa = !!(s?.muntats.length && s.fi);
+    const dtA = tempsAnim - (s?.tA ?? tempsAnim);
+    let forca = 0;
+    if (s) {
+      s.tA = tempsAnim;
+      if (enMarxa) { const f = clamp(1 - (s.fi - parc.minut) / d.durada, 0, 1); forca = Math.min(1, Math.sin(Math.PI * f) * 1.8); s.angle = (s.angle || 0) + dtA * a.velocitat * forca; s.girT = (s.girT || 0) + dtA * a.girPropi * forca; }
+    }
+    const cx = esq + a.centre[0] * k, cy = dalt + a.centre[1] * k, tw = a.amplada * k;
+    const tasses = [];
+    for (let i = 0; i < a.n; i++) {
+      const ang = -(s?.angle || 0) + o.id * 0.5 + (i * 2 * Math.PI) / a.n, sn = Math.sin(ang);
+      tasses.push({ i, x: cx + Math.cos(ang) * a.rx * k, y: cy + sn * a.ry * k, sn, im: tas[i % tas.length], gir: (s?.girT || 0) + i * 1.9 });
+    }
+    const dibuixaTassa = (q) => {
+      const th = tw * q.im.naturalHeight / q.im.naturalWidth, cs = Math.cos(q.gir);
+      ctx.save(); ctx.translate(q.x, q.y);
+      ctx.scale(Math.sign(cs || 1) * Math.max(0.82, Math.abs(cs)), 1);   // la nansa passa d'un costat a l'altre
+      ctx.drawImage(q.im, -tw * 0.47, -th * 0.8, tw, th);
+      ctx.restore();
+      // dues persones a dins, que treuen el cap per sobre de la vora
+      for (let j = 0; j < 2; j++) {
+        const v = s?.muntats[q.i * 2 + j], pim = v && img(`img/animacions/${v.img}.webp`);
+        if (!pim) continue;
+        const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4, pw = tw * 0.17, ph = th * 0.3;
+        const px = q.x + (j ? 0.1 : -0.13) * tw * Math.sign(cs || 1), py = q.y - th * 0.8 + th * 0.5;
+        ctx.drawImage(pim, 0, 0, fw, fh * 0.5, px - pw / 2, py - ph, pw, ph);
+      }
+    };
+    ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
+    ctx.drawImage(base, esq, dalt, w, hb);
+    tasses.filter((q) => q.sn < 0).sort((p, q) => p.y - q.y).forEach(dibuixaTassa);
+    ctx.drawImage(tet, esq, dalt, w, hb);
+    tasses.filter((q) => q.sn >= 0).sort((p, q) => p.y - q.y).forEach(dibuixaTassa);
+    ctx.drawImage(dav, esq, dalt, w, hb);
+    dibuixaLlums(a.llums, esq, dalt, k, enMarxa, o.id);
+    ctx.restore();
+    return true;
   }
 
   // Sínia: la roda gira dins el seu pla (lleugerament inclinat) i les cabines pengen sempre dretes
