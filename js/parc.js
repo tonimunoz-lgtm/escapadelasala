@@ -18,9 +18,9 @@ const WP = 128;                       // amplada d'una casella del parc (unitats
 const iso = (u, v) => ({ x: (u - v) * WP / 2, y: (u + v) * WP / 4 });
 const k2 = (x, y) => `${x},${y}`;
 // Les caselles van de (-7,-14) a (27,20): l'espai màxim del parc. idx() les passa a un índex de taula.
-// La graella fa 14 caselles més d'ample que l'espai màxim del parc: és on va el ressort (a la dreta).
+// La graella fa 14 caselles més d'ample que l'espai màxim del parc: és on va el ressort (a l'esquerra).
 const M = MIDA_TOTAL + 14;
-const OX = ORIGEN.x, OY = ORIGEN.y;
+const OX = ORIGEN.x + 14, OY = ORIGEN.y;
 const aLaGraella = (x, y) => x >= -OX && y >= -OY && x < M - OX && y < M - OY;
 const idx = (x, y) => (y + OY) * M + (x + OX);
 const desIdx = (c) => [c % M - OX, Math.floor(c / M) - OY];
@@ -202,6 +202,15 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const ent = parc.objectes.find((o) => OBJECTES[o.t].cat === 'fix');
     entradaAcces = ent ? acces.get(ent.id) : [];
     for (const id of [...rt.keys()]) if (!parc.objectes.some((o) => o.id === id)) rt.delete(id);
+  }
+  // Ressort de la versió anterior (a la dreta i amb una altra imatge): es torna a col·locar amb la nova
+  if (parc.ressort && parc.ressort.v !== RESSORT.versio) {
+    const vells = parc.objectes.filter((o) => OBJECTES[o.t]?.ressort);
+    const xs = vells.filter((o) => o.t === 'resort').map((o) => o.x);
+    const preus = {}; for (const o of vells) if (o.preu != null) preus[o.t] = o.preu;
+    parc.objectes = parc.objectes.filter((o) => !OBJECTES[o.t]?.ressort);
+    if (xs.length) parc.camins = parc.camins.filter((p) => p !== k2(xs[0] - 1, BLOC + 13));
+    delete parc.ressort.bx; situaRessort(preus);
   }
   // La torre de caiguda ara ocupa 2x2. Les que ja hi havia (1x1) creixen cap a la dreta i cap avall;
   // si no hi caben, es retiren i es tornen tots els diners.
@@ -799,7 +808,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
         const x = bx * BLOC + i, y = by * BLOC + i;
         if (!dinsM(x, by * BLOC - 1)) { trams.push(['x', x, by * BLOC]); punt(x, by * BLOC, 'x'); punt(x + 1, by * BLOC, 'x'); }
         if (!dinsM(x, (by + 1) * BLOC) && !forat(x, (by + 1) * BLOC)) { trams.push(['x', x, (by + 1) * BLOC]); punt(x, (by + 1) * BLOC, 'x'); punt(x + 1, (by + 1) * BLOC, 'x'); }
-        if (!dinsM(bx * BLOC - 1, y)) { trams.push(['y', bx * BLOC, y]); punt(bx * BLOC, y, 'y'); punt(bx * BLOC, y + 1, 'y'); }
+        if (!dinsM(bx * BLOC - 1, y) && !(portaR && portaR[0] + 1 === bx * BLOC && portaR[1] === y)) { trams.push(['y', bx * BLOC, y]); punt(bx * BLOC, y, 'y'); punt(bx * BLOC, y + 1, 'y'); }
         if (!dinsM((bx + 1) * BLOC, y) && !(portaR && portaR[0] === (bx + 1) * BLOC && portaR[1] === y)) { trams.push(['y', (bx + 1) * BLOC, y]); punt((bx + 1) * BLOC, y, 'y'); punt((bx + 1) * BLOC, y + 1, 'y'); }
       }
     }
@@ -1449,23 +1458,26 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     });
   }
   function hotelsRessort() { return parc.objectes.filter((o) => o.t === 'resort-hotel'); }
+  // Col·loca el ressort a l'esquerra del parc (a les dues files de davant), amb les seves instal·lacions
+  function situaRessort(preus = {}) {
+    const bx = Math.min(...parc.blocs.map((b) => b.split(',').map(Number)).filter(([, by]) => by >= 1).map(([x]) => x)) - 2;
+    parc.ressort = { ...(parc.ressort || {}), bx, v: RESSORT.versio, pendents: parc.ressort?.pendents || 0, dema: parc.ressort?.dema || 0 };
+    const [x0, y0] = origenRessort();
+    parc.objectes.push({ id: parc.seguentId++, t: 'resort', x: x0, y: y0 });
+    for (const [t, u, v] of RESSORT.llocs) parc.objectes.push({ id: parc.seguentId++, t, x: x0 + u, y: y0 + v, preu: preus[t] ?? (t === 'resort-restaurant' ? OBJECTES[t].preuJust : 0) });
+    // camí del parc fins a la porta (si la casella és lliure)
+    const [px, py] = aRessort(...RESSORT.porta), q = k2(px + 1, py);
+    if (!parc.camins.includes(q) && !parc.objectes.some((o) => { const m = OBJECTES[o.t].mida; return px + 1 >= o.x && px + 1 < o.x + m && py >= o.y && py < o.y + m; })) parc.camins.push(q);
+  }
   function compraRessort() {
     if (parc.ressort) return;
     if (parc.diners < RESSORT.preu) return avis(`No tens prou diners: el ressort costa ${eur(RESSORT.preu)}.`, 'error');
-    // va just a la dreta del parc, a les dues files de davant
-    const bx = 1 + Math.max(...parc.blocs.map((b) => b.split(',').map(Number)).filter(([, by]) => by >= 1).map(([x]) => x));
-    if (!confirm(`Vols construir el Ressort del Far West per ${eur(RESSORT.preu)}? Anirà en un terreny nou de 14x14 caselles, a la dreta del parc, amb una porta directa al parc. Costa ${eur(RESSORT.manteniment)} al dia de manteniment.`)) return;
+    if (!confirm(`Vols construir el Ressort del Far West per ${eur(RESSORT.preu)}? Anirà en un terreny nou de 14x14 caselles, a l'esquerra del parc, amb l'entrada a la carretera i una porta directa al parc. Costa ${eur(RESSORT.manteniment)} al dia de manteniment.`)) return;
     parc.diners -= RESSORT.preu; parc.totals.despeses += RESSORT.preu;
-    parc.ressort = { bx, pendents: 0, dema: 0 };
     parc.preus.hotel ??= RESSORT.preuNit;
-    const [x0, y0] = origenRessort();
-    parc.objectes.push({ id: parc.seguentId++, t: 'resort', x: x0, y: y0 });
-    for (const [t, u, v] of RESSORT.llocs) parc.objectes.push({ id: parc.seguentId++, t, x: x0 + u, y: y0 + v, preu: t === 'resort-restaurant' ? OBJECTES[t].preuJust : 0 });
-    // camí del parc fins a la porta (si la casella és lliure)
-    const [px, py] = aRessort(...RESSORT.porta), q = k2(px - 1, py);
-    if (!parc.camins.includes(q) && !parc.objectes.some((o) => { const m = OBJECTES[o.t].mida; return px - 1 >= o.x && px - 1 < o.x + m && py >= o.y && py < o.y + m; })) parc.camins.push(q);
+    situaRessort();
     recalcula(); guarda(true); encaixa(); obreRessort();
-    avis('Ja tens el ressort! Connecta amb un camí la porta (a la cantonada de davant a l\'esquerra) amb la resta del parc.', 'ok');
+    avis('Ja tens el ressort! Connecta amb un camí la porta del ressort (a la vora esquerra del parc) amb la resta de camins.', 'ok');
   }
   function obreRessort() {
     if (!parc.ressort) {
