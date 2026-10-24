@@ -1390,6 +1390,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   function dibuixaAnimat(o, d, c) {
     if (d.anim.tipus === 'roda') return dibuixaRoda(o, d, c);
     if (d.anim.tipus === 'tren') return dibuixaTren(o, d, c);
+    if (d.anim.tipus === 'barques') return dibuixaBarques(o, d, c);
     const a = d.anim, src = (n) => `img/parc/${n}.webp`;
     const base = img(src(a.base)), peca = img(src(a.peca)), dav = img(src(a.davant));
     if (!base || !peca || !dav) return false;
@@ -1445,7 +1446,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     let lo = 0, hi = cm.seg.length - 1;
     while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (cm.seg[mid].L <= s) lo = mid; else hi = mid - 1; }
     const g = cm.seg[lo], f = g.l ? (s - g.L) / g.l : 0;
-    return { x: g.x1 + (g.x2 - g.x1) * f, y: g.y1 + (g.y2 - g.y1) * f, ang: Math.atan2(g.y2 - g.y1, g.x2 - g.x1), loop: g.t === 'loop' };
+    return { x: g.x1 + (g.x2 - g.x1) * f, y: g.y1 + (g.y2 - g.y1) * f, ang: Math.atan2(g.y2 - g.y1, g.x2 - g.x1), loop: g.t === 'loop', seg: g.t };
   }
   // distància recorreguda quan ha passat una fracció f del temps del viatge
   function distanciaPerTemps(cm, f) {
@@ -1483,6 +1484,62 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       }
       ctx.drawImage(im, -lw / 2, -lh * 0.92, lw, lh);
       ctx.restore();
+    }
+    ctx.drawImage(dav, esq, dalt, w, hb);
+    ctx.restore();
+    return true;
+  }
+
+  // Troncs: diverses barques pel canal, cadascuna desfasada en el temps (així totes van a la velocitat de
+  // cada tram). Quan una arriba a baix de la caiguda, esquitxa.
+  function dibuixaBarques(o, d, c) {
+    const a = d.anim, src = (n) => `img/parc/${n}.webp`;
+    const base = img(src(a.base)), dav = img(src(a.davant)), veh = img(src(a.vehicle));
+    if (!base || !dav || !veh) return false;
+    const m = d.mida, w = WP * m * d.frac, k = w / base.naturalWidth, hb = base.naturalHeight * k;
+    const baix = c.y + (WP * m / 4) * d.frac, esq = -w * (d.punta ?? 0.5), dalt = baix - hb;
+    const cm = preparaCami(a), s = rt.get(o.id);
+    const enMarxa = s?.muntats.length && s.fi;
+    const f = enMarxa ? 1 - (s.fi - parc.minut) / d.durada : 0;
+    const puntEsquitx = cm.seg.find((g) => g.t === 'esquitx')?.L ?? -1;
+    ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
+    ctx.drawImage(base, esq, dalt, w, hb);
+    const passatgers = s?.muntats || [], esquitxades = [];
+    const lw = a.llargada * k, lh = lw * veh.naturalHeight / veh.naturalWidth;
+    for (let j = 0; j < a.barques; j++) {
+      const dist = distanciaPerTemps(cm, (f + j / a.barques) % 1);
+      const p = puntCami(cm, dist);
+      ctx.save();
+      // la barca mira cap on va; al canal pla només s'inclina una mica (a la rampa i la caiguda, del tot)
+      const capEsq = Math.cos(p.ang) < 0;
+      let inc = capEsq ? p.ang - Math.PI : p.ang;
+      inc = Math.atan2(Math.sin(inc), Math.cos(inc));
+      if (p.seg !== 'pujada' && p.seg !== 'baixada') inc = clamp(inc, -0.45, 0.45);
+      ctx.translate(esq + p.x * k, dalt + p.y * k); ctx.rotate(inc);
+      if (capEsq) ctx.scale(-1, 1);
+      a.seients.forEach((fx, q) => {
+        const v = passatgers[j * a.seients.length + q];
+        const pim = v && img(`img/animacions/${v.img}.webp`);
+        if (pim) { const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4; ctx.drawImage(pim, fw, fh, fw, fh * 0.55, -lw / 2 + lw * fx - lw * 0.03, -lh * 1.45, lw * 0.2, lh * 0.95); }
+      });
+      ctx.drawImage(veh, -lw / 2, -lh * 0.85, lw, lh);
+      ctx.restore();
+      // esquitxada: just després de passar pel punt de baix de la caiguda
+      const delta = (((dist - puntEsquitx) % cm.L) + cm.L) % cm.L;
+      if (enMarxa && puntEsquitx >= 0 && delta < 140) esquitxades.push({ x: esq + p.x * k, y: dalt + p.y * k, fase: delta / 140 });
+    }
+    for (const e of esquitxades) {
+      const r = (10 + e.fase * 34) * k * 2.2, alfa = 1 - e.fase;
+      ctx.globalAlpha = Math.max(0, alfa * 0.9);
+      for (let q = 0; q < 14; q++) {
+        const ang = Math.PI + (q / 13) * Math.PI, rr = r * (0.7 + (q % 3) * 0.18);
+        const x = e.x + Math.cos(ang) * rr, y = e.y - lh * 0.3 + Math.sin(ang) * rr * 1.1 + e.fase * e.fase * r * 0.9;
+        ctx.fillStyle = q % 2 ? '#ffffff' : '#bfe8ff';
+        ctx.beginPath(); ctx.ellipse(x, y, (3 + (q % 4)) * k * 2.4, (4 + (q % 3)) * k * 2.4, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = Math.max(0, alfa * 0.6); ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.ellipse(e.x, e.y - lh * 0.1, r * 0.9, r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
     }
     ctx.drawImage(dav, esq, dalt, w, hb);
     ctx.restore();

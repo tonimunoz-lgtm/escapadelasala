@@ -102,7 +102,11 @@ export const OBJECTES = {
   'rius-rapids': { nom: 'Rius ràpids', cat: 'atraccio', img: 'rius-rapids', mida: 4, frac: 0.97, preu: 100000, manteniment: 850,
     capacitat: 24, durada: 5, atractiu: 12, emocio: 6, intensitat: 4, mareig: 2, preuJust: 7, text: 'Barques rodones entre cascades. Ideal a l\'estiu. Pot marejar.' },
   troncs: { nom: 'Troncs d\'aigua', cat: 'atraccio', img: 'troncs', mida: 4, frac: 0.97, preu: 110000, manteniment: 900,
-    capacitat: 24, durada: 4, atractiu: 13, emocio: 7, intensitat: 5, mareig: 2, preuJust: 7.5, text: 'Una gran baixada i... xof! Pot marejar.' },
+    // peces mòbils: 3 barques-tronc que recorren el canal (cadascuna al seu ritme) i esquitxen a baix de la caiguda
+    anim: { tipus: 'barques', base: 'troncs-base', davant: 'troncs-davant', vehicle: 'troncs-tronc', barques: 3, llargada: 84,
+      seients: [0.27, 0.56], velocitats: { canal: 0.9, pujada: 0.3, cim: 0.5, baixada: 2.6, esquitx: 1.2 },
+      cami: [[208.1, 420.4, "canal"], [249.8, 412.1, "canal"], [333.0, 391.3, "canal"], [416.3, 366.3, "canal"], [482.9, 328.8, "pujada"], [532.8, 295.5, "pujada"], [574.4, 264.7, "pujada"], [607.7, 233.1, "pujada"], [636.9, 179.0, "pujada"], [666.0, 151.5, "cim"], [691.0, 195.6, "baixada"], [724.3, 266.4, "baixada"], [761.8, 349.7, "baixada"], [799.2, 432.9, "baixada"], [832.5, 507.8, "baixada"], [850.8, 546.1, "esquitx"], [890.8, 559.5, "canal"], [940.7, 572.8, "canal"], [969.9, 586.9, "canal"], [957.4, 601.1, "canal"], [899.1, 597.7, "canal"], [832.5, 592.8, "canal"], [749.3, 584.4, "canal"], [666.0, 574.4, "canal"], [582.8, 564.4, "canal"], [516.2, 557.8, "canal"], [449.6, 552.8, "canal"], [383.0, 539.5, "canal"], [316.4, 519.5, "canal"], [249.8, 497.8, "canal"], [199.8, 482.9, "canal"], [158.2, 466.2, "canal"], [131.5, 441.2, "canal"], [148.2, 416.3, "canal"], [179.0, 411.3, "canal"]] },
+    capacitat: 72, durada: 12, atractiu: 13, emocio: 7, intensitat: 5, mareig: 2, preuJust: 7.5, text: 'Una gran baixada i... xof! Pot marejar.' },
   'muntanya-russa-gegant': { nom: 'Muntanya russa gegant', cat: 'atraccio', img: 'muntanya-russa-gegant', mida: 4, frac: 0.97, preu: 140000, manteniment: 1100,
     // peces mòbils: la muntanya russa sense tren + un tren (locomotora i 4 vagons) que recorre el traçat de la via.
     // cami: punts de la via (en píxels de la imatge base) i el tipus de tram, que en marca la velocitat.
