@@ -1389,6 +1389,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   // Atraccions amb peces mòbils (de moment, el vaixell pirata): base + peça que es mou + capa de davant
   function dibuixaAnimat(o, d, c) {
     if (d.anim.tipus === 'roda') return dibuixaRoda(o, d, c);
+    if (d.anim.tipus === 'tren') return dibuixaTren(o, d, c);
     const a = d.anim, src = (n) => `img/parc/${n}.webp`;
     const base = img(src(a.base)), peca = img(src(a.peca)), dav = img(src(a.davant));
     if (!base || !peca || !dav) return false;
@@ -1418,6 +1419,71 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       });
     }
     ctx.restore();
+    ctx.drawImage(dav, esq, dalt, w, hb);
+    ctx.restore();
+    return true;
+  }
+
+  // Muntanya russa: el tren recorre el traçat de la via. Cada tram té la seva velocitat (puja a poc a poc,
+  // baixa disparat) i cada vagó es gira segons la inclinació de la via. Fora dels loopings, els vagons
+  // sempre van drets.
+  function preparaCami(a) {
+    if (a._cami) return a._cami;
+    const p = a.cami, n = p.length, seg = [];
+    let L = 0, T = 0;
+    for (let i = 0; i < n; i++) {
+      const [x1, y1, t] = p[i], [x2, y2] = p[(i + 1) % n];
+      const l = Math.hypot(x2 - x1, y2 - y1);
+      seg.push({ x1, y1, x2, y2, l, t, L, T });
+      L += l; T += l / (a.velocitats[t] || 1);
+    }
+    return (a._cami = { seg, L, T });
+  }
+  // punt de la via a una distància s (en px de la imatge base)
+  function puntCami(cm, s) {
+    s = ((s % cm.L) + cm.L) % cm.L;
+    let lo = 0, hi = cm.seg.length - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (cm.seg[mid].L <= s) lo = mid; else hi = mid - 1; }
+    const g = cm.seg[lo], f = g.l ? (s - g.L) / g.l : 0;
+    return { x: g.x1 + (g.x2 - g.x1) * f, y: g.y1 + (g.y2 - g.y1) * f, ang: Math.atan2(g.y2 - g.y1, g.x2 - g.x1), loop: g.t === 'loop' };
+  }
+  // distància recorreguda quan ha passat una fracció f del temps del viatge
+  function distanciaPerTemps(cm, f) {
+    const t = clamp(f, 0, 1) * cm.T;
+    let lo = 0, hi = cm.seg.length - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (cm.seg[mid].T <= t) lo = mid; else hi = mid - 1; }
+    const g = cm.seg[lo], v = g.l / Math.max(1e-6, (cm.seg[lo + 1]?.T ?? cm.T) - g.T);
+    return g.L + (t - g.T) * v;
+  }
+  function dibuixaTren(o, d, c) {
+    const a = d.anim, src = (n) => `img/parc/${n}.webp`;
+    const base = img(src(a.base)), dav = img(src(a.davant)), loco = img(src(a.loco)), vago = img(src(a.vago));
+    if (!base || !dav || !loco || !vago) return false;
+    const m = d.mida, w = WP * m * d.frac, k = w / base.naturalWidth, hb = base.naturalHeight * k;
+    const baix = c.y + (WP * m / 4) * d.frac, esq = -w * (d.punta ?? 0.5), dalt = baix - hb;
+    const cm = preparaCami(a), s = rt.get(o.id);
+    // sense gent, el tren espera a l'estació; amb gent, fa una volta per viatge
+    const f = s?.muntats.length && s.fi ? 1 - (s.fi - parc.minut) / d.durada : 0;
+    const cap = distanciaPerTemps(cm, f) + a.llargada * 0.5;
+    ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
+    ctx.drawImage(base, esq, dalt, w, hb);
+    const passatgers = s?.muntats || [];
+    for (let i = a.vagons; i >= 0; i--) {
+      const im = i === 0 ? loco : vago;
+      const p = puntCami(cm, cap - i * (a.llargada + a.espai));
+      const lw = a.llargada * k * (im.naturalWidth / vago.naturalWidth), lh = lw * im.naturalHeight / im.naturalWidth;
+      ctx.save();
+      ctx.translate(esq + p.x * k, dalt + p.y * k); ctx.rotate(p.ang);
+      if (!p.loop && Math.cos(p.ang) < 0) ctx.scale(1, -1);   // anant cap a l'esquerra (fora dels loopings), el vagó va dret
+      // dos passatgers per vagó, que treuen el cap per sobre dels seients
+      for (let j = 0; j < 2; j++) {
+        const v = passatgers[i * 2 + j];
+        const pim = v && img(`img/animacions/${v.img}.webp`);
+        if (pim) { const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4; ctx.drawImage(pim, fw, fh, fw, fh * 0.55, -lw / 2 + lw * (0.2 + j * 0.34), -lh * 1.05, lw * 0.22, lh * 0.55); }
+      }
+      ctx.drawImage(im, -lw / 2, -lh * 0.92, lw, lh);
+      ctx.restore();
+    }
     ctx.drawImage(dav, esq, dalt, w, hb);
     ctx.restore();
     return true;
