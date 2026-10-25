@@ -141,7 +141,7 @@ export const OBJECTES = {
       [[280, 135], [340, 130], [400, 135], [290, 165], [350, 165], [410, 170]], [[150, 130], [210, 125], [270, 130], [140, 160], [200, 160], [260, 165]]],
     capacitat: 14, durada: 5, atractiu: 7, emocio: 4, intensitat: 1, mareig: 0, preuJust: 3, text: 'Un castell inflable gegant amb tobogan. Els petits no en voldran sortir!' },
   // Tren turístic: l'estació és l'atracció; el tren corre per les vies que construeixes i para a totes les estacions
-  'estacio-tren': { nom: 'Estació del tren turístic', cat: 'atraccio', img: 'estacio-tren', mida: 2, frac: 1.163, peu: 0.97, vistes: 4, preu: 30000, manteniment: 250,
+  'estacio-tren': { nom: 'Estació del tren turístic', cat: 'atraccio', img: 'estacio-tren', mida: 2, fons: 0.5, frac: 1.163, peu: 0.97, vistes: 4, preu: 30000, manteniment: 250,
     tren: true, capacitat: 16, durada: 0, atractiu: 7, emocio: 3, intensitat: 1, mareig: 0, preuJust: 3,
     text: 'El tren turístic para aquí. Construeix vies (eina 🛤️) que passin pel costat de l\'estació: el tren donarà voltes pel parc i la gent baixarà a la parada següent.' },
   // sense peces mòbils: un parc d'aigua amb cascades, rius i un molí (4 vistes)
@@ -213,7 +213,7 @@ export const OBJECTES = {
   informacio: { nom: 'Punt d\'informació', cat: 'servei', img: 'informacio', mida: 1, frac: 0.8, preu: 2000, manteniment: 30,
     text: 'Els visitants s\'orienten millor i el parc té més bona fama.' },
 
-  banc: { nom: 'Banc', cat: 'decoracio', img: 'banc', mida: 1, frac: 0.715, peu: 0.5, vistes: 4, preu: 150, bellesa: 1, seient: true,
+  banc: { nom: 'Banc', cat: 'decoracio', img: 'banc', mida: 1, fons: 0.5, frac: 0.715, peu: 0.5, vistes: 4, preu: 150, bellesa: 1, seient: true,
     text: 'Per descansar. Posa\'l al costat d\'un camí.' },
   paperera: { nom: 'Paperera', cat: 'decoracio', img: 'paperera', mida: 1, frac: 0.22, preu: 100, paperera: true,
     text: 'Si n\'hi ha a prop, la gent no llença brossa a terra.' },
@@ -295,7 +295,13 @@ export function dibuixaObjecte(ctx, im, t, cx, cy, amp, gir = 0) {
   // punt de davant de l'objecte: amb vistes, la imatge té marges i el que compta és l'amplada del dibuix (peu)
   const baix = cy + (amp / 4) * (o.peu ?? o.frac);
   const p = o.punta ?? 0.5;   // on cau la punta de davant dins de la imatge (0,5 = al mig)
-  if (!gir || o.vistes) { ctx.drawImage(im, cx - w * p, baix - h, w, h); return; }   // amb vistes, la imatge ja és la girada
+  if (!gir || o.vistes) {   // amb vistes, la imatge ja és la girada
+    // edificis que només ocupen la meitat de les caselles (fons < 1): van enganxats al costat cap on miren.
+    // Mirant avall (vistes 0 i 1) ja queden davant; mirant amunt (2 i 3) han d'anar a la meitat del darrere.
+    let dx = 0, dy = 0;
+    if (o.fons && gir % 4 >= 2) { const q = 1 - o.fons; dx = (gir % 4 === 2 ? 1 : -1) * amp / 2 * q; dy = -amp / 4 * q; }
+    ctx.drawImage(im, cx - w * p + dx, baix - h + dy, w, h); return;
+  }
   ctx.save(); ctx.translate(cx, 0); ctx.scale(-1, 1);
   ctx.drawImage(im, -w * p, baix - h, w, h);
   ctx.restore();

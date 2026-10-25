@@ -1869,7 +1869,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (!tren) return;
     const peces = [TREN.loco, ...Array(TREN.vagons).fill(TREN.vago)];
     peces.forEach((peca, i) => {
-      const p = puntTren(i * 0.95), du = p.du || 1, dv = p.dv || 0, n = Math.hypot(du, dv) || 1;
+      const p = puntTren(i * 0.95), quiet = !p.du && !p.dv, du = quiet ? 1 : p.du, dv = quiet ? 0 : p.dv, n = Math.hypot(du, dv) || 1;   // (abans un 0 es convertia en 1: el tren es girava)
       const qui = i ? tren.passatgers.slice((i - 1) * TREN.seientsVago, i * TREN.seientsVago).map((x) => x.v) : [];
       afegeix(Math.floor(p.u) + Math.floor(p.v) + 0.65, () => dibuixaVehicleTren(peca, p.u, p.v, du / n, dv / n, qui));
     });
@@ -3039,5 +3039,5 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   }
   // per a les proves automàtiques: on cau a la pantalla una casella del món
   const aPantalla = (u, v) => { const p = iso(u, v), r = canvas.getBoundingClientRect(); return { x: r.left + despl.x + p.x * escala, y: r.top + despl.y + p.y * escala }; };
-  return { tancar, aPantalla, estat: () => ({ visitants: visitants.length, cotxes, transit: transit.length, busos: transit.filter((t) => t.bus).map((t) => ({ bus: t.bus, i: t.i, t: +t.t.toFixed(2), espera: +t.espera.toFixed(1), pos: posTransit(t) })), pendentsBus, dins: visitants.filter((v) => v.estat === 'dins').map((v) => objecte(v.dinsDe)?.t), aRessort: visitants.filter((v) => esZonaRessort(v.x, v.y)).length }) };
+  return { tancar, aPantalla, estat: () => ({ visitants: visitants.length, cotxes, transit: transit.length, tren: tren && { cap: tren.cap, next: tren.next, f: +tren.f.toFixed(2), parat: +tren.parat.toFixed(1) }, busos: transit.filter((t) => t.bus).map((t) => ({ bus: t.bus, i: t.i, t: +t.t.toFixed(2), espera: +t.espera.toFixed(1), pos: posTransit(t) })), pendentsBus, dins: visitants.filter((v) => v.estat === 'dins').map((v) => objecte(v.dinsDe)?.t), aRessort: visitants.filter((v) => esZonaRessort(v.x, v.y)).length }) };
 }
