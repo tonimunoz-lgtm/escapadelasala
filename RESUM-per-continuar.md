@@ -90,6 +90,12 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
   i una lluentor difuminada amb 'lighter'. La gent i els cotxes no fan llum. El terra s'enfosqueix amb un vel abans dels objectes
   (`nitActiva` controla quan s'aplica). Halos: fanals, clapes a terra sota atraccions, fars dels cotxes, de l'autobús i del tren.
 
+- Llums de colors: `bombeta()` (vermell, groc, verd, blau, rosa, blanc; onada quan funciona). La sínia porta una corona de 36
+  bombetes i llums als radis que giren amb la roda.
+- Il·luminació: objectes amb `llum: { radi, color, alcada }` (fanal 2,6 caselles càlida; `torre-llum` 5,5 blanca, 4 vistes).
+  El vel de nit es fa en una tela a part (`velNit`) amb forats on hi ha llums; a sobre, clapes a terra i claror sobre la gent.
+  Llums automàtics (`fanalsAuto`): fanals a la passarel·la del ressort i a l'esplanada; 2 torres a cada pàrquing.
+
 ## Pendent / idees
 - Animar la casa del terror.
 - Mostrar el ressort i el pàrquing a la miniatura del món.

@@ -101,7 +101,21 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   const esExterior = (x, y) => y >= EXTERIOR.y0 && y < EXTERIOR.y0 + EXTERIOR.files && x >= EXTERIOR.bx[0] * BLOC && x < (EXTERIOR.bx[1] + 1) * BLOC;
   // passarel·la: caselles de gespa entre l'arc del ressort i la vora esquerra del parc (es calcula a recalcula())
   let passarella = new Set();
-  let portaRessort = null;   // casella del control d'accés del ressort (a la passarel·la, tocant el parc)
+  let portaRessort = null;
+  // fanals que el parc ja porta: al llarg de la passarel·la del ressort i a l'esplanada de l'entrada
+  let fanalsAuto = [];
+  function calculaFanalsAuto() {
+    const r = [];
+    const pass = [...passarella].map((p) => p.split(',').map(Number)).sort((a, b) => a[0] - b[0]);
+    pass.forEach(([x, y], i) => { if (i % 2 === 0) r.push([x + 0.5, y + (i % 4 === 0 ? 0.1 : 0.9), 'fanal']); });
+    const xs = [...setEsplanada].map((p) => Number(p.split(',')[0]));
+    if (xs.length) { const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1; for (let y = EXTERIOR.y0 + 1; y < CARRETERA.y; y += 3) r.push([x0 + 0.08, y + 0.5, 'fanal'], [x1 - 0.08, y + 0.5, 'fanal']); }
+    // cada pàrquing té dues torres d'il·luminació, als costats
+    for (const o of parc.objectes) if (o.t === 'parquing' && colocat(o)) r.push([o.x + 0.35, o.y + 3.5, 'torre-llum'], [o.x + BLOC - 0.35, o.y + 3.5, 'torre-llum']);
+    fanalsAuto = r;
+  }
+  // tots els punts de llum del parc (fanals i torres comprats + automàtics): [u, v, tipus, gir]
+  const puntsDeLlum = () => [...parc.objectes.filter((o) => OBJECTES[o.t].llum && colocat(o)).map((o) => [o.x + 0.5, o.y + 0.5, o.t, o.gir || 0, true]), ...fanalsAuto];   // casella del control d'accés del ressort (a la passarel·la, tocant el parc)
   const esPassarella = (x, y) => passarella.has(k2(x, y));
   // una casella és «dins» si és del parc, del ressort, de la passarel·la o de la franja de fora;
   // «dinsParc», només del parc (on es pot construir i fer camins)
@@ -305,6 +319,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       }
     }
     if (tren && !setVies.has(k2(...tren.cap))) treuTren();
+    calculaFanalsAuto();
     setBases = new Set();
     for (const o of parc.objectes) if (ambBase(o)) { const m = OBJECTES[o.t].mida; for (let dx = 0; dx < m; dx++) for (let dy = 0; dy < m; dy++) setBases.add(k2(o.x + dx, o.y + dy)); }
     ocup = new Int32Array(M * M);
@@ -1675,9 +1690,9 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       }
     }
     for (const p of setVies) { const [x, y] = p.split(',').map(Number); dibuixaVia(x, y); }
-    if (foscor > 0.01) {   // vel de nit sobre el terra (els objectes ja porten la seva versió de nit)
+    if (foscor > 0.01) {   // vel de nit sobre el terra (els objectes ja porten la seva versió de nit), amb clarors als fanals
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = `rgba(8,16,48,${0.66 * foscor})`; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(velNit(dpr), 0, 0);
       ctx.restore();
       dibuixaLlumsTerra();
     }
@@ -1712,6 +1727,11 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     for (const p of personal) afegeix(Math.floor(p.fx) + Math.floor(p.fy) + 0.5, () => dibuixaPersona(p));
     if (parc.ressort && portaRessort) afegeix(portaRessort[0] + portaRessort[1] + 0.55, dibuixaControl);
     afegeixTren(afegeix);
+    for (const [u, v, t] of fanalsAuto) afegeix(Math.floor(u) + Math.floor(v) + 0.7, () => {
+      const im = img(srcObjecte(t)); if (!im) return;
+      const c = iso(u, v), w = WP * OBJECTES[t].frac, hh = w * im.naturalHeight / im.naturalWidth;
+      ctx.drawImage(im, c.x - w / 2, c.y - hh, w, hh);
+    });
     for (const t of transit) {
       const { u, v, dir } = posTransit(t);
       afegeix(Math.floor(u) + Math.floor(v) + 0.6, () => (t.bus ? dibuixaBus(t.bus, u, v) : dibuixaVehicle(t.img, u, v, dir, t.ample || 62, t.alfa)));
@@ -1991,6 +2011,26 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   }
 
   // ---------- llums de nit ----------
+  // El vel fosc es fa en una tela a part i s'hi foraden cercles (en perspectiva) on hi ha fanals
+  const telaVel = document.createElement('canvas');
+  const RADI_FANAL = 2.6;   // caselles que il·lumina un fanal
+  function velNit(dpr) {
+    if (telaVel.width !== canvas.width || telaVel.height !== canvas.height) { telaVel.width = canvas.width; telaVel.height = canvas.height; }
+    const c = telaVel.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, telaVel.width, telaVel.height);
+    c.fillStyle = `rgba(8,16,48,${0.66 * foscor})`; c.fillRect(0, 0, telaVel.width, telaVel.height);
+    c.globalCompositeOperation = 'destination-out';
+    for (const [u, v, t] of puntsDeLlum()) {
+      const r = OBJECTES[t].llum.radi * WP / 2 * escala * dpr;
+      const p = iso(u, v), x = (despl.x + p.x * escala) * dpr, y = (despl.y + p.y * escala) * dpr;
+      if (x < -r || y < -r || x > telaVel.width + r || y > telaVel.height + r) continue;
+      c.save(); c.translate(x, y); c.scale(1, 0.5);
+      const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(0,0,0,0.85)'); g.addColorStop(0.55, 'rgba(0,0,0,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.restore();
+    }
+    return telaVel;
+  }
   // Un halo de llum (es suma als colors de sota)
   function halo(x, y, r, color, alfa) {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
@@ -2003,21 +2043,22 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     for (const o of parc.objectes) {
       if (!colocat(o)) continue;
       const d = OBJECTES[o.t], m = d.mida;
-      if (o.t === 'fanal') { const c = iso(o.x + 0.5, o.y + 0.5); ctx.save(); ctx.translate(c.x, c.y); ctx.scale(1, 0.5); halo(0, 0, 150, '255,190,110', 0.32 * foscor); ctx.restore(); }
+      if (o.t === 'fanal') continue;
       else if (d.cat === 'atraccio' || d.cat === 'menjar' || d.cat === 'botiga' || d.cat === 'fix') {
         const c = iso(o.x + m / 2, o.y + m / 2); ctx.save(); ctx.translate(c.x, c.y); ctx.scale(1, 0.5); halo(0, 0, WP * m * 0.75, '255,200,130', 0.16 * foscor); ctx.restore();
       }
     }
+    for (const [u, v, t] of puntsDeLlum()) { const L = OBJECTES[t].llum, c = iso(u, v); ctx.save(); ctx.translate(c.x, c.y); ctx.scale(1, 0.5); halo(0, 0, L.radi * WP / 2, L.color, 0.3 * foscor); ctx.restore(); }
     ctx.restore();
   }
   // a sobre de tot: els vidres dels fanals i els fars dels cotxes
   function dibuixaLlumsNit() {
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    for (const o of parc.objectes) {
-      if (o.t !== 'fanal' || !colocat(o)) continue;
-      const d = OBJECTES[o.t], im = img(srcObjecte(o.t)), c = iso(o.x + 0.5, o.y + 0.5);
-      const hh = im ? WP * d.frac * im.naturalHeight / im.naturalWidth : 90;
-      halo(c.x, c.y + (WP / 4) * d.frac - hh * 0.86, 46, '255,214,140', 0.75 * foscor);
+    for (const [u, v, t, gir, comprat] of puntsDeLlum()) {
+      const d = OBJECTES[t], L = d.llum, im = img(srcObjecte(t, gir)), c = iso(u, v);
+      const hh = im ? WP * d.frac * im.naturalHeight / im.naturalWidth : 90, peu = comprat ? (WP / 4) * (d.peu ?? d.frac) : 0;   // els comprats es dibuixen amb la base al seu lloc de la casella
+      halo(c.x, c.y + peu - hh * L.alcada, t === 'fanal' ? 46 : 70, t === 'fanal' ? '255,214,140' : '235,242,255', 0.8 * foscor);   // el focus
+      halo(c.x, c.y - hh * 0.35, L.radi * WP * 0.42, L.color, 0.13 * foscor);       // la claror que toca la gent i els edificis
     }
     if (tren) { const p = puntTren(0), n = Math.hypot(p.du, p.dv) || 1, q = iso(p.u + p.du / n * 0.45, p.v + p.dv / n * 0.45); halo(q.x, q.y - 26, 34, '255,236,180', 0.6 * foscor); }
     for (const t of transit) {
@@ -2413,19 +2454,22 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   }
   // Bombetes: mentre l'atracció funciona fan «curses» (una de cada tres s'apaga i el patró avança);
   // aturada, brillen poc. Preparat per al mode nit (com més fosc, més aura).
+  // Bombetes de fira: de colors (vermell, groc, verd, blau, rosa, blanc). Amb l'atracció en marxa fan una
+  // onada de pampallugues; aturada, queden enceses suaus. De nit són més grans i més brillants.
+  const COLORS_BOMBETA = ['255,70,70', '255,214,60', '90,230,120', '80,170,255', '255,110,220', '255,250,235'];
+  function bombeta(x, y, mida, i, enMarxa, llavor = 0) {
+    const pas = Math.floor(tempsAnim * 7), on = enMarxa ? (i + pas + llavor) % 4 !== 0 : true;
+    const alfa = (enMarxa ? (on ? 0.9 : 0.12) : 0.45) * (0.45 + foscor * 0.9);
+    if (alfa < 0.05) return;
+    const col = COLORS_BOMBETA[(i * 5 + llavor) % COLORS_BOMBETA.length], r = mida * (1 + foscor * 2);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(255,255,245,${alfa})`); g.addColorStop(0.22, `rgba(${col},${alfa})`); g.addColorStop(1, `rgba(${col},0)`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
   function dibuixaLlums(llums, esq, dalt, k, enMarxa, llavor = 0) {
     if (!llums?.length) return;
-    const pas = Math.floor(tempsAnim * 7), r = 7 * k * (1 + foscor * 1.8);
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < llums.length; i++) {
-      const on = enMarxa ? (i + pas + llavor) % 3 !== 0 : true;
-      const alfa = (enMarxa ? (on ? 0.85 : 0.1) : 0.3) * (0.6 + foscor * 0.8);
-      if (alfa < 0.05) continue;
-      const x = esq + llums[i][0] * k, y = dalt + llums[i][1] * k;
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, `rgba(255,250,210,${alfa})`); g.addColorStop(0.35, `rgba(255,214,90,${alfa * 0.6})`); g.addColorStop(1, 'rgba(255,180,40,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    }
+    for (let i = 0; i < llums.length; i++) bombeta(esq + llums[i][0] * k, dalt + llums[i][1] * k, 7 * k, i, enMarxa, llavor);
     ctx.restore();
   }
 
@@ -2674,6 +2718,14 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const rr = R / a.radiRoda, rw = roda.naturalWidth * rr, rh = roda.naturalHeight * rr;
     ctx.save(); ctx.translate(hx, hy); ctx.transform(1, sh, 0, 1, 0, 0); ctx.rotate(fi);
     ctx.drawImage(roda, -rw / 2, -rh / 2, rw, rh);
+    // corona de bombetes de colors i una estrella de llums als radis (sobretot es veuen de nit)
+    if (foscor > 0.02) {
+      const enMarxa = !!(s?.muntats.length && s.fi), nb = 36;
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < nb; i++) { const t = (i / nb) * Math.PI * 2; bombeta(Math.cos(t) * R * 1.03, Math.sin(t) * R * 1.03, 5 * k * 1.6, i, enMarxa, o.id); }
+      for (let i = 0; i < a.cabines; i++) for (const f of [0.35, 0.68]) { const t = ((i + 0.5) / a.cabines) * Math.PI * 2; bombeta(Math.cos(t) * R * f, Math.sin(t) * R * f, 4 * k * 1.6, i * 2 + (f > 0.5 ? 1 : 0), enMarxa, o.id + 3); }
+      ctx.globalCompositeOperation = 'source-over';
+    }
     ctx.restore();
     // cabines (i la gent que hi va a dins)
     const cw = a.ampladaCabina * k, chh = cw * cab.naturalHeight / cab.naturalWidth;

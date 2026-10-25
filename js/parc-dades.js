@@ -217,7 +217,10 @@ export const OBJECTES = {
     text: 'Per descansar. Posa\'l al costat d\'un camí.' },
   paperera: { nom: 'Paperera', cat: 'decoracio', img: 'paperera', mida: 1, frac: 0.22, preu: 100, paperera: true,
     text: 'Si n\'hi ha a prop, la gent no llença brossa a terra.' },
-  fanal: { nom: 'Fanal', cat: 'decoracio', img: 'fanal', mida: 1, frac: 0.22, preu: 200, bellesa: 1, text: 'Decora els camins.' },
+  // llum: radi (caselles) que il·lumina de nit, color de la llum i alçada del focus (fracció de l'alçada de la imatge)
+  fanal: { nom: 'Fanal', cat: 'decoracio', img: 'fanal', mida: 1, frac: 0.22, preu: 200, bellesa: 1, llum: { radi: 2.6, color: '255,196,120', alcada: 0.86 }, text: 'Decora els camins i, de nit, il·lumina el voltant.' },
+  'torre-llum': { nom: 'Torre d\'il·luminació', cat: 'decoracio', img: 'torre-llum', mida: 1, frac: 0.57, peu: 0.5, vistes: 4, preu: 1800, bellesa: 0.5,
+    llum: { radi: 5.5, color: '225,235,255', alcada: 0.95 }, text: 'Una torre alta amb focus: de nit il·lumina una zona molt gran, com als pàrquings.' },
   arbre: { nom: 'Arbre', cat: 'decoracio', img: 'arbre', mida: 1, frac: 0.78, preu: 250, bellesa: 2, text: 'Fa el parc més agradable.' },
   bardissa: { nom: 'Bardissa', cat: 'decoracio', img: 'bardissa', mida: 1, frac: 0.8, preu: 150, bellesa: 1, text: 'Per fer tanques verdes al voltant dels camins.' },
   estatua: { nom: 'Estàtua', cat: 'decoracio', img: 'estatua', mida: 1, frac: 0.84, preu: 1500, bellesa: 4, text: 'Decoració elegant.' },
