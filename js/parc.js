@@ -11,7 +11,7 @@ import { faseEconomica } from './joc.js';
 import {
   RECERCA_NIVELLS, RECERCA_ORDRE, PER_INVESTIGAR, CAMPANYES, PACKS, NOMS_VISITANTS,
   MIDA_TOTAL, RESSORT, EXTERIOR, CARRETERA, ORIGEN, COST_TRAM_MURALLA, COST_TORRE, ATRACTIU_MURALLA, BLOC, LIMITS_BLOCS, BLOCS_INICIALS, preuParcella, PLACES_CARRER, PART_EN_COTXE, PERSONES_PER_COTXE, ENTRADA, MINUTS_DIA, SEGONS_PER_MINUT, HORA_OBERTURA, ULTIMA_ENTRADA, INTERES_DIARI,
-  COST_CAMI, RETORN_ENDERROC, PERSONAL_PARC, CATEGORIES, OBJECTES, srcObjecte, girsDe, dibuixaObjecte,
+  COST_CAMI, COST_VIA, TREN, RETORN_ENDERROC, PERSONAL_PARC, CATEGORIES, OBJECTES, srcObjecte, girsDe, dibuixaObjecte,
 } from './parc-dades.js';
 
 const WP = 128;                       // amplada d'una casella del parc (unitats del món)
@@ -132,6 +132,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   const EINES = [
     ['mou', '✋', 'Mou'],
     ['cami', '🟫', 'Camins'],
+    ['vies', '🛤️', 'Vies del tren'],
     ...CATEGORIES.map(([id, nom, img]) => [id, img, nom]),
     ['enderroca', '🧨', 'Enderroca'],
     ['terreny', '🗺️', 'Terreny'],
@@ -206,6 +207,9 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   let setEsplanada = new Set();
   // caselles que fan de base d'un objecte (enllosat): tot el que es construeix al parc, menys la natura
   let setBases = new Set();
+  // tren turístic: caselles de via, parades (via del costat d'una estació → estació) i l'estat del tren
+  let setVies = new Set(), parades = new Map(), tren = null;
+  const esVia = (x, y) => setVies.has(k2(x, y));
   const SENSE_BASE = new Set(['arbre', 'bardissa', 'flors']);
   const ambBase = (o) => { const d = OBJECTES[o.t]; return colocat(o) && !d.exterior && !d.ressort && !SENSE_BASE.has(o.t) && dinsParc(o.x, o.y); };
   const esBase = (x, y) => setBases.has(k2(x, y));
@@ -218,6 +222,16 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     calculaPassarella();
     setCamins = camins();
     setEsplanada = esplanada();
+    setVies = new Set(parc.vies || []);
+    parades = new Map();
+    for (const o of parc.objectes) if (OBJECTES[o.t].tren && colocat(o)) {
+      const m = OBJECTES[o.t].mida;
+      for (let dx = -1; dx <= m; dx++) for (let dy = -1; dy <= m; dy++) {
+        const vora = (dx === -1 || dx === m) !== (dy === -1 || dy === m);   // només els costats, no les diagonals
+        if (vora && setVies.has(k2(o.x + dx, o.y + dy))) parades.set(k2(o.x + dx, o.y + dy), o.id);
+      }
+    }
+    if (tren && !setVies.has(k2(...tren.cap))) treuTren();
     setBases = new Set();
     for (const o of parc.objectes) if (ambBase(o)) { const m = OBJECTES[o.t].mida; for (let dx = 0; dx < m; dx++) for (let dy = 0; dy < m; dy++) setBases.add(k2(o.x + dx, o.y + dy)); }
     ocup = new Int32Array(M * M);
@@ -234,6 +248,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     }
     // els camins del ressort són caselles de camí (encara que siguin dins de la seva imatge)
     if (parc.ressort) for (const [u, v] of RESSORT.camins) { const [x, y] = aRessort(u, v); if (aLaGraella(x, y)) ocup[idx(x, y)] = -1; }
+    for (const p of setVies) { const [x, y] = p.split(',').map(Number); if (aLaGraella(x, y) && ocup[idx(x, y)] === 0) ocup[idx(x, y)] = -3; }   // -3: via (no s'hi camina)
     acces = new Map();
     bellesa = new Float32Array(M * M); paperera = new Uint8Array(M * M);
     for (const o of parc.objectes) {
@@ -729,6 +744,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     for (const o of parc.objectes) {
       const d = OBJECTES[o.t], s = rt.get(o.id);
       if (!s) continue;
+      if (d.tren) continue;   // l'estació del tren: la gent hi fa cua i puja quan el tren para (mouTren)
       if (d.cat === 'atraccio') {
         if (s.muntats.length && parc.minut >= s.fi) {
           for (const v of s.muntats) { serveix(v, o); v.estat = 'idle'; v.amagat = false; }
@@ -753,6 +769,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       } else s.servei = 0;
     }
 
+    mouTren(dm);
     // visitants
     for (let i = visitants.length - 1; i >= 0; i--) {
       const v = visitants[i];
@@ -840,7 +857,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   // ---------- final del dia: informe ----------
   function tancaDia() {
     for (const v of visitants) surt(v);
-    visitants.length = 0; cotxes = 0; pendentsBus = 0;
+    visitants.length = 0; cotxes = 0; pendentsBus = 0; if (tren) tren.passatgers = [];
     for (const s of rt.values()) { s.cua = []; s.muntats = []; }
     const a = parc.avui;
     const manteniment = parc.objectes.reduce((t, o) => t + (OBJECTES[o.t].manteniment || 0), 0);
@@ -1032,13 +1049,23 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     guardaAviat(); refrescaCataleg();
   }
   function posaCami(x, y) {
-    if (!dinsParc(x, y) || ocup[idx(x, y)] !== 0) return;
+    if (!dinsParc(x, y) || (ocup[idx(x, y)] !== 0 && ocup[idx(x, y)] !== -3)) return;
     if (parc.diners < COST_CAMI) { avis('No tens prou diners per fer més camí.', 'error'); return; }
     parc.diners -= COST_CAMI; parc.totals.despeses += COST_CAMI;
     parc.camins.push(k2(x, y)); recalcula(); guardaAviat();
   }
+  function posaVia(x, y) {
+    if (!dinsParc(x, y) || esVia(x, y) || ![0, -1].includes(ocup[idx(x, y)])) return;   // sobre gespa o sobre un camí (pas a nivell)
+    if (parc.diners < COST_VIA) { avis('No tens prou diners per fer més via.', 'error'); return; }
+    parc.diners -= COST_VIA; parc.totals.despeses += COST_VIA;
+    (parc.vies ??= []).push(k2(x, y)); recalcula(); guardaAviat();
+  }
   function enderroca(x, y) {
     if (!dins(x, y)) return;
+    if (esVia(x, y)) {   // primer es treu la via (se'n recupera la meitat)
+      parc.vies = parc.vies.filter((p) => p !== k2(x, y)); parc.diners += Math.round(COST_VIA * RETORN_ENDERROC);
+      recalcula(); guardaAviat(); return;
+    }
     if (esZonaRessort(x, y)) return avis('El ressort no es pot enderrocar per trossos.', 'error');
     if (esPassarella(x, y)) return avis('La passarel·la del ressort no es pot treure.', 'error');
     const c = ocup[idx(x, y)];
@@ -1079,6 +1106,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const textos = {
       mou: 'Arrossega per moure\'t. Toca una atracció o una parada per veure-la i canviar-ne el preu.',
       cami: `Arrossega per la gespa per fer camins (${eur(COST_CAMI)} per casella). Els visitants només caminen pels camins.`,
+      vies: `Arrossega per fer vies del tren turístic (${eur(COST_VIA)} per casella). Fes-ne un circuit tancat que passi pel costat de les estacions. Si travessen un camí, s'hi fa un pas a nivell.`,
       enderroca: 'Toca o arrossega per treure camins i objectes. Dels objectes en recuperes la meitat del preu.',
       terreny: `Toca una parcel·la marcada en taronja per comprar-la. Cada parcel·la fa 7x7 caselles i n'hi pot haver fins a ${(LIMITS_BLOCS.bx[1] - LIMITS_BLOCS.bx[0] + 1) * (LIMITS_BLOCS.by[1] - LIMITS_BLOCS.by[0] + 1)}.`,
     };
@@ -1173,6 +1201,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     } else {
       if (d.text) cos.push(h('p', { class: 'nota' }, d.text));
       if (!accessible(o) && d.cat !== 'decoracio' && !d.sensecami) cos.push(h('p', { class: 'nota falta' }, '⚠️ No toca cap camí: ningú hi pot arribar.'));
+      if (d.tren && ![...parades.values()].includes(o.id)) cos.push(h('p', { class: 'nota falta' }, '⚠️ Cap via passa pel costat de l\'estació: el tren no hi pot parar. Fes vies (🛤️) que hi passin tocant.'));
       if (d.cat === 'atraccio') {
         const barra = (nom, n, color) => h('div', { class: 'parc-nota' }, h('span', {}, nom), h('span', { class: 'parc-barreta' }, h('span', { style: `width:${n * 10}%;background:${color}` })), h('strong', {}, `${n}/10`));
         cos.push(barra('Emoció', d.emocio ?? 0, '#3c9d32'), barra('Intensitat', d.intensitat ?? 0, '#f2891d'), barra('Mareig', d.mareig ?? 0, '#8e44ad'),
@@ -1430,7 +1459,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     canvas.setPointerCapture(ev.pointerId);
     punters.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     if (punters.size === 2) { const [a, b] = [...punters.values()]; pinça = Math.hypot(a.x - b.x, a.y - b.y); arrossega = null; return; }
-    arrossega = { x: ev.clientX, y: ev.clientY, dx: despl.x, dy: despl.y, mogut: false, pinta: (eina === 'cami' || eina === 'enderroca') && ev.button === 0 };
+    arrossega = { x: ev.clientX, y: ev.clientY, dx: despl.x, dy: despl.y, mogut: false, pinta: (eina === 'cami' || eina === 'vies' || eina === 'enderroca') && ev.button === 0 };
     if (arrossega.pinta) aplicaPinzell(ev);
   });
   canvas.addEventListener('pointermove', (ev) => {
@@ -1468,7 +1497,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
 
   function aplicaPinzell(ev) {
     const { x, y } = casella(ev.clientX, ev.clientY);
-    if (eina === 'cami') posaCami(x, y); else enderroca(x, y);
+    if (eina === 'cami') posaCami(x, y); else if (eina === 'vies') posaVia(x, y); else enderroca(x, y);
   }
   function clic(ev) {
     if (aColocar) { const m = OBJECTES[aColocar].mida; const { x, y } = casella(ev.clientX, ev.clientY, m); if (movent) acabaMoure(x, y); else coloca(aColocar, x, y); return; }
@@ -1571,11 +1600,13 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
         }
       }
     }
+    for (const p of setVies) { const [x, y] = p.split(',').map(Number); dibuixaVia(x, y); }
     dibuixaRessort();
     // previsualització del que es col·loca
-    if (hover && (aColocar || eina === 'cami' || eina === 'enderroca')) {
+    if (hover && (aColocar || eina === 'cami' || eina === 'vies' || eina === 'enderroca')) {
       const m = aColocar ? OBJECTES[aColocar].mida : 1;
-      const ok = aColocar ? potColocar(aColocar, hover.x, hover.y) && parc.diners >= (movent ? movent.cost : OBJECTES[aColocar].preu) : eina === 'cami' ? dins(hover.x, hover.y) && ocup[idx(hover.x, hover.y)] === 0 : dins(hover.x, hover.y);
+      const ok = aColocar ? potColocar(aColocar, hover.x, hover.y) && parc.diners >= (movent ? movent.cost : OBJECTES[aColocar].preu) : eina === 'cami' ? dins(hover.x, hover.y) && ocup[idx(hover.x, hover.y)] === 0
+        : eina === 'vies' ? dinsParc(hover.x, hover.y) && [0, -1].includes(ocup[idx(hover.x, hover.y)]) && !esVia(hover.x, hover.y) : dins(hover.x, hover.y);
       rombe(hover.x, hover.y, m, m);
       ctx.fillStyle = eina === 'enderroca' ? 'rgba(214,64,47,.4)' : ok ? 'rgba(60,157,50,.45)' : 'rgba(214,64,47,.45)'; ctx.fill();
     }
@@ -1599,6 +1630,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     for (const v of visitants) if (!v.amagat) afegeix(Math.floor(v.fx) + Math.floor(v.fy) + 0.5, () => dibuixaPersona(v));
     for (const p of personal) afegeix(Math.floor(p.fx) + Math.floor(p.fy) + 0.5, () => dibuixaPersona(p));
     if (parc.ressort && portaRessort) afegeix(portaRessort[0] + portaRessort[1] + 0.55, dibuixaControl);
+    afegeixTren(afegeix);
     for (const t of transit) {
       const { u, v, dir } = posTransit(t);
       afegeix(Math.floor(u) + Math.floor(v) + 0.6, () => (t.bus ? dibuixaBus(t.bus, u, v) : dibuixaVehicle(t.img, u, v, dir, t.ample || 62, t.alfa)));
@@ -1650,6 +1682,162 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   // Els vehicles de les atraccions (vagons, troncs, flotadors) es dibuixen més grans que a les imatges originals:
   // amb les atraccions al 80 %, es veien massa petits al costat de la gent.
   const ESCALA_VEHICLES = 1.35;
+  // ---------- tren turístic ----------
+  // Vies: cada casella es dibuixa amb travesses i carrils cap a cada veí que també és via (així surten els
+  // revolts i les cruïlles); es desa en una tela petita per combinació de veïns.
+  const cacheVia = new Map();
+  function telaVia(mascara) {
+    let tela = cacheVia.get(mascara); if (tela) return tela;
+    const R = 2, W = WP, H = WP / 2;
+    tela = document.createElement('canvas'); tela.width = W * R; tela.height = H * R;
+    const c = tela.getContext('2d');
+    c.setTransform(R * W / 2, R * H / 2, -R * W / 2, R * H / 2, R * W / 2, 0);
+    let dirs = [[1, -1, 0], [2, 1, 0], [4, 0, -1], [8, 0, 1]].filter(([b]) => mascara & b).map(([, du, dv]) => [du, dv]);
+    if (!dirs.length) dirs = [[-1, 0], [1, 0]];
+    if (dirs.length === 1) dirs.push([-dirs[0][0], -dirs[0][1]]);   // un final de via: tram recte
+    const tram = (du, dv, fn) => { c.save(); c.translate(0.5, 0.5); c.transform(du, dv, -dv, du, 0, 0); fn(); c.restore(); };   // eix local: x cap al veí
+    // grava
+    for (const [du, dv] of dirs) tram(du, dv, () => { c.fillStyle = '#a3978a'; c.fillRect(-0.2, -0.22, 0.72, 0.44); });
+    c.fillStyle = '#a3978a'; c.beginPath(); c.arc(0.5, 0.5, 0.22, 0, Math.PI * 2); c.fill();
+    // travesses
+    for (const [du, dv] of dirs) tram(du, dv, () => { c.fillStyle = '#6e4b2e'; for (const t of [0.08, 0.24, 0.4]) c.fillRect(t, -0.17, 0.08, 0.34); });
+    c.fillStyle = '#6e4b2e'; c.fillRect(0.44, 0.44, 0.12, 0.12);
+    // carrils
+    c.lineCap = 'round';
+    for (const [du, dv] of dirs) tram(du, dv, () => {
+      for (const y of [-0.1, 0.1]) { c.strokeStyle = '#4a4f57'; c.lineWidth = 0.05; c.beginPath(); c.moveTo(-0.02, y); c.lineTo(0.52, y); c.stroke();
+        c.strokeStyle = '#c9ced6'; c.lineWidth = 0.022; c.beginPath(); c.moveTo(-0.02, y - 0.01); c.lineTo(0.52, y - 0.01); c.stroke(); }
+    });
+    cacheVia.set(mascara, tela);
+    return tela;
+  }
+  function dibuixaVia(x, y) {
+    const m = (esVia(x - 1, y) ? 1 : 0) | (esVia(x + 1, y) ? 2 : 0) | (esVia(x, y - 1) ? 4 : 0) | (esVia(x, y + 1) ? 8 : 0);
+    const a = iso(x, y); ctx.drawImage(telaVia(m), a.x - WP / 2, a.y, WP, WP / 2);
+  }
+  // El tren: la locomotora va de centre en centre de casella; a cada casella tria el veí que continua recte
+  // (o el primer que trobi); si la via s'acaba, fa marxa enrere. Els vagons segueixen el rastre.
+  function treuTren() {
+    if (tren) for (const p of tren.passatgers) { p.v.estat = 'idle'; p.v.amagat = false; }
+    tren = null;
+  }
+  function seguentVia(cap, prev) {
+    const vs = VEINS.map(([dx, dy]) => [cap[0] + dx, cap[1] + dy]).filter(([x, y]) => esVia(x, y) && !(prev && x === prev[0] && y === prev[1]));
+    if (!vs.length) return prev && esVia(...prev) ? prev : null;
+    if (prev) { const dx = cap[0] - prev[0], dy = cap[1] - prev[1], recte = vs.find(([x, y]) => x === cap[0] + dx && y === cap[1] + dy); if (recte) return recte; }
+    return vs[0];
+  }
+  function mouTren(dm) {
+    if (!parades.size) { if (tren) treuTren(); return; }
+    if (!tren) {
+      const [k] = parades.keys(), cap = k.split(',').map(Number);
+      tren = { cap, prev: null, next: null, f: 0, rastre: [[cap[0] + 0.5, cap[1] + 0.5]], parat: 0, passatgers: [], desDeParada: 99 };
+    }
+    if (tren.parat > 0) { tren.parat -= dm; return; }
+    if (!tren.next) tren.next = seguentVia(tren.cap, tren.prev);
+    if (!tren.next) return;
+    tren.f += TREN.vel * dm;
+    while (tren.f >= 1) {
+      tren.f -= 1; tren.prev = tren.cap; tren.cap = tren.next; tren.desDeParada += 1;
+      tren.rastre.push([tren.cap[0] + 0.5, tren.cap[1] + 0.5]); if (tren.rastre.length > 8) tren.rastre.shift();
+      tren.next = seguentVia(tren.cap, tren.prev);
+      const est = parades.get(k2(...tren.cap));
+      if (est && tren.desDeParada >= 3) { paraTren(objecte(est)); tren.f = 0; break; }
+      if (!tren.next) break;
+    }
+  }
+  // a cada estació baixa tothom (paga i queda content) i hi puja la gent que fa cua
+  function paraTren(o) {
+    if (!o) return;
+    tren.parat = TREN.parada; tren.desDeParada = 0;
+    const lloc = acces.get(o.id)?.[0];
+    for (const { v } of tren.passatgers) {
+      if (lloc) { v.x = lloc[0]; v.y = lloc[1]; v.fx = lloc[0] + 0.5; v.fy = lloc[1] + 0.5; v.ruta = [[v.x, v.y]]; v.pas = 0; }
+      v.estat = 'idle'; v.amagat = false; serveix(v, o); o.usos = (o.usos || 0) + 1;
+    }
+    tren.passatgers = [];
+    const s = rt.get(o.id), places = TREN.vagons * TREN.seientsVago;
+    if (s && !o.avariat) for (const v of s.cua.splice(0, places)) { v.estat = 'muntat'; v.amagat = true; tren.passatgers.push({ v }); }
+  }
+  // punt del rastre a una distància d per darrere del cap del tren (i cap on mira)
+  function puntTren(d) {
+    const cap = tren.next ? [tren.cap[0] + 0.5 + (tren.next[0] - tren.cap[0]) * tren.f, tren.cap[1] + 0.5 + (tren.next[1] - tren.cap[1]) * tren.f] : [tren.cap[0] + 0.5, tren.cap[1] + 0.5];
+    const pts = [cap, ...tren.rastre.slice().reverse()];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, ay] = pts[i], [bx, by] = pts[i + 1], l = Math.hypot(ax - bx, ay - by);
+      if (d <= l || i === pts.length - 2) { const f = l ? Math.min(1, d / l) : 0; return { u: ax + (bx - ax) * f, v: ay + (by - ay) * f, du: ax - bx, dv: ay - by }; }
+      d -= l;
+    }
+    return { u: cap[0], v: cap[1], du: 1, dv: 0 };
+  }
+  function dibuixaVehicleTren(peca, u, v, du, dv, passatgers) {
+    // vista: 0 cap avall a l'esquerra (+y), 1 avall a la dreta (+x), 2 amunt a la dreta (−y), 3 amunt a l'esquerra (−x)
+    const vista = Math.abs(du) >= Math.abs(dv) ? (du >= 0 ? 1 : 3) : (dv >= 0 ? 0 : 2);
+    const im = img(`img/animacions/${peca.img}-${vista}.webp`); if (!im) return;
+    const k = TREN.ample / im.naturalWidth, [ax, ay] = peca.ancoratges[vista], p = iso(u, v);
+    ctx.drawImage(im, p.x - ax * k, p.y - ay * k, im.naturalWidth * k, im.naturalHeight * k);
+    passatgers.forEach((pv, j) => {   // caps que treuen per sobre dels bancs
+      const pim = img(`img/animacions/${pv.img}.webp`); if (!pim) return;
+      const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4, q = iso(u + du * (j % 4 - 1.5) * 0.16, v + dv * (j % 4 - 1.5) * 0.16);
+      ctx.drawImage(pim, fw, fh, fw, fh * 0.5, q.x - 7 + (j >= 4 ? 5 : -5), q.y - 34, 14, 12);
+    });
+  }
+  function afegeixTren(afegeix) {
+    if (!tren) return;
+    const peces = [TREN.loco, ...Array(TREN.vagons).fill(TREN.vago)];
+    peces.forEach((peca, i) => {
+      const p = puntTren(i * 0.95), du = p.du || 1, dv = p.dv || 0, n = Math.hypot(du, dv) || 1;
+      const qui = i ? tren.passatgers.slice((i - 1) * TREN.seientsVago, i * TREN.seientsVago).map((x) => x.v) : [];
+      afegeix(Math.floor(p.u) + Math.floor(p.v) + 0.65, () => dibuixaVehicleTren(peca, p.u, p.v, du / n, dv / n, qui));
+    });
+  }
+
+  // ---------- avions voladors ----------
+  // Els avionets giren en una el·lipse al voltant de la torre; mentre dura el viatge, s'enlairen.
+  // Ordre: base, avions de darrere, la torre (capa de davant) i avions de davant.
+  function dibuixaAvions(o, d, c) {
+    const a = d.anim, src = (n) => `img/parc/${n}.webp`;
+    const base = img(src(a.base)), dav = img(src(a.davant)), avio = img(src(a.avio));
+    if (!base || !dav || !avio) return false;
+    const m = d.mida, w = WP * m * d.frac, k = w / base.naturalWidth, hb = base.naturalHeight * k;
+    const baix = c.y + (WP * m / 4) * (d.peu ?? d.frac), esq = c.x - w * (d.punta ?? 0.5), dalt = baix - hb;
+    const s = rt.get(o.id), enMarxa = !!(s?.muntats.length && s.fi);
+    const ara = tempsAnim, dtA = Math.min(0.1, Math.max(0, ara - (s?.tA ?? ara)));
+    let forca = 0;
+    if (s) {
+      s.tA = ara;
+      if (enMarxa) { const f = clamp(1 - (s.fi - parc.minut) / d.durada, 0, 1); forca = Math.min(1, Math.sin(Math.PI * f) * 1.8); }
+      s.elev = (s.elev ?? 0) + ((enMarxa ? forca : 0) - (s.elev ?? 0)) * Math.min(1, dtA * 2);
+      s.angle = (s.angle ?? 0) + dtA * (0.3 + 1.4 * (s.elev ?? 0)) * (enMarxa ? 1 : 0.15);
+    }
+    const elev = s?.elev ?? 0, ang0 = s?.angle ?? 0, gent = s?.muntats || [];
+    const hub = { x: esq + a.hub[0] * k, y: dalt + a.hub[1] * k };
+    const avions = [];
+    for (let i = 0; i < a.n; i++) {
+      const t = ang0 + (i / a.n) * Math.PI * 2, sn = Math.sin(t), cs = Math.cos(t);
+      const alt = a.altRepos + (a.altVol - a.altRepos) * elev + Math.sin(ara * 1.3 + i) * 6 * elev;
+      avions.push({ i, sn, x: esq + (a.centre[0] + a.rx * cs) * k, y: dalt + (a.centre[1] + a.ry * sn - alt) * k, esq: sn > 0 });
+    }
+    const pinta = (p) => {
+      ctx.strokeStyle = '#3c4048'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(hub.x, hub.y); ctx.lineTo(p.x, p.y - a.llargada * k * 0.32); ctx.stroke();
+      const lw = a.llargada * k, lh = lw * avio.naturalHeight / avio.naturalWidth;
+      ctx.save(); ctx.translate(p.x, p.y); if (p.esq) ctx.scale(-1, 1);
+      ctx.rotate(-0.08 * elev);
+      [gent[p.i * 2], gent[p.i * 2 + 1]].forEach((v, j) => {
+        const pim = v && img(`img/animacions/${v.img}.webp`); if (!pim) return;
+        const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4;
+        ctx.drawImage(pim, fw, fh, fw, fh * 0.5, -lw / 2 + lw * a.seients[j] - lw * 0.035, -lh * 0.62, lw * 0.07, lw * 0.07);
+      });
+      ctx.drawImage(avio, -lw / 2, -lh * 0.75, lw, lh);
+      ctx.restore();
+    };
+    ctx.drawImage(base, esq, dalt, w, hb);
+    avions.filter((p) => p.sn <= 0).sort((p, q) => p.y - q.y).forEach(pinta);
+    ctx.drawImage(dav, esq, dalt, w, hb);
+    avions.filter((p) => p.sn > 0).sort((p, q) => p.y - q.y).forEach(pinta);
+    return true;
+  }
+
   // ---------- camins de llambordes ----------
   // Cada casella de camí es dibuixa amb llambordes i una vora de peces clares als costats on el camí
   // no continua (i una peça petita a les cantonades de dins), de manera que els girs, les T i les creus
@@ -1826,7 +2014,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   const t0 = performance.now();
   function passatgers(o, s) {
     const d = OBJECTES[o.t], m = d.mida, t = (performance.now() - t0) / 1000;
-    const qui = s.muntats.slice(0, o.t === 'llits-elastics' ? 4 : 10);
+    const qui = s.muntats.slice(0, d.saltadors ? d.saltadors[0].length : 10);
     if (!qui.length) return [[], []];
     const cu = o.x + m / 2, cv = o.y + m / 2, r = [[], []];
     qui.forEach((v, i) => {
@@ -1834,8 +2022,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       if (d.saltadors) {
         // cadascú al seu trampolí, amb la mateixa escala i posició que la imatge de la vista que toca
         const im = img(srcObjecte(o.t, o.gir)); if (!im) return;
-        const [px, py] = d.saltadors[(o.gir || 0) % 4][i % 4], c = iso(cu, cv);
-        const amp = WP * m, ww = amp * d.frac, k = ww / 360, hh = ww * im.naturalHeight / im.naturalWidth;
+        const pts = d.saltadors[(o.gir || 0) % 4], [px, py] = pts[i % pts.length], c = iso(cu, cv);
+        const amp = WP * m, ww = amp * d.frac, k = ww / (d.saltadorsAmple || 360), hh = ww * im.naturalHeight / im.naturalWidth;
         const esq = c.x - ww * (d.punta ?? 0.5), dalt = c.y + (amp / 4) * (d.peu ?? d.frac) - hh;
         alt = 1 + Math.abs(Math.sin(t * 5 + i * 1.7)) * 11;   // salts d'uns 60 cm a l'escala de la gent
         r[1].push({ v, x: esq + px * k, y: dalt + py * k + 4 - alt });   // a sobre de la imatge: el trampolí és a terra
@@ -1901,6 +2089,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (d.anim.tipus === 'raiers') return dibuixaRaiers(o, d, c);
     if (d.anim.tipus === 'xoc') return dibuixaXoc(o, d, c);
     if (d.anim.tipus === 'torre') return dibuixaTorre(o, d, c);
+    if (d.anim.tipus === 'avions') return dibuixaAvions(o, d, c);
     const a = d.anim, src = (n) => `img/parc/${n}.webp`;
     const base = img(src(a.base)), peca = img(src(a.peca)), dav = img(src(a.davant));
     if (!base || !peca || !dav) return false;

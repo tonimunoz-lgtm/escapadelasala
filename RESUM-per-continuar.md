@@ -41,6 +41,12 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
 - Atracció nova: `llancadora` (Torre llançadora, 4x4, recerca 18 punts després de la gegant): anim `tren` amb un sol vagó
   (`vagons: 0`, `seients` amb 6 files, `cap`), recorregut estació → corba → llançament → torre → cim → baixada → frenada.
   Imatges `llancadora-base/-davant/-vago.webp` (fons blanc tret, també els forats tancats de la torre).
+- Tren turístic: eina 🛤️ `vies` (`parc.vies`, `COST_VIA`; ocup −3 a la gespa; damunt d'un camí fa pas a nivell). Vies dibuixades
+  per codi (`telaVia`, màscara de 4 veïns). `estacio-tren` (2x2, 4 vistes, `tren: true`): la gent hi fa cua; `parades` = via del costat
+  d'una estació. `mouTren`: el tren (loco + `TREN.vagons`) va de casella en casella (recte si pot; si s'acaba la via, enrere), para a cada
+  estació (a 3 caselles o més de l'anterior): baixa tothom (`serveix`) i hi puja la cua. Sprites de 4 vistes `img/animacions/tren-loco|vago-0..3`.
+- Avions voladors (`avions`, 3x3, anim `avions`): 6 avionets en el·lipse al voltant de la torre (capa de davant = torre), s'enlairen en marxa.
+- Castell inflable (`inflable`, 2x2, 4 vistes): saltadors com els llits (`saltadorsAmple: 560`).
 - Atracció nova: `cascades` (Cascades encantades, 3x3, 4 vistes, sense peces mòbils, recerca 8 punts).
 - Pendent: muntanya russa de fusta i pavelló de xoc (cal base sense vehicles + recorregut/punts per a cada vista).
 

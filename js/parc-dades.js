@@ -130,6 +130,20 @@ export const OBJECTES = {
       velocitats: { canal: 0.8, pujada: 0.35, cim: 0.5, baixada: 2.4, esquitx: 1.2 }, girs: { canal: 0.9, pujada: 0.2, cim: 0.5, baixada: 3.5, esquitx: 2.5 },
       cami: [[856.1, 266.8, "canal"], [744.4, 266.8, "canal"], [657.6, 248.1, "canal"], [558.3, 235.7, "canal"], [459.1, 241.9, "canal"], [347.4, 235.7, "canal"], [260.5, 254.3, "canal"], [248.1, 287.8, "canal"], [297.8, 320.1, "cim"], [317.6, 359.8, "baixada"], [297.8, 399.5, "esquitx"], [223.3, 419.4, "canal"], [161.3, 434.2, "canal"], [134.0, 469.0, "canal"], [186.1, 502.5, "canal"], [285.4, 521.1, "canal"], [409.4, 536.0, "canal"], [521.1, 552.1, "canal"], [620.4, 568.2, "canal"], [719.6, 573.2, "canal"], [806.5, 555.8, "canal"], [893.3, 521.1, "canal"], [940.5, 471.5, "canal"], [945.4, 403.2, "pujada"], [920.6, 349.9, "pujada"], [883.4, 307.7, "pujada"]], llums: [[809.0, 292.2], [631.7, 383.5], [981.4, 461.2], [41.3, 561.6], [20.6, 571.1], [60.9, 568.5], [247.8, 627.9], [609.6, 636.6], [961.0, 667.5], [935.0, 695.3], [584.9, 699.4], [828.2, 695.3], [256.7, 700.1], [396.3, 756.6], [475.9, 779.1], [646.1, 807.7], [683.1, 845.2], [745.4, 826.1]] },
     capacitat: 72, durada: 15, atractiu: 12, emocio: 6, intensitat: 4, mareig: 2, preuJust: 7, text: 'Barques rodones entre cascades. Ideal a l\'estiu. Pot marejar.' },
+  // Avions voladors: 6 avionets que giren al voltant de la torre i s'enlairen mentre dura el viatge
+  avions: { nom: 'Avions voladors', cat: 'atraccio', img: 'avions-base', mida: 3, frac: 0.97, preu: 38000, manteniment: 300,
+    anim: { tipus: 'avions', base: 'avions-base', davant: 'avions-davant', avio: 'avions-avio', n: 6,
+      centre: [500, 588], hub: [500, 256], rx: 255, ry: 125, altRepos: 70, altVol: 210, llargada: 205, seients: [0.40, 0.57] },
+    capacitat: 12, durada: 6, atractiu: 9, emocio: 5, intensitat: 3, mareig: 2, preuJust: 4, text: 'Pilota el teu avionet al voltant de la torre de control, cada cop més amunt!' },
+  // Inflable gegant (4 vistes, sense peces mòbils): la gent hi salta (punts del terra de saltar de cada vista)
+  inflable: { nom: 'Castell inflable', cat: 'atraccio', img: 'inflable', mida: 2, frac: 1.173, peu: 0.97, vistes: 4, preu: 16000, manteniment: 120,
+    saltadorsAmple: 560, saltadors: [[[245, 148], [295, 138], [345, 130], [265, 170], [320, 163], [375, 152]], [[190, 135], [245, 128], [300, 135], [205, 165], [260, 162], [315, 170]],
+      [[280, 135], [340, 130], [400, 135], [290, 165], [350, 165], [410, 170]], [[150, 130], [210, 125], [270, 130], [140, 160], [200, 160], [260, 165]]],
+    capacitat: 14, durada: 5, atractiu: 7, emocio: 4, intensitat: 1, mareig: 0, preuJust: 3, text: 'Un castell inflable gegant amb tobogan. Els petits no en voldran sortir!' },
+  // Tren turístic: l'estació és l'atracció; el tren corre per les vies que construeixes i para a totes les estacions
+  'estacio-tren': { nom: 'Estació del tren turístic', cat: 'atraccio', img: 'estacio-tren', mida: 2, frac: 1.163, peu: 0.97, vistes: 4, preu: 30000, manteniment: 250,
+    tren: true, capacitat: 16, durada: 0, atractiu: 7, emocio: 3, intensitat: 1, mareig: 0, preuJust: 3,
+    text: 'El tren turístic para aquí. Construeix vies (eina 🛤️) que passin pel costat de l\'estació: el tren donarà voltes pel parc i la gent baixarà a la parada següent.' },
   // sense peces mòbils: un parc d'aigua amb cascades, rius i un molí (4 vistes)
   cascades: { nom: 'Cascades encantades', cat: 'atraccio', img: 'cascades', mida: 3, frac: 1.285, peu: 0.97, vistes: 4, preu: 70000, manteniment: 600,
     capacitat: 40, durada: 20, atractiu: 10, emocio: 4, intensitat: 2, mareig: 1, preuJust: 6, text: 'Rius i cascades per remullar-se entre roques i arbres. Un èxit els dies de calor.' },
@@ -214,6 +228,10 @@ export const OBJECTES = {
 // al doble de la mida de la gent. Es dibuixen al 80 % (ocupen les mateixes caselles). Lavabos, restaurants,
 // entrades i decoració ja estan a l'escala de la gent i no es toquen.
 export const ESCALA_ATRACCIONS = 0.8;
+// Tren turístic: vies, velocitat i les imatges de la locomotora i el vagó (4 vistes; ancoratge = punt de terra a la imatge de 260 px)
+export const COST_VIA = 120;
+export const TREN = { vel: 2.2, parada: 2.5, vagons: 2, ample: 100, seientsVago: 8,
+  loco: { img: 'tren-loco', ancoratges: [[135.0, 181.6], [124.3, 181.6], [123.2, 181.6], [135.5, 180.7]] }, vago: { img: 'tren-vago', ancoratges: [[134.6, 177.2], [124.3, 176.3], [132.9, 178.1], [126.2, 178.1]] } };
 for (const d of Object.values(OBJECTES)) {
   if (d.ressort) continue;
   if (d.cat === 'atraccio' || (d.cat === 'menjar' && d.mida === 1) || d.cat === 'botiga') { d.frac *= ESCALA_ATRACCIONS; if (d.peu) d.peu *= ESCALA_ATRACCIONS; }
@@ -313,7 +331,7 @@ export const RECERCA_NIVELLS = {
   alt:    { nom: 'Alt', cost: 2000, punts: 6 },
 };
 export const RECERCA_ORDRE = [
-  ['sinia-gran', 4], ['torre-caiguda', 5], ['muntanya-russa-petita', 7], ['cascades', 8], ['restaurant-mediterrani', 3], ['restaurant-oest', 3],
+  ['sinia-gran', 4], ['torre-caiguda', 5], ['muntanya-russa-petita', 7], ['avions', 6], ['cascades', 8], ['restaurant-mediterrani', 3], ['restaurant-oest', 3],
   ['rius-rapids', 10], ['restaurant-pirates', 4], ['restaurant-selva', 4], ['troncs', 12], ['restaurant-medieval', 5],
   ['restaurant-espai', 5], ['entrada-gran', 6], ['muntanya-russa-gegant', 16], ['llancadora', 18],
 ];
