@@ -86,7 +86,7 @@ export const OBJECTES = {
     anim: { tipus: 'xoc', base: 'cotxes-xoc-base', davant: 'cotxes-xoc-davant', colors: ['vermell', 'blau', 'groc'],
       pista: [[263.2, 335.4], [690, 435.8], [57.5, 440.9]], amplada: 108, sostre: 150, velocitat: 0.32, llums: [[523.9, 165.5], [683.4, 170.0], [131.7, 170.8], [402.3, 174.8], [534.4, 171.0], [97.4, 174.1], [106.4, 181.8], [562.5, 186.2], [68.8, 197.8], [57.0, 203.0], [591.4, 202.3], [296.4, 205.8], [603.4, 208.4], [614.0, 213.8], [327.0, 214.2], [18.7, 216.5], [257.6, 212.3], [245.5, 217.1], [623.3, 218.5], [104.1, 234.6], [270.1, 232.1], [236.0, 233.5], [652.1, 232.5], [552.7, 233.5], [180.6, 235.9], [351.0, 237.4], [203.9, 242.5], [563.2, 241.2], [57.9, 245.8], [364.8, 244.5], [268.4, 247.6], [102.7, 252.3], [548.2, 250.8], [681.1, 250.9], [217.7, 250.3], [376.3, 251.4], [550.0, 255.2], [356.4, 258.9], [722.9, 257.3], [145.9, 263.0], [329.4, 260.6], [652.6, 262.6], [650.7, 265.1], [396.8, 265.8], [347.6, 268.4], [27.2, 267.2], [87.9, 268.4], [649.3, 270.2], [387.7, 278.6], [121.5, 275.6], [619.4, 275.6], [547.5, 298.8], [66.3, 282.6], [138.2, 282.6], [28.9, 286.1], [112.9, 291.3], [716.7, 298.9], [415.4, 301.9], [173.9, 302.4], [282.3, 303.6], [271.4, 303.3], [693.6, 310.2], [241.4, 306.1], [193.5, 307.6], [285.4, 312.9], [577.9, 314.4], [184.3, 321.2], [227.5, 322.3], [669.8, 322.1], [564.2, 322.4], [280.4, 328.5], [329.1, 325.6], [486.8, 339.2], [343.7, 331.8], [644.5, 335.5], [332.7, 344.5], [618.9, 349.8], [466.2, 351.4], [545.4, 354.2], [592.8, 364.6], [512.9, 369.9], [412.4, 369.0], [481.4, 376.2], [503.2, 384.3]] },
     capacitat: 6, durada: 4, atractiu: 5, emocio: 4, intensitat: 3, mareig: 1, preuJust: 4, text: 'La preferida dels adolescents. Cara, però atrau molta gent.' },
-  'llits-elastics': { nom: 'Llits elàstics', cat: 'atraccio', img: 'llits-elastics', mida: 1, frac: 1.292, vistes: 4,
+  'llits-elastics': { nom: 'Llits elàstics', cat: 'atraccio', img: 'llits-elastics', mida: 1, frac: 1.292, peu: 0.97, vistes: 4,
     // on cau el centre de cada trampolí a cada vista (píxels de la imatge de 360 px d'ample): hi salta la gent
     saltadors: [[[137, 62], [73, 89], [205, 88], [137, 110]], [[222, 61], [155, 89], [287, 87], [222, 107]],
       [[204, 87], [138, 108], [255, 115], [183, 133]], [[157, 88], [110, 122], [226, 107], [173, 137]]], preu: 6000, manteniment: 60,
@@ -103,7 +103,7 @@ export const OBJECTES = {
       // seients (en píxels de la imatge de la barca): s'hi asseuen els passatgers mentre funciona
       seients: [[150, 282], [200, 297], [250, 314], [300, 329], [180, 306], [230, 322], [280, 337], [326, 349]] },
     capacitat: 40, durada: 8, atractiu: 6, emocio: 5, intensitat: 5, mareig: 5, preuJust: 4.5, text: 'Es gronxa amunt i avall. Molta capacitat.' },
-  'casa-terror': { nom: 'Casa del terror', cat: 'atraccio', img: 'casa-terror', mida: 2, frac: 1.477, vistes: 4, preu: 30000, manteniment: 260,
+  'casa-terror': { nom: 'Casa del terror', cat: 'atraccio', img: 'casa-terror', mida: 2, frac: 1.477, peu: 0.97, vistes: 4, preu: 30000, manteniment: 260,
     capacitat: 12, durada: 4, atractiu: 6, emocio: 5, intensitat: 3, mareig: 1, preuJust: 5, text: 'Fantasmes i crits. Els adolescents en fan cua.' },
   // ocupa 2x2 caselles (abans 1x1): així la porta i la taquilla tenen la mateixa mida que a les altres atraccions
   'torre-caiguda': { nom: 'Torre de caiguda', cat: 'atraccio', img: 'torre-caiguda', mida: 2, frac: 0.97, preu: 35000, manteniment: 320,
@@ -131,7 +131,7 @@ export const OBJECTES = {
       cami: [[856.1, 266.8, "canal"], [744.4, 266.8, "canal"], [657.6, 248.1, "canal"], [558.3, 235.7, "canal"], [459.1, 241.9, "canal"], [347.4, 235.7, "canal"], [260.5, 254.3, "canal"], [248.1, 287.8, "canal"], [297.8, 320.1, "cim"], [317.6, 359.8, "baixada"], [297.8, 399.5, "esquitx"], [223.3, 419.4, "canal"], [161.3, 434.2, "canal"], [134.0, 469.0, "canal"], [186.1, 502.5, "canal"], [285.4, 521.1, "canal"], [409.4, 536.0, "canal"], [521.1, 552.1, "canal"], [620.4, 568.2, "canal"], [719.6, 573.2, "canal"], [806.5, 555.8, "canal"], [893.3, 521.1, "canal"], [940.5, 471.5, "canal"], [945.4, 403.2, "pujada"], [920.6, 349.9, "pujada"], [883.4, 307.7, "pujada"]], llums: [[809.0, 292.2], [631.7, 383.5], [981.4, 461.2], [41.3, 561.6], [20.6, 571.1], [60.9, 568.5], [247.8, 627.9], [609.6, 636.6], [961.0, 667.5], [935.0, 695.3], [584.9, 699.4], [828.2, 695.3], [256.7, 700.1], [396.3, 756.6], [475.9, 779.1], [646.1, 807.7], [683.1, 845.2], [745.4, 826.1]] },
     capacitat: 72, durada: 15, atractiu: 12, emocio: 6, intensitat: 4, mareig: 2, preuJust: 7, text: 'Barques rodones entre cascades. Ideal a l\'estiu. Pot marejar.' },
   // sense peces mòbils: un parc d'aigua amb cascades, rius i un molí (4 vistes)
-  cascades: { nom: 'Cascades encantades', cat: 'atraccio', img: 'cascades', mida: 3, frac: 1.285, vistes: 4, preu: 70000, manteniment: 600,
+  cascades: { nom: 'Cascades encantades', cat: 'atraccio', img: 'cascades', mida: 3, frac: 1.285, peu: 0.97, vistes: 4, preu: 70000, manteniment: 600,
     capacitat: 40, durada: 20, atractiu: 10, emocio: 4, intensitat: 2, mareig: 1, preuJust: 6, text: 'Rius i cascades per remullar-se entre roques i arbres. Un èxit els dies de calor.' },
   troncs: { nom: 'Troncs d\'aigua', cat: 'atraccio', img: 'troncs', mida: 4, frac: 0.97, preu: 110000, manteniment: 900,
     // peces mòbils: 3 barques-tronc que recorren el canal (cadascuna al seu ritme) i esquitxen a baix de la caiguda
@@ -148,32 +148,32 @@ export const OBJECTES = {
       cami: [[679.4, 654.5, "estacio"], [579.9, 631.3, "estacio"], [480.5, 608.9, "estacio"], [372.8, 584.1, "estacio"], [314.8, 579.9, "pla"], [240.3, 591.5, "pla"], [165.7, 598.2, "pla"], [107.7, 594.8, "pla"], [82.8, 571.7, "pla"], [91.1, 538.5, "pujada"], [97.8, 505.4, "pujada"], [136.7, 406.0, "pujada"], [175.6, 302.4, "pujada"], [213.7, 198.8, "pujada"], [248.5, 103.6, "pujada"], [271.7, 64.6, "pujada"], [299.9, 49.7, "cim"], [338.0, 54.7, "cim"], [372.8, 76.2, "cim"], [412.6, 114.3, "baixada"], [449.9, 172.3, "baixada"], [483.0, 246.9, "baixada"], [516.1, 323.1, "baixada"], [549.3, 396.0, "baixada"], [578.3, 454.0, "baixada"], [598.2, 484.7, "baixada"], [639.1, 473.6, "loop"], [667.9, 442.5, "loop"], [683.9, 397.7, "loop"], [683.9, 347.9, "loop"], [667.9, 303.1, "loop"], [639.1, 272.0, "loop"], [603.1, 261.0, "loop"], [567.2, 272.0, "loop"], [538.4, 303.1, "loop"], [522.4, 347.9, "loop"], [522.4, 397.7, "loop"], [538.4, 442.5, "loop"], [567.2, 473.6, "loop"], [603.1, 484.7, "loop"], [654.5, 507.0, "pla"], [720.8, 530.2, "pla"], [787.1, 540.2, "pla"], [844.2, 524.6, "loop"], [883.4, 480.9, "loop"], [905.2, 417.8, "loop"], [905.2, 347.7, "loop"], [883.4, 284.6, "loop"], [844.2, 240.9, "loop"], [795.3, 225.3, "loop"], [746.5, 240.9, "loop"], [707.2, 284.6, "loop"], [685.5, 347.7, "loop"], [685.5, 417.8, "loop"], [707.2, 480.9, "loop"], [746.5, 524.6, "loop"], [795.3, 540.2, "loop"], [869.9, 531.9, "corba"], [936.2, 507.0, "corba"], [987.5, 530.2, "corba"], [1009.1, 594.8, "corba"], [995.8, 661.1, "corba"], [946.1, 710.8, "corba"], [869.9, 735.7, "corba"], [795.3, 732.4, "corba"], [729.1, 702.6, "corba"]] },
     capacitat: 90, durada: 10, atractiu: 16, emocio: 10, intensitat: 9, mareig: 6, preuJust: 9, text: 'L\'atracció estrella: loopings i velocitat. Molt cara i molt rendible. Mareja molt!' },
 
-  gelats: { nom: 'Parada de gelats', cat: 'menjar', img: 'gelats', mida: 1, frac: 1.214, vistes: 4, preu: 3000, manteniment: 50,
+  gelats: { nom: 'Parada de gelats', cat: 'menjar', img: 'gelats', mida: 1, frac: 1.214, peu: 0.84, vistes: 4, preu: 3000, manteniment: 50,
     cost: 0.9, preuJust: 3, efecte: { gana: 25, set: 25 }, text: 'Treu la gana i la set una mica. Cada gelat et costa 0,90 €.' },
-  crispetes: { nom: 'Parada de crispetes', cat: 'menjar', img: 'crispetes', mida: 1, frac: 1.017, vistes: 4, preu: 2500, manteniment: 40,
+  crispetes: { nom: 'Parada de crispetes', cat: 'menjar', img: 'crispetes', mida: 1, frac: 1.017, peu: 0.8, vistes: 4, preu: 2500, manteniment: 40,
     cost: 0.5, preuJust: 2.5, efecte: { gana: 40, set: -10 }, text: 'Barates de fer, però donen set! Cada ració et costa 0,50 €.' },
-  'hot-dogs': { nom: 'Parada de frankfurts', cat: 'menjar', img: 'hot-dogs', mida: 1, frac: 1.282, vistes: 4, preu: 3500, manteniment: 60,
+  'hot-dogs': { nom: 'Parada de frankfurts', cat: 'menjar', img: 'hot-dogs', mida: 1, frac: 1.282, peu: 0.84, vistes: 4, preu: 3500, manteniment: 60,
     cost: 1.4, preuJust: 4, efecte: { gana: 70 }, text: 'El que més treu la gana. Cada frankfurt et costa 1,40 €.' },
-  begudes: { nom: 'Parada de begudes', cat: 'menjar', img: 'begudes', mida: 1, frac: 1.097, vistes: 4, preu: 2500, manteniment: 40,
+  begudes: { nom: 'Parada de begudes', cat: 'menjar', img: 'begudes', mida: 1, frac: 1.097, peu: 0.84, vistes: 4, preu: 2500, manteniment: 40,
     cost: 0.4, preuJust: 2.5, efecte: { set: 75 }, text: 'Imprescindible si fa calor. Cada beguda et costa 0,40 €.' },
 
   // fase 3: restaurants temàtics (2x2). Treuen tota la gana, serveixen de pressa i agraden molt.
-  'restaurant-mediterrani': { nom: 'Taverna mediterrània', cat: 'menjar', tema: 'mediterrani', img: 'restaurant-mediterrani', mida: 2, frac: 1, punta: 0.579,
+  'restaurant-mediterrani': { nom: 'Taverna mediterrània', cat: 'menjar', tema: 'mediterrani', img: 'restaurant-mediterrani', mida: 2, cantonades: [[2, 443], [446, 614], [765, 432]], frac: 1, punta: 0.579,
     preu: 20000, manteniment: 180, cost: 4, preuJust: 12, efecte: { gana: 100, set: 60 }, rapid: true, satisfa: 8, text: 'Peix fresc i terrassa. Cada menú et costa 4 €.' },
-  'restaurant-oest': { nom: 'Saloon del Far West', cat: 'menjar', tema: 'oest', img: 'restaurant-oest', mida: 2, frac: 1, punta: 0.551,
+  'restaurant-oest': { nom: 'Saloon del Far West', cat: 'menjar', tema: 'oest', img: 'restaurant-oest', mida: 2, cantonades: [[1, 432], [423, 605], [765, 405]], frac: 1, punta: 0.551,
     preu: 20000, manteniment: 180, cost: 4, preuJust: 12, efecte: { gana: 100, set: 60 }, rapid: true, satisfa: 8, text: 'Costelles i limonada al desert. Cada menú et costa 4 €.' },
-  'restaurant-pirates': { nom: 'Taverna pirata', cat: 'menjar', tema: 'pirates', img: 'restaurant-pirates', mida: 2, frac: 1, punta: 0.515,
+  'restaurant-pirates': { nom: 'Taverna pirata', cat: 'menjar', tema: 'pirates', img: 'restaurant-pirates', mida: 2, cantonades: [[2, 469], [396, 639], [765, 489]], frac: 1, punta: 0.515,
     preu: 22000, manteniment: 190, cost: 4.5, preuJust: 13, efecte: { gana: 100, set: 60 }, rapid: true, satisfa: 9, text: 'Sobre l\'aigua, amb tresors i tot. Cada menú et costa 4,50 €.' },
-  'restaurant-selva': { nom: 'Restaurant tiki', cat: 'menjar', tema: 'selva', img: 'restaurant-selva', mida: 2, frac: 1, punta: 0.573,
+  'restaurant-selva': { nom: 'Restaurant tiki', cat: 'menjar', tema: 'selva', img: 'restaurant-selva', mida: 2, cantonades: [[1, 448], [440, 614], [767, 445]], frac: 1, punta: 0.573,
     preu: 22000, manteniment: 190, cost: 4.5, preuJust: 13, efecte: { gana: 100, set: 70 }, rapid: true, satisfa: 9, text: 'Fruita tropical i còctels sense alcohol. Cada menú et costa 4,50 €.' },
-  'restaurant-medieval': { nom: 'Taverna medieval', cat: 'menjar', tema: 'medieval', img: 'restaurant-medieval', mida: 2, frac: 1, punta: 0.544,
+  'restaurant-medieval': { nom: 'Taverna medieval', cat: 'menjar', tema: 'medieval', img: 'restaurant-medieval', mida: 2, cantonades: [[2, 444], [418, 628], [767, 452]], frac: 1, punta: 0.544,
     preu: 25000, manteniment: 210, cost: 5, preuJust: 14, efecte: { gana: 100, set: 60 }, rapid: true, satisfa: 10, text: 'Banquet de cavallers. Cada menú et costa 5 €.' },
-  'restaurant-espai': { nom: 'Diner espacial', cat: 'menjar', tema: 'espai', img: 'restaurant-espai', mida: 2, frac: 1, punta: 0.549,
+  'restaurant-espai': { nom: 'Diner espacial', cat: 'menjar', tema: 'espai', img: 'restaurant-espai', mida: 2, cantonades: [[2, 449], [421, 610], [765, 469]], frac: 1, punta: 0.549,
     preu: 25000, manteniment: 210, cost: 5, preuJust: 14, efecte: { gana: 100, set: 70 }, rapid: true, satisfa: 10, text: 'Hamburgueses galàctiques i neons. Cada menú et costa 5 €.' },
 
-  globus: { nom: 'Parada de globus', cat: 'botiga', img: 'globus', mida: 1, frac: 1.195, vistes: 4, preu: 2000, manteniment: 30,
+  globus: { nom: 'Parada de globus', cat: 'botiga', img: 'globus', mida: 1, frac: 1.195, peu: 0.86, vistes: 4, preu: 2000, manteniment: 30,
     cost: 1, preuJust: 4, text: 'Un caprici: els visitants contents en compren. Cada globus et costa 1 €.' },
-  'botiga-records': { nom: 'Botiga de records', cat: 'botiga', img: 'botiga-records', mida: 1, frac: 1.167, vistes: 4, preu: 6000, manteniment: 60,
+  'botiga-records': { nom: 'Botiga de records', cat: 'botiga', img: 'botiga-records', mida: 1, frac: 1.167, peu: 0.9, vistes: 4, preu: 6000, manteniment: 60,
     cost: 4, preuJust: 10, text: 'Peluixos, gorres i tasses. Marge alt, però només hi compra qui s\'ho ha passat bé. Cada record et costa 4 €.' },
 
   // fora del parc: el pàrquing ocupa una parcel·la sencera (7x7) de la franja de davant, amb entrada i guixeta
@@ -183,16 +183,16 @@ export const OBJECTES = {
   'parquing-caseta': { nom: 'Caseta del pàrquing', cat: 'servei', img: 'parquing-caseta', mida: 1, frac: 0.82, preu: 2500, manteniment: 40, sensecami: true, obsolet: true },
   'parada-bus': { nom: 'Parada d\'autobús', cat: 'servei', img: 'parada-bus-v2', mida: 2, frac: 0.7, preu: 15000, manteniment: 120, sensecami: true, exterior: true, carretera: true,
     text: 'Va a fora del parc, a la vorera de la carretera. Una línia d\'autobús des de la ciutat: ve més gent i menys gent necessita aparcar.' },
-  lavabos: { nom: 'Lavabos', cat: 'servei', img: 'lavabos', mida: 1, frac: 1.378, vistes: 4, preu: 4000, manteniment: 45,
+  lavabos: { nom: 'Lavabos', cat: 'servei', img: 'lavabos', mida: 1, frac: 1.378, peu: 0.92, vistes: 4, preu: 4000, manteniment: 45,
     text: 'Sense lavabos, els visitants s\'enfaden molt (i marxen).' },
-  'primers-auxilis': { nom: 'Infermeria', cat: 'servei', img: 'primers-auxilis', mida: 1, frac: 1.094, vistes: 4, preu: 8000, manteniment: 90,
+  'primers-auxilis': { nom: 'Infermeria', cat: 'servei', img: 'primers-auxilis', mida: 1, frac: 1.094, peu: 0.9, vistes: 4, preu: 8000, manteniment: 90,
     text: 'Si tens atraccions fortes, alguns visitants es maregen. Sense infermeria, marxen enfadats.' },
-  caixer: { nom: 'Caixer automàtic', cat: 'servei', img: 'caixer', mida: 1, frac: 1.268, vistes: 4, preu: 3000, manteniment: 25,
+  caixer: { nom: 'Caixer automàtic', cat: 'servei', img: 'caixer', mida: 1, frac: 1.268, peu: 0.84, vistes: 4, preu: 3000, manteniment: 25,
     text: 'Qui es queda sense diners en treu més i continua gastant. El banc et paga 0,50 € per cada ús.' },
   informacio: { nom: 'Punt d\'informació', cat: 'servei', img: 'informacio', mida: 1, frac: 0.8, preu: 2000, manteniment: 30,
     text: 'Els visitants s\'orienten millor i el parc té més bona fama.' },
 
-  banc: { nom: 'Banc', cat: 'decoracio', img: 'banc', mida: 1, frac: 0.715, vistes: 4, preu: 150, bellesa: 1, seient: true,
+  banc: { nom: 'Banc', cat: 'decoracio', img: 'banc', mida: 1, frac: 0.715, peu: 0.5, vistes: 4, preu: 150, bellesa: 1, seient: true,
     text: 'Per descansar. Posa\'l al costat d\'un camí.' },
   paperera: { nom: 'Paperera', cat: 'decoracio', img: 'paperera', mida: 1, frac: 0.22, preu: 100, paperera: true,
     text: 'Si n\'hi ha a prop, la gent no llença brossa a terra.' },
@@ -209,8 +209,10 @@ export const OBJECTES = {
 export const ESCALA_ATRACCIONS = 0.8;
 for (const d of Object.values(OBJECTES)) {
   if (d.ressort) continue;
-  if (d.cat === 'atraccio' || (d.cat === 'menjar' && d.mida === 1) || d.cat === 'botiga') d.frac *= ESCALA_ATRACCIONS;
+  if (d.cat === 'atraccio' || (d.cat === 'menjar' && d.mida === 1) || d.cat === 'botiga') { d.frac *= ESCALA_ATRACCIONS; if (d.peu) d.peu *= ESCALA_ATRACCIONS; }
 }
+// retocs a ull, comparant amb la gent: les botigues es veien petites; els bancs i les papereres, grans
+for (const [t, f] of [['globus', 1.3], ['botiga-records', 1.3], ['banc', 0.8], ['paperera', 0.8]]) { OBJECTES[t].frac *= f; if (OBJECTES[t].peu) OBJECTES[t].peu *= f; }
 // Objectes amb 4 vistes (vistes: 4): una imatge per a cada orientació a img/parc/vistes/<img>-<0..3>.webp
 //   0: la part de davant mira avall a l'esquerra · 1: avall a la dreta · 2: amunt a la dreta · 3: amunt a l'esquerra
 // La resta en tenen una de sola i, girats, es dibuixen en mirall.
@@ -265,7 +267,8 @@ export function dibuixaObjecte(ctx, im, t, cx, cy, amp, gir = 0) {
   const o = OBJECTES[t];
   const w = amp * o.frac;
   const h = w * (im.naturalHeight / im.naturalWidth);
-  const baix = cy + (amp / 4) * o.frac;   // punt de davant de l'objecte
+  // punt de davant de l'objecte: amb vistes, la imatge té marges i el que compta és l'amplada del dibuix (peu)
+  const baix = cy + (amp / 4) * (o.peu ?? o.frac);
   const p = o.punta ?? 0.5;   // on cau la punta de davant dins de la imatge (0,5 = al mig)
   if (!gir || o.vistes) { ctx.drawImage(im, cx - w * p, baix - h, w, h); return; }   // amb vistes, la imatge ja és la girada
   ctx.save(); ctx.translate(cx, 0); ctx.scale(-1, 1);

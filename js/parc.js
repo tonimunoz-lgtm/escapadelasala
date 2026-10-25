@@ -1647,6 +1647,9 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     ctx.drawImage(im, 0, 0);
     ctx.restore();
   }
+  // Els vehicles de les atraccions (vagons, troncs, flotadors) es dibuixen més grans que a les imatges originals:
+  // amb les atraccions al 80 %, es veien massa petits al costat de la gent.
+  const ESCALA_VEHICLES = 1.35;
   // ---------- camins de llambordes ----------
   // Cada casella de camí es dibuixa amb llambordes i una vora de peces clares als costats on el camí
   // no continua (i una peça petita a les cantonades de dins), de manera que els girs, les T i les creus
@@ -1833,7 +1836,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
         const im = img(srcObjecte(o.t, o.gir)); if (!im) return;
         const [px, py] = d.saltadors[(o.gir || 0) % 4][i % 4], c = iso(cu, cv);
         const amp = WP * m, ww = amp * d.frac, k = ww / 360, hh = ww * im.naturalHeight / im.naturalWidth;
-        const esq = c.x - ww * (d.punta ?? 0.5), dalt = c.y + (amp / 4) * d.frac - hh;
+        const esq = c.x - ww * (d.punta ?? 0.5), dalt = c.y + (amp / 4) * (d.peu ?? d.frac) - hh;
         alt = 1 + Math.abs(Math.sin(t * 5 + i * 1.7)) * 11;   // salts d'uns 60 cm a l'escala de la gent
         r[1].push({ v, x: esq + px * k, y: dalt + py * k + 4 - alt });   // a sobre de la imatge: el trampolí és a terra
         return;
@@ -1972,14 +1975,15 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const cm = preparaCami(a), s = rt.get(o.id);
     // sense gent, el tren espera a l'estació; amb gent, fa una volta per viatge
     const f = s?.muntats.length && s.fi ? 1 - (s.fi - parc.minut) / d.durada : 0;
-    const cap = distanciaPerTemps(cm, f) + a.llargada * 0.5;
+    const EV = ESCALA_VEHICLES, llarg = a.llargada * EV, espai = a.espai * EV;
+    const cap = distanciaPerTemps(cm, f) + llarg * 0.5;
     ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
     ctx.drawImage(base, esq, dalt, w, hb);
     const passatgers = s?.muntats || [];
     for (let i = a.vagons; i >= 0; i--) {
       const im = i === 0 ? loco : vago;
-      const p = puntCami(cm, cap - i * (a.llargada + a.espai));
-      const lw = a.llargada * k * (im.naturalWidth / vago.naturalWidth), lh = lw * im.naturalHeight / im.naturalWidth;
+      const p = puntCami(cm, cap - i * (llarg + espai));
+      const lw = llarg * k * (im.naturalWidth / vago.naturalWidth), lh = lw * im.naturalHeight / im.naturalWidth;
       ctx.save();
       ctx.translate(esq + p.x * k, dalt + p.y * k); ctx.rotate(p.ang);
       if (!p.loop && Math.cos(p.ang) < 0) ctx.scale(1, -1);   // anant cap a l'esquerra (fora dels loopings), el vagó va dret
@@ -2013,7 +2017,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     ctx.save(); ctx.translate(c.x, 0); if (o.gir) ctx.scale(-1, 1);
     ctx.drawImage(base, esq, dalt, w, hb);
     const passatgers = s?.muntats || [], esquitxades = [];
-    const lw = a.llargada * k, lh = lw * veh.naturalHeight / veh.naturalWidth;
+    const lw = a.llargada * k * ESCALA_VEHICLES, lh = lw * veh.naturalHeight / veh.naturalWidth;
     for (let j = 0; j < a.barques; j++) {
       const dist = distanciaPerTemps(cm, (f + j / a.barques) % 1);
       const p = puntCami(cm, dist);
@@ -2174,7 +2178,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const puntEsquitx = cm.seg.find((g) => g.t === 'esquitx')?.L ?? -1;
     s && (s.girs ??= Array.from({ length: a.barques }, (_, j) => j * 1.3));
     const dtA = tempsAnim - (s?.tA ?? tempsAnim); if (s) s.tA = tempsAnim;
-    const D = a.diametre * k, barques = [];
+    const D = a.diametre * k * ESCALA_VEHICLES, barques = [];
     for (let j = 0; j < a.barques; j++) {
       const dist = distanciaPerTemps(cm, (f + j / a.barques) % 1), p = puntCami(cm, dist);
       if (s && enMarxa) s.girs[j] += dtA * (a.girs[p.seg] ?? 0.8);
@@ -2395,7 +2399,11 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const c = iso(o.x + m / 2, o.y + m / 2);
     const [darrere, davant] = d.cat === 'atraccio' && !d.anim && rt.get(o.id) ? passatgers(o, rt.get(o.id)) : [[], []];   // les animades ja hi dibuixen la seva gent
     darrere.forEach(dibuixaPassatger);
-    if (d.porta && im) {
+    if (d.cantonades && im) {
+      // la llosa de la imatge (esquerra, baix, dreta) va a les cantonades de les caselles; en mirall, s'intercanvien
+      const E = iso(o.x, o.y + m), B = iso(o.x + m, o.y + m), D = iso(o.x + m, o.y);
+      encaixaImatge(im, d.cantonades, o.gir ? D : E, B, o.gir ? E : D);
+    } else if (d.porta && im) {
       // les entrades estan dibuixades gairebé de cara: s'encaixen pel mig de la porta, que va al mig del forat de la muralla
       const k = (WP * m * d.frac) / im.naturalWidth, p = iso(o.x + m / 2, o.y + m);
       ctx.drawImage(im, p.x - d.porta[0] * k, p.y - d.porta[1] * k, im.naturalWidth * k, im.naturalHeight * k);

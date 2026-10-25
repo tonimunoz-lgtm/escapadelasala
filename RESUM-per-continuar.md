@@ -43,6 +43,9 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
 
 ## Proporcions (referència: persona = 30 px = 1,7 m → ~17,6 px/m; 1 casella ≈ 4 m)
 - `ESCALA_ATRACCIONS = 0.8` (parc-dades.js): atraccions, parades de menjar 1x1 i botigues es dibuixen al 80 % (les imatges tenien taquilles i torniquets al doble de mida). Lavabos, restaurants, entrades i decoració no es toquen.
+- `peu` (objectes amb vistes): amplada real del dibuix (sense els marges), per posar la base on toca (abans sobresortien).
+- Restaurants: `cantonades` = esquerra, baix i dreta de la llosa a la imatge; s'encaixen amb una transformació afí (ja no es veuen torçats).
+- Retocs: botigues ×1,3; bancs i papereres ×0,8; vehicles de les atraccions (vagons, troncs, flotadors) `ESCALA_VEHICLES = 1.35`.
 - Bus: `BUS.llargada = 1.2` caselles (~2 cotxes). Marquesina: pals a u 0,7–1,3, v 1,6. Guixeta del pàrquing a `WP * 0.6`.
 - El ressort té els edificis petits (~0,6×) però es deixa així. Els cotxes són ~1,5× la gent.
 - Per a imatges noves: demanar «torniquets i taquilla a l'alçada de la cintura d'una persona adulta».
