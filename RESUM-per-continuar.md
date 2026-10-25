@@ -22,7 +22,7 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
   - Parada d'autobús: `exterior` + `carretera` (ha de tocar la carretera). Marquesina `parada-bus-v2.webp` (`MARQUESINA`, dibuix propi).
     Autobús de línia (`autobus-darrere.webp`, cap a −x pel carril de la vorera): frena, para, en baixen fins a 14 visitants
     (`pendentsBus`: el 30 % de les arribades si hi ha parada) per la porta de davant, caminen per la vorera i entren. L'altre sentit: `autobus-davant.webp`.
-    Es circula per la dreta (+x pel carril de fora, y = 29,5; −x pel de la vorera, y = 28,5) i els vehicles fan cua (no s'atravessen).
+    Cada persona que baixa del bus suma als usos de la parada i a `parc.avui.bus`. Es circula per la dreta (+x pel carril de fora, y = 29,5; −x pel de la vorera, y = 28,5) i els vehicles fan cua (no s'atravessen).
   - Trànsit (`transit`): cotxes que passen, cotxes que entren al pàrquing, autobús.
   - Esplanada del portal fins a la carretera (`ocup = -2`): la gent hi arriba caminant.
   - Els pàrquings/casetes/parades antics es retiren i es retornen els diners (`migraExterior`).
@@ -47,10 +47,18 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
 - El ressort té els edificis petits (~0,6×) però es deixa així. Els cotxes són ~1,5× la gent.
 - Per a imatges noves: demanar «torniquets i taquilla a l'alçada de la cintura d'una persona adulta».
 
+## Entrades
+- Imatges `entrada-*-v2.webp` (l'arc ja és transparent). Camp `porta: [px, py]` = punt de terra del mig de la porta a la imatge:
+  s'encaixa al mig del forat de la muralla, iso(x + m/2, y + m). Es dibuixen 2,6 més tard que la resta (tapen els trams del costat).
+- També tenen l'enllosat de base.
+
 ## Ressort del Far West (versió 3)
 - Posició fixa `x0: -26, y0: 7`, 14x14 + replà de l'arc (`extra`). Imatge `resort.webp` sense mirall (`punts` = cantonades esq., baix, dreta).
 - Passarel·la de l'arc (`sortida`) cap a +X fins al parc (es recalcula en comprar terreny; els trossos que queden dins es converteixen en camí).
 - `camins` marcats sobre els camins de sorra. `llocs`: 7 hotels/cabanes, 3 accessos a piscina (`petita`/`gran`), 3 restaurants, botiga.
+- Control d'accés: caseta i barrera a l'última casella de la passarel·la (`portaRessort`, `dibuixaControl`). Només hi passen
+  els visitants amb `v.reserva` (els que reserven a partir de les 17:00 i els hostes del matí): `ruta(..., limitat)` no deixa
+  entrar a `restringit()` (passarel·la i ressort) i la resta no tria res del ressort.
 - Estat `dins`: la gent entra al restaurant/botiga (s'amaga) o neda a la piscina (punts `aigua`).
 
 ## Proves

@@ -62,10 +62,10 @@ export const CATEGORIES = [
 
 export const OBJECTES = {
   // entrades: la petita és la del principi; es pot millorar a la mitjana i a la gran (més atractiu)
-  entrada: { nom: 'Entrada petita', cat: 'fix', img: 'entrada-petita', mida: 2, frac: 0.97, preu: 0, manteniment: 40, atractiu: 0 },
-  'entrada-mitjana': { nom: 'Entrada del castell', cat: 'fix', img: 'entrada-mitjana', mida: 2, frac: 0.97, preu: 25000, manteniment: 80, atractiu: 1.5,
+  entrada: { nom: 'Entrada petita', cat: 'fix', img: 'entrada-petita-v2', porta: [350, 560], mida: 2, frac: 0.97, preu: 0, manteniment: 40, atractiu: 0 },
+  'entrada-mitjana': { nom: 'Entrada del castell', cat: 'fix', img: 'entrada-mitjana-v2', porta: [395, 690], mida: 2, frac: 0.97, preu: 25000, manteniment: 80, atractiu: 1.5,
     text: 'Una porta amb torre. Fa el parc més vistós i hi ve més gent.' },
-  'entrada-gran': { nom: 'Gran portal', cat: 'fix', img: 'entrada-gran', mida: 3, frac: 0.97, preu: 60000, manteniment: 150, atractiu: 4,
+  'entrada-gran': { nom: 'Gran portal', cat: 'fix', img: 'entrada-gran-v2', porta: [493, 840], mida: 3, frac: 0.97, preu: 60000, manteniment: 150, atractiu: 4,
     text: 'L\'entrada d\'un gran parc: dues torres i quatre taquilles. Ocupa 3x3 caselles.' },
 
   carrusel: { nom: 'Carrusel de cavallets', cat: 'atraccio', img: 'carrusel', mida: 2, frac: 0.97, preu: 12000, manteniment: 120,
