@@ -314,6 +314,18 @@ export const CAMPANYES = {
   cartells: { nom: 'Cartells a la ciutat', ic: '🪧', costDia: 250, efecte: 0.12, text: 'Barat i discret: una mica més de gent.' },
   radio: { nom: 'Anuncis a la ràdio', ic: '📻', costDia: 800, efecte: 0.3, text: 'Arriba a tota la comarca.' },
   tele: { nom: 'Anunci a la televisió', ic: '📺', costDia: 2500, efecte: 0.6, text: 'Car, però ve molta més gent.' },
+  // del ressort (només si en tens): fan que es venguin més packs i que més gent es quedi a dormir
+  'ressort-web': { nom: 'Ressort a webs de viatges', ic: '💻', costDia: 400, efecte: 0.04, ressort: 0.5, text: 'Fotos del ressort a les webs de reserves d\'hotels.' },
+  'ressort-agencies': { nom: 'Agències de viatges', ic: '🧳', costDia: 1200, efecte: 0.08, ressort: 1.1, text: 'Les agències venen els teus packs a tot el país.' },
+  'ressort-influencers': { nom: 'Influencers de viatges', ic: '📸', costDia: 2000, efecte: 0.15, ressort: 1.6, text: 'Vídeos del ressort i del parc a les xarxes. Molt d\'impacte.' },
+};
+
+// Packs de vacances del ressort: el client ho paga tot en arribar (més barat que per separat) i ja té l'habitació
+// reservada per a aquella nit. inclou: el que porta el pack (per calcular-ne el valor i què fa el client).
+export const PACKS = {
+  'nit-entrada': { nom: 'Nit + entrada', ic: '🎟️', text: 'Una nit a l\'hotel i l\'entrada al parc.', inclou: { entrada: 1, nit: 1 }, descompte: 0.1, interes: 1 },
+  familia: { nom: 'Pack família', ic: '👨‍👩‍👧', text: 'Entrada, nit a l\'hotel i sopar a la terrassa del ressort.', inclou: { entrada: 1, nit: 1, sopar: 1 }, descompte: 0.15, interes: 0.8 },
+  aventura: { nom: 'Pack aventura', ic: '🎢', text: 'Entrada, nit i 3 tiquets per a atraccions.', inclou: { entrada: 1, nit: 1, tiquets: 3 }, descompte: 0.15, interes: 0.7 },
 };
 
 // Noms dels visitants (per quan en toques un)

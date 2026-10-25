@@ -9,7 +9,7 @@
 import { h, avis } from './ui.js';
 import { faseEconomica } from './joc.js';
 import {
-  RECERCA_NIVELLS, RECERCA_ORDRE, PER_INVESTIGAR, CAMPANYES, NOMS_VISITANTS,
+  RECERCA_NIVELLS, RECERCA_ORDRE, PER_INVESTIGAR, CAMPANYES, PACKS, NOMS_VISITANTS,
   MIDA_TOTAL, RESSORT, EXTERIOR, CARRETERA, ORIGEN, COST_TRAM_MURALLA, COST_TORRE, ATRACTIU_MURALLA, BLOC, LIMITS_BLOCS, BLOCS_INICIALS, preuParcella, PLACES_CARRER, PART_EN_COTXE, PERSONES_PER_COTXE, ENTRADA, MINUTS_DIA, SEGONS_PER_MINUT, HORA_OBERTURA, ULTIMA_ENTRADA, INTERES_DIARI,
   COST_CAMI, RETORN_ENDERROC, PERSONAL_PARC, CATEGORIES, OBJECTES, srcObjecte, girsDe, dibuixaObjecte,
 } from './parc-dades.js';
@@ -386,6 +386,30 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
 
   // ---------- visitants ----------
   // origen: 'parc' (per l'entrada del parc) o 'hotel' (hostes que han dormit al ressort)
+  // ---------- packs de vacances del ressort ----------
+  const campanyesActives = () => (parc.campanyes || []).filter((c) => c.fins >= parc.dia);
+  const empentaRessort = () => campanyesActives().reduce((t, c) => t + (CAMPANYES[c.tipus]?.ressort || 0), 0);
+  // el que valdria el pack comprant-ho tot per separat
+  function valorPack(id) {
+    const p = PACKS[id].inclou, atr = parc.objectes.filter((o) => OBJECTES[o.t].cat === 'atraccio' && !OBJECTES[o.t].ressort && colocat(o));
+    const preuAtr = atr.length ? atr.reduce((t, o) => t + (o.preu ?? 0), 0) / atr.length : 2;
+    const sopar = parc.objectes.find((o) => o.t === 'resort-restaurant')?.preu ?? OBJECTES['resort-restaurant'].preuJust;
+    return (p.entrada || 0) * parc.preus.entrada + (p.nit || 0) * (parc.preus.hotel ?? RESSORT.preuNit) + (p.sopar || 0) * sopar + (p.tiquets || 0) * preuAtr;
+  }
+  const preuPack = (id) => parc.packs?.[id]?.preu ?? Math.round(valorPack(id) * (1 - PACKS[id].descompte));
+  // Quan arriba un visitant, potser ha comprat un pack: com més barat respecte al que val, i com més publicitat del ressort, més.
+  function triaPack() {
+    if (!parc.ressort || (parc.ressort.dema || 0) >= RESSORT.habitacions) return null;
+    const actius = Object.keys(PACKS).filter((id) => parc.packs?.[id]?.actiu);
+    if (!actius.length) return null;
+    const emp = 1 + empentaRessort(), rep = clamp(valoracio() / 600, 0.4, 1.4);
+    let total = 0;
+    const pes = actius.map((id) => { const r = preuPack(id) / Math.max(1, valorPack(id)); const p = 0.03 * PACKS[id].interes * clamp(1.5 - r, 0, 0.9) * emp * rep; total += p; return p; });
+    if (Math.random() >= total) return null;
+    let x = Math.random() * total;
+    for (let i = 0; i < actius.length; i++) { x -= pes[i]; if (x <= 0) return actius[i]; }
+    return actius[0];
+  }
   function nouVisitant(origen = 'parc', posBus = null) {
     if (origen === 'hotel') {
       const llocs = hotelsRessort().flatMap((o) => acces.get(o.id) || []);
@@ -441,10 +465,21 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       v.fy = CARRETERA.y - 0.05; v.previ = [[v.fx - 0.2, CARRETERA.y - 0.25], [exE, CARRETERA.y - 0.22 - Math.random() * 0.1]];
     }
     v.intMin = Math.max(0, v.intMax - 6);
-    parc.diners += parc.preus.entrada + pagaParquing; v.pressupost -= parc.preus.entrada + pagaParquing;
+    // pack de vacances: ho paga tot en arribar i ja té l'habitació d'aquesta nit
+    const pack = triaPack();
+    if (pack) {
+      const preu = preuPack(pack), inc = PACKS[pack].inclou;
+      v.pack = pack; v.reserva = true; v.tiquets = inc.tiquets || 0; v.sopar = !!inc.sopar; v.pressupost += 15;
+      parc.ressort.dema = (parc.ressort.dema || 0) + 1; parc.avui.nits = (parc.avui.nits || 0) + 1;
+      parc.diners += preu; parc.totals.ingressos += preu; parc.avui.packs = (parc.avui.packs || 0) + preu;
+      parc.avui.nPacks = (parc.avui.nPacks || 0) + 1; (parc.avui.packsPerTipus ??= {})[pack] = (parc.avui.packsPerTipus[pack] || 0) + 1;
+      flota((entrada()?.x ?? ENTRADA.x) + 1, (entrada()?.y ?? ENTRADA.y) + 0.5, `${PACKS[pack].ic} +${eur(preu)}`, '#8e44ad');
+    }
+    const preuEnt = pack ? 0 : parc.preus.entrada;
+    parc.diners += preuEnt + pagaParquing; v.pressupost -= preuEnt + pagaParquing;
     if (pagaParquing) { parc.avui.parquing += pagaParquing; parc.totals.ingressos += pagaParquing; v.parquing = pagaParquing; }
-    parc.avui.visitants += 1; parc.avui.entrades += parc.preus.entrada; parc.totals.visitants += 1; parc.totals.ingressos += parc.preus.entrada;
-    if (parc.preus.entrada > 0) flota((entrada()?.x ?? ENTRADA.x) + 1, (entrada()?.y ?? ENTRADA.y) + 0.5, `+${eur(parc.preus.entrada)}`, '#2a7423');
+    parc.avui.visitants += 1; parc.avui.entrades += preuEnt; parc.totals.visitants += 1; parc.totals.ingressos += preuEnt;
+    if (preuEnt > 0) flota((entrada()?.x ?? ENTRADA.x) + 1, (entrada()?.y ?? ENTRADA.y) + 0.5, `+${eur(preuEnt)}`, '#2a7423');
     visitants.push(v);
   }
   function pensa(v, clau) {
@@ -485,9 +520,14 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (v.set > 55 && !v.sense.set && cerca((o) => o.t === 'begudes' || o.t === 'gelats', 'set')) return;
     if (v.gana > 55 && !v.sense.gana && cerca((o) => OBJECTES[o.t].cat === 'menjar' && o.t !== 'begudes', 'gana')) return;
     if (v.energia < 30 && !v.sense.cansat && cerca((o) => OBJECTES[o.t].seient, 'cansat')) return;
+    // els del pack: sopar a la terrassa del ressort (inclòs) i, al vespre, cap a l'hotel
+    if (v.pack) {
+      if (v.sopar && minut >= 330 && cerca((o) => o.t === 'resort-restaurant', 'gana', true)) return;
+      if (minut >= 420 && cerca((o) => o.t === 'resort-hotel', 'hotel', true)) return;
+    }
     // al vespre, els visitants contents poden reservar una nit a l'hotel del ressort (com més car, menys)
     if (parc.ressort && minut >= 420 && !v.reserva && !v.sense.hotel && v.satisf > 60 && (parc.ressort.dema || 0) < RESSORT.habitacions) {
-      const preuN = parc.preus.hotel ?? RESSORT.preuNit, vol = clamp(1.7 - preuN / RESSORT.preuNit * 0.9, 0.02, 1);
+      const preuN = parc.preus.hotel ?? RESSORT.preuNit, vol = clamp(1.7 - preuN / RESSORT.preuNit * 0.9, 0.02, 1) * (1 + empentaRessort() * 0.4);
       // reserva l'habitació: amb la reserva ja pot passar el control d'accés i anar cap a l'hotel
       if (Math.random() < 0.3 * vol) {
         v.reserva = true;
@@ -530,6 +570,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const d = OBJECTES[o.t];
     if (d.seient) { v.estat = 'seu'; v.espera = 8; return; }
     if (d.cat === 'hotel') {
+      if (v.pack) { v.estat = 'surt'; v.fade = 1; return; }   // ja ho tenia pagat amb el pack: se'n va a dormir
       if ((parc.ressort?.dema || 0) >= RESSORT.habitacions) { v.sense.hotel = 999; v.estat = 'idle'; return; }
       const preuN = parc.preus.hotel ?? RESSORT.preuNit;
       parc.diners += preuN; parc.totals.ingressos += preuN; parc.avui.hotel = (parc.avui.hotel || 0) + preuN; parc.avui.nits = (parc.avui.nits || 0) + 1;
@@ -540,7 +581,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     }
     // instal·lacions del ressort on s'entra: el restaurant, la botiga i les piscines (no hi ha cua)
     if (d.dins) {
-      const preu = o.preu ?? (d.cat === 'atraccio' ? 0 : d.preuJust);
+      let preu = o.preu ?? (d.cat === 'atraccio' ? 0 : d.preuJust);
+      if (v.sopar && o.t === 'resort-restaurant') { preu = 0; v.sopar = false; v.inclos = o.id; }   // sopar del pack
       if (preu > 0 && (v.pressupost < preu || Math.random() > clamp(1.75 - preu / d.preuJust, 0, 1))) {
         pensa(v, 'car'); v.satisf -= 5; v.estat = 'idle'; v.sense[d.cat === 'menjar' ? 'gana' : d.cat === 'botiga' ? 'botiga' : 'piscina'] = 25; return;
       }
@@ -551,7 +593,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     }
     if (d.cat === 'atraccio' || d.cat === 'menjar' || d.cat === 'botiga' || o.t === 'lavabos' || o.t === 'caixer' || o.t === 'primers-auxilis') {
       const preu = d.cat === 'servei' ? 0 : o.preu ?? (d.cat === 'atraccio' ? 0 : d.preuJust);
-      if (preu > 0) {
+      if (preu > 0 && !(d.cat === 'atraccio' && v.tiquets > 0)) {   // amb un tiquet del pack no mira el preu
         const vol = clamp(1.75 - preu / d.preuJust, 0, 1);
         if (v.pressupost < preu || Math.random() > vol) { pensa(v, 'car'); v.satisf -= 5; v.estat = 'idle'; if (d.cat !== 'atraccio') v.sense[d.cat === 'menjar' ? (o.t === 'begudes' ? 'set' : 'gana') : d.cat === 'botiga' ? 'botiga' : 'lavabo'] = 25; return; }
       }
@@ -567,7 +609,9 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   // Paga i gaudeix d'una atracció o d'una parada
   function serveix(v, o) {
     const d = OBJECTES[o.t];
-    const preu = d.cat === 'atraccio' ? (o.preu ?? 0) : d.cat === 'servei' ? 0 : (o.preu ?? d.preuJust);
+    let preu = d.cat === 'atraccio' ? (o.preu ?? 0) : d.cat === 'servei' ? 0 : (o.preu ?? d.preuJust);
+    if (v.inclos === o.id) { preu = 0; v.inclos = null; }                          // ja pagat amb el pack
+    else if (d.cat === 'atraccio' && v.tiquets > 0 && preu > 0) { preu = 0; v.tiquets -= 1; }   // tiquet del pack
     if (preu > 0) {
       v.pressupost -= preu; v.gastat = (v.gastat || 0) + preu; parc.diners += preu; o.ingressos = (o.ingressos || 0) + preu; parc.totals.ingressos += preu;
       if (d.cat === 'atraccio') parc.avui.atraccions += preu; else if (d.cat === 'botiga') parc.avui.botigues += preu; else parc.avui.menjar += preu;
@@ -674,7 +718,10 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       else nouVisitant('parc');
     }
     // els hostes que han dormit al ressort surten de l'hotel al matí
-    if (parc.ressort?.pendents > 0 && parc.obert && parc.minut < 180 && visitants.length < 400 && Math.random() < 0.6 * dm) { parc.ressort.pendents -= 1; nouVisitant('hotel'); }
+    if (parc.ressort?.pendents > 0 && parc.obert && visitants.length < 400) {
+      parc.ressort.surten = (parc.ressort.surten || 0) + parc.ressort.pendents * dm / Math.max(8, 180 - parc.minut);
+      while (parc.ressort.surten >= 1 && parc.ressort.pendents > 0) { parc.ressort.surten -= 1; parc.ressort.pendents -= 1; nouVisitant('hotel'); }
+    }
     if (pendentArribada > 3) pendentArribada = 0;
     const animadors = personal.filter((p) => p.rol === 'animador');
 
@@ -813,11 +860,13 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const valoracioDia = valoracio();
     parc.diners -= manteniment + sous + interessos + publicitat + despRecerca;
     parc.totals.despeses += manteniment + sous + interessos + publicitat + despRecerca;
-    const ingressos = a.entrades + a.atraccions + a.menjar + (a.botigues || 0) + (a.altres || 0) + (a.parquing || 0) + (a.hotel || 0);
-    if (parc.ressort) { parc.ressort.pendents = parc.ressort.dema || 0; parc.ressort.dema = 0; }
+    const ingressos = a.entrades + a.atraccions + a.menjar + (a.botigues || 0) + (a.altres || 0) + (a.parquing || 0) + (a.hotel || 0) + (a.packs || 0);
+    // els que dormen al ressort aquesta nit seran els hostes de demà (surten de l'hotel al matí)
+    if (parc.ressort) { parc.ressort.pendents = parc.ressort.dema || 0; parc.ressort.hostes = parc.ressort.dema || 0; parc.ressort.dema = 0; }
     const despeses = manteniment + sous + interessos + a.costMenjar + publicitat + despRecerca;
     const informe = {
-      parquing: Math.round(a.parquing || 0), senseParquing: a.senseParquing || 0, hotel: Math.round(a.hotel || 0), nits: a.nits || 0, publicitat, recerca: despRecerca, descobert, valoracio: valoracioDia,
+      parquing: Math.round(a.parquing || 0), senseParquing: a.senseParquing || 0, hotel: Math.round(a.hotel || 0), nits: a.nits || 0,
+      packs: Math.round(a.packs || 0), nPacks: a.nPacks || 0, publicitat, recerca: despRecerca, descobert, valoracio: valoracioDia,
       elogis: Object.fromEntries(Object.entries(a.elogis || {}).sort((x, y) => y[1] - x[1]).slice(0, 3)),
       dia: parc.dia, visitants: a.visitants, entrades: a.entrades, atraccions: a.atraccions, menjar: a.menjar, botigues: Math.round((a.botigues || 0) + (a.altres || 0)),
       costMenjar: Math.round(a.costMenjar), manteniment, sous, interessos, ingressos: Math.round(ingressos), despeses: Math.round(despeses),
@@ -1181,9 +1230,11 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   // ---------- un visitant ----------
   function obreVisitant(v) {
     const barra = (nom, n, color) => h('div', { class: 'parc-nota' }, h('span', {}, nom), h('span', { class: 'parc-barreta' }, h('span', { style: `width:${clamp(n, 0, 100)}%;background:${color}` })));
+    const etiquetaHoste = v.pack ? `${PACKS[v.pack].ic} Ha comprat el ${PACKS[v.pack].nom}${v.tiquets ? ` (li queden ${v.tiquets} tiquets)` : ''}` : v.hoste ? '🏨 Hoste del ressort (ha dormit a l\'hotel)' : v.reserva ? '🏨 Té habitació reservada per aquesta nit' : null;
     const fer = { camina: v.objectiu === 'sortida' ? 'Se\'n va cap a la sortida' : v.objectiu ? `Va cap a: ${OBJECTES[objecte(v.objectiu)?.t]?.nom || '...'}` : 'Passeja', cua: 'Fa cua', muntat: 'És dins d\'una atracció', seu: 'Descansa en un banc', dins: ({ 'resort-piscina': 'Es banya a la piscina', 'resort-restaurant': 'Dina a la terrassa del ressort', 'resort-botiga': 'Compra a la botiga del ressort' })[objecte(v.dinsDe)?.t] || 'És a dins', idle: 'Pensa què fer', espera: 'Mira al seu voltant', surt: 'Marxa del parc' }[v.estat] || '';
     panell(`${v.nom} (visitant n. ${v.num})`,
       h('p', {}, h('strong', {}, fer), v.marejat ? ' · 🤢 Està marejat' : ''),
+      etiquetaHoste ? h('p', { class: 'nota' }, etiquetaHoste) : null,
       barra('Felicitat', v.satisf, '#3c9d32'), barra('Energia', v.energia, '#0b78c8'),
       barra('Gana', v.gana, '#f2891d'), barra('Set', v.set, '#29a3d6'), barra('Lavabo', v.lavabo, '#8e44ad'),
       h('dl', { class: 'dades' },
@@ -1208,17 +1259,38 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   }
   // ---------- màrqueting ----------
   function obreMarqueting() {
-    parc.campanyes = (parc.campanyes || []).filter((c) => c.fins >= parc.dia);
-    const files = Object.entries(CAMPANYES).map(([id, c]) => {
+    parc.campanyes = campanyesActives();
+    const fila = (id, c) => {
       const activa = parc.campanyes.find((x) => x.tipus === id);
+      const efecte = c.ressort ? `+${Math.round(c.ressort * 100)} % de packs i reserves` : `+${Math.round(c.efecte * 100)} % de visitants`;
       return h('div', { class: 'parc-personal' },
-        h('div', {}, h('strong', {}, `${c.ic} ${c.nom}`), h('span', { class: 'nota' }, `${c.text} ${eur(c.costDia)} cada dia · +${Math.round(c.efecte * 100)} % de visitants.`)),
+        h('div', {}, h('strong', {}, `${c.ic} ${c.nom}`), h('span', { class: 'nota' }, `${c.text} ${eur(c.costDia)} cada dia · ${efecte}.`)),
         activa ? h('p', { class: 'nota' }, `✅ En marxa fins al dia ${activa.fins}.`) : h('div', { class: 'fila-botons' }, ...[3, 7].map((dies) =>
           h('button', { class: 'btn', onclick: () => { parc.campanyes.push({ tipus: id, fins: parc.dia + dies - 1 }); guarda(); obreMarqueting(); avis(`Campanya «${c.nom}» en marxa!`, 'ok'); } }, `${dies} dies (${eur(c.costDia * dies)})`))));
-    });
-    panell('Màrqueting', h('p', { class: 'nota' }, 'La publicitat fa venir més gent mentre dura. Es paga al final de cada dia. Pregunta\'t si el que guanyes de més paga el que costa!'), ...files);
-  }
-  // ---------- investigació ----------
+    };
+    const parcC = Object.entries(CAMPANYES).filter(([, c]) => !c.ressort).map(([id, c]) => fila(id, c));
+    let ressortC = [];
+    if (parc.ressort) {
+      parc.packs ??= {};
+      const packs = Object.entries(PACKS).map(([id, p]) => {
+        const cfg = (parc.packs[id] ??= { actiu: false }), valor = valorPack(id), preu = preuPack(id);
+        const estalvi = Math.round((1 - preu / Math.max(1, valor)) * 100);
+        return h('div', { class: 'parc-personal' },
+          h('div', {}, h('strong', {}, `${p.ic} ${p.nom}`), h('span', { class: 'nota' }, `${p.text} Per separat valdria ${eur(valor)}: ${estalvi > 0 ? `el client s'estalvia un ${estalvi} %` : estalvi < 0 ? `és un ${-estalvi} % més car que per separat!` : 'mateix preu que per separat'}.`)),
+          h('div', { class: 'fila-botons' },
+            h('button', { class: `btn${cfg.actiu ? ' btn-principal' : ''}`, onclick: () => { cfg.actiu = !cfg.actiu; cfg.preu ??= preu; guarda(); obreMarqueting(); } }, cfg.actiu ? '✅ A la venda' : 'Posar a la venda'),
+            h('label', { class: 'fila-preu' }, 'Preu (€)', campPreu(preu, (n) => { cfg.preu = n; }, 5))));
+      });
+      const ahir = parc.historial.at(-1);
+      ressortC = [h('h3', {}, '🏨 Ressort del Far West'),
+        h('p', { class: 'nota' }, 'Els packs es venen a la gent que arriba al parc: paguen tot de cop i ja tenen l\'habitació per aquella nit. Com més barat respecte al que val per separat, més se\'n venen; però si el descompte és massa gran, hi perds. La publicitat del ressort en fa vendre més i fa que més gent es quedi a dormir.'),
+        ahir ? h('p', { class: 'nota' }, `Ahir: ${ahir.nPacks || 0} packs venuts (${eur(ahir.packs || 0)}) · ${ahir.nits || 0} nits a l'hotel.`) : null,
+        h('h3', {}, 'Packs de vacances'), ...packs,
+        h('h3', {}, 'Publicitat del ressort'), ...Object.entries(CAMPANYES).filter(([, c]) => c.ressort).map(([id, c]) => fila(id, c))];
+    }
+    panell('Màrqueting', h('p', { class: 'nota' }, 'La publicitat fa venir més gent mentre dura. Es paga al final de cada dia. Pregunta\'t si el que guanyes de més paga el que costa!'),
+      h('h3', {}, '🎢 Parc'), ...parcC, ...ressortC);
+  }  // ---------- investigació ----------
   function obreRecerca() {
     const rec = recerca(), seg = seguentRecerca();
     const triar = h('div', { class: 'fila-botons' }, ...Object.entries(RECERCA_NIVELLS).map(([id, n]) =>
@@ -1296,7 +1368,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
         h('dt', {}, 'Menjar i begudes'), h('dd', {}, eur(r.menjar)),
         r.botigues ? [h('dt', {}, 'Botigues i caixers'), h('dd', {}, eur(r.botigues))] : null,
         r.parquing ? [h('dt', {}, 'Pàrquing'), h('dd', {}, eur(r.parquing))] : null,
-        r.hotel ? [h('dt', {}, `Hotel del ressort (${r.nits} nits, ${Math.round(r.nits / RESSORT.habitacions * 100)} % d'ocupació)`), h('dd', {}, eur(r.hotel))] : null,
+        r.hotel || r.packs ? [h('dt', {}, `Hotel del ressort (${r.nits} nits, ${Math.round(r.nits / RESSORT.habitacions * 100)} % d'ocupació)`), h('dd', {}, eur(r.hotel || 0))] : null,
+          r.packs ? [h('dt', {}, `Packs de vacances (${r.nPacks})`), h('dd', {}, eur(r.packs))] : null,
         h('dt', {}, h('strong', {}, 'Total ingressos')), h('dd', {}, h('strong', {}, eur(r.ingressos))),
         h('dt', {}, 'Cost dels productes venuts'), h('dd', {}, `−${eur(r.costMenjar)}`),
         h('dt', {}, 'Manteniment'), h('dd', {}, `−${eur(r.manteniment)}`),
@@ -1731,7 +1804,10 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       h('dl', { class: 'dades' },
         h('dt', {}, 'Habitacions'), h('dd', {}, String(RESSORT.habitacions)),
         h('dt', {}, 'Reserves per aquesta nit'), h('dd', {}, String(parc.ressort.dema || 0)),
-        h('dt', {}, 'Hostes que han dormit aquí'), h('dd', {}, String(parc.ressort.pendents || 0)),
+        h('dt', {}, 'Hostes d\'avui (han dormit aquí)'), h('dd', {}, String(parc.ressort.hostes ?? 0)),
+        parc.ressort.pendents ? h('dt', {}, 'Encara a l\'habitació') : null, parc.ressort.pendents ? h('dd', {}, String(parc.ressort.pendents)) : null,
+        h('dt', {}, 'Hostes ara mateix al parc i al ressort'), h('dd', {}, String(visitants.filter((v) => v.reserva && !v.amagat).length)),
+        h('dt', {}, 'Packs venuts avui'), h('dd', {}, String(parc.avui.nPacks || 0)),
         h('dt', {}, 'Ocupació d\'ahir'), h('dd', {}, ahir.nits != null ? `${Math.round(ahir.nits / RESSORT.habitacions * 100)} %` : '—'),
         h('dt', {}, 'Ingressos de l\'hotel ahir'), h('dd', {}, eur(ahir.hotel || 0)),
         h('dt', {}, 'Manteniment'), h('dd', {}, `${eur(RESSORT.manteniment)} / dia`)),

@@ -59,6 +59,11 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
 - Control d'accés: caseta i barrera a l'última casella de la passarel·la (`portaRessort`, `dibuixaControl`). Només hi passen
   els visitants amb `v.reserva` (els que reserven a partir de les 17:00 i els hostes del matí): `ruta(..., limitat)` no deixa
   entrar a `restringit()` (passarel·la i ressort) i la resta no tria res del ressort.
+- Hostes: `parc.ressort.hostes` (els que van dormir-hi ahir), `pendents` (encara a l'habitació; surten tots abans de les 13:00).
+- Màrqueting del ressort: campanyes amb camp `ressort` (webs de viatges, agències, influencers) i `PACKS` (Nit + entrada,
+  Pack família amb sopar, Pack aventura amb 3 tiquets). `parc.packs[id] = { actiu, preu }`. Es venen a l'arribada
+  (`triaPack`, segons preu/valor, publicitat i valoració): paguen tot, `v.reserva`, habitació reservada; sopar i tiquets inclosos.
+  Informe: `packs`, `nPacks`.
 - Estat `dins`: la gent entra al restaurant/botiga (s'amaga) o neda a la piscina (punts `aigua`).
 
 ## Proves
