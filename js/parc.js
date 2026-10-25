@@ -1663,7 +1663,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     qui.forEach((v, i) => {
       let u = cu, w = cv, alt = 0;
       if (o.t === 'llits-elastics') {
-        const [du, dw] = [[-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22]][i];
+        const e = OBJECTES[o.t].frac / 0.97;   // els saltadors segueixen la mida del llit
+        const [du, dw] = [[-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22]][i].map((q) => q * e);
         u += du; w += dw; alt = 6 + Math.abs(Math.sin(t * 5 + i * 1.7)) * 26;
       } else if (o.t === 'carrusel') {
         const a = t * 0.9 + (i / qui.length) * Math.PI * 2;
@@ -2315,7 +2316,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     ctx.lineCap = 'butt';
     // guixeta, al costat de l'entrada
     const im = img('img/parc/parquing-caseta.webp');
-    if (im) { const c = iso(o.x + 2.45, o.y + 6.45); dibuixaObjecte(ctx, im, 'parquing-caseta', c.x, c.y, WP * 0.95, 0); }
+    if (im) { const c = iso(o.x + 2.55, o.y + 6.5); dibuixaObjecte(ctx, im, 'parquing-caseta', c.x, c.y, WP * 0.6, 0); }   // a escala de la gent
   }
   // un vehicle a la posició (u, v) del món; dir: 0 ↙ (+y), 1 ↘ (+x), 2 ↗ (−y), 3 ↖ (−x)
   function dibuixaVehicle(nom, u, v, dir, ample = 62, alfa = 1) {
@@ -2399,7 +2400,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   // Autobusos (imatges grans, d'una sola direcció): punt de terra del mig del bus a la imatge i
   // amplada horitzontal del costat llarg, per escalar-lo a BUS.llargada caselles.
   const BUS = {
-    llargada: 2.3, para: 1,
+    llargada: 1.2, para: 1,
     davant: { img: 'autobus-davant', centre: [255, 353], llarg: 375 },
     darrere: { img: 'autobus-darrere', centre: [278.5, 351.5], llarg: 382 },
   };
@@ -2408,8 +2409,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const k = (BUS.llargada * WP / 2) / b.llarg, p = iso(u, v);
     ctx.drawImage(im, p.x - b.centre[0] * k, p.y - b.centre[1] * k, im.naturalWidth * k, im.naturalHeight * k);
   }
-  // Marquesina: punts de terra dels dos pals de davant a la imatge, que van a (x+0,15, y+0,95) i (x+1,85, y+0,95)
-  const MARQUESINA = { img: 'img/parc/parada-bus-v2.webp', esq: [107, 343], dre: [328.5, 457], u: [0.15, 1.85], v: 0.95 };
+  // Marquesina: punts de terra dels dos pals de davant a la imatge, que van a (x+0,7, y+1,6) i (x+1,3, y+1,6)
+  const MARQUESINA = { img: 'img/parc/parada-bus-v2.webp', esq: [107, 343], dre: [328.5, 457], u: [0.7, 1.3], v: 1.6 };
   function dibuixaParada(o) {
     const im = img(MARQUESINA.img); if (!im) return;
     const m = MARQUESINA, p = iso(o.x + m.u[0], o.y + m.v), q = iso(o.x + m.u[1], o.y + m.v), k = (q.x - p.x) / (m.dre[0] - m.esq[0]);

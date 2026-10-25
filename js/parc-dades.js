@@ -197,6 +197,14 @@ export const OBJECTES = {
   font: { nom: 'Font', cat: 'decoracio', img: 'font', mida: 1, frac: 0.9, preu: 2000, bellesa: 5, text: 'La decoració més bonica.' },
   flors: { nom: 'Parterre de flors', cat: 'decoracio', img: 'flors', mida: 1, frac: 0.82, preu: 300, bellesa: 3, text: 'La decoració que més agrada.' },
 };
+// Proporcions: les imatges de les atraccions i les parades tenen els detalls (taquilles, torniquets, tanques)
+// al doble de la mida de la gent. Es dibuixen al 80 % (ocupen les mateixes caselles). Lavabos, restaurants,
+// entrades i decoració ja estan a l'escala de la gent i no es toquen.
+export const ESCALA_ATRACCIONS = 0.8;
+for (const d of Object.values(OBJECTES)) {
+  if (d.ressort) continue;
+  if (d.cat === 'atraccio' || (d.cat === 'menjar' && d.mida === 1) || d.cat === 'botiga') d.frac *= ESCALA_ATRACCIONS;
+}
 export const srcObjecte = (t) => `img/parc/${OBJECTES[t].img}.webp`;
 
 // ---------- terrenys al mapa de la ciutat ----------
