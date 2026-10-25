@@ -170,12 +170,13 @@ export const OBJECTES = {
   'botiga-records': { nom: 'Botiga de records', cat: 'botiga', img: 'botiga-records', mida: 1, frac: 0.9, preu: 6000, manteniment: 60,
     cost: 4, preuJust: 10, text: 'Peluixos, gorres i tasses. Marge alt, però només hi compra qui s\'ho ha passat bé. Cada record et costa 4 €.' },
 
-  parquing: { nom: 'Pàrquing', cat: 'servei', img: 'parquing', mida: 2, frac: 1, preu: 6000, manteniment: 30, places: 20, sensecami: true,
-    text: '20 places per a cotxes. Sense pàrquing, només hi ha 15 places al carrer i molta gent no pot venir. Tu decideixes quant costa aparcar.' },
-  'parquing-caseta': { nom: 'Caseta del pàrquing', cat: 'servei', img: 'parquing-caseta', mida: 1, frac: 0.82, preu: 2500, manteniment: 40, sensecami: true,
-    text: 'Sense caseta, el pàrquing és gratis. Amb una caseta, cobres el preu que tu decideixis per cada cotxe (el manteniment inclou el sou del cobrador).' },
-  'parada-bus': { nom: 'Parada d\'autobús', cat: 'servei', img: 'parada-bus', mida: 2, frac: 0.95, preu: 15000, manteniment: 120, sensecami: true,
-    text: 'Una línia d\'autobús des de la ciutat: ve més gent i menys gent necessita aparcar.' },
+  // fora del parc: el pàrquing ocupa una parcel·la sencera (7x7) de la franja de davant, amb entrada i guixeta
+  parquing: { nom: 'Pàrquing', cat: 'servei', img: 'parquing', mida: 7, frac: 1, preu: 15000, manteniment: 110, places: 40, sensecami: true, exterior: true, parcella: true,
+    text: '40 places en una parcel·la de fora del parc, amb una sola entrada des de la carretera i la guixeta on es cobra. Sense pàrquing, només hi ha 15 places al carrer. Tu decideixes quant costa aparcar (0 € = gratis).' },
+  // ja no es construeix: ara la guixeta forma part de cada pàrquing (es manté per a les partides antigues)
+  'parquing-caseta': { nom: 'Caseta del pàrquing', cat: 'servei', img: 'parquing-caseta', mida: 1, frac: 0.82, preu: 2500, manteniment: 40, sensecami: true, obsolet: true },
+  'parada-bus': { nom: 'Parada d\'autobús', cat: 'servei', img: 'parada-bus', mida: 2, frac: 0.95, preu: 15000, manteniment: 120, sensecami: true, exterior: true, carretera: true,
+    text: 'Va a fora del parc, a la vorera de la carretera. Una línia d\'autobús des de la ciutat: ve més gent i menys gent necessita aparcar.' },
   lavabos: { nom: 'Lavabos', cat: 'servei', img: 'lavabos', mida: 1, frac: 0.92, preu: 4000, manteniment: 45,
     text: 'Sense lavabos, els visitants s\'enfaden molt (i marxen).' },
   'primers-auxilis': { nom: 'Infermeria', cat: 'servei', img: 'primers-auxilis', mida: 1, frac: 0.9, preu: 8000, manteniment: 90,
@@ -301,46 +302,61 @@ export const CAMPANYES = {
 export const NOMS_VISITANTS = ['Pau', 'Martina', 'Jan', 'Júlia', 'Marc', 'Laia', 'Pol', 'Aina', 'Arnau', 'Carla', 'Biel', 'Noa', 'Àlex', 'Ona', 'Nil', 'Emma',
   'Joan', 'Maria', 'Hugo', 'Sara', 'Oriol', 'Paula', 'Roc', 'Abril', 'Èric', 'Clàudia', 'Jordi', 'Núria', 'Iker', 'Mireia', 'Toni', 'Montse', 'Ferran', 'Rosa'];
 
+// ---------- FORA DEL PARC: carretera, pàrquings i parada d'autobús ----------
+// Davant del parc (costat +Y) hi ha una franja de terreny de fora (7 files) i, després, la carretera.
+// Els pàrquings ocupen una parcel·la sencera d'aquesta franja i tenen una sola entrada des de la carretera,
+// amb la guixeta on es cobra. La parada d'autobús va a la vorera, tocant la carretera.
+export const EXTERIOR = { y0: 21, files: 7, bx: [-3, 3] };   // caselles y = 21..27, parcel·les bx = -3..3
+export const CARRETERA = { y: 28, amplada: 2 };                 // la carretera ocupa y = 28..29
+
 // ---------- RESSORT DEL FAR WEST ----------
-// Un terreny a part (2x2 parcel·les = 14x14 caselles) enganxat a la dreta del parc, amb la seva pròpia
-// entrada (l'arc) i una porta directa al parc. La gent s'hi passeja, es banya a les piscines, menja a
-// les terrasses i s'hi pot quedar a dormir (ingrés per nit). Tot es dona en caselles relatives (u, v).
+// Un terreny a part (14x14 caselles, més el replà de l'arc) a l'esquerra del parc, separat per una franja de gespa.
+// Només té una entrada: l'arc, que dona a una passarel·la fins a una porta de la muralla del parc.
+// La gent s'hi passeja, es banya a les piscines, menja a les terrasses, compra a la botiga i s'hi pot quedar a dormir.
+// Tot es dona en caselles relatives (u, v) a partir de la cantonada (x0, y0).
 export const RESSORT = {
   preu: 280000, manteniment: 2600, mida: 14, habitacions: 90, preuNit: 75, atractiu: 6,
-  img: 'resort', versio: 2,
-  // cantonades de terra a la imatge que van a l'esquerra, a baix i a la dreta de la pantalla.
-  // La imatge es dibuixa en mirall: així la porteta queda a la vora que toca el parc i l'arc mira a la carretera.
-  punts: [[1596.4, 377.6], [800.5, 785.1], [2.7, 377.2]],
-  // caselles per on es pot caminar (els camins de la imatge)
+  img: 'resort', versio: 3,
+  // posició fixa: prou lluny perquè hi càpiga la parcel·la esquerra del parc (x = -7) i quedi espai entremig
+  x0: -26, y0: 7,
+  // cantonades de terra a la imatge: esquerra (0,14), baix (14,14) i dreta (14,0)
+  punts: [[17, 448], [888, 868], [1758, 448]],
+  // replà de l'arc (fora del quadrat de 14x14)
+  extra: [[14, 4], [14, 5], [14, 6], [14, 7], [15, 4], [15, 5], [15, 6], [15, 7]],
+  sortida: [15, 5],    // última casella del replà: d'aquí surt la passarel·la cap al parc (cap a +X)
+  // caselles per on es pot caminar (els camins de color sorra de la imatge)
   camins: [
-    [5, 4], [6, 4], [7, 4], [7, 5], [7, 6], [8, 5], [8, 6], [5, 5], [5, 6], [5, 7], [6, 7], [4, 5],   // plaça de la font
-    [8, 7], [9, 7], [10, 7], [11, 7], [12, 7], [13, 7],                                                 // avinguda fins a la porta del parc
-    [9, 8], [9, 9], [9, 10], [9, 11], [9, 12], [9, 13], [8, 13], [7, 13],                               // passeig fins a l'arc
-    [9, 5], [9, 4], [10, 4],                                                                            // cap al saloon
-    [4, 6], [4, 7], [4, 8], [3, 7], [2, 7], [2, 8],                                                     // cap a la piscina i la casa de l'est
+    [3, 6], [4, 6], [4, 5], [5, 5], [6, 5], [4, 7], [4, 8], [5, 7], [6, 7], [7, 6], [7, 7], [4, 4],    // plaça de la font i escala de l'hotel
+    [2, 6], [2, 5],                                                                                       // cap a la casa de l'oest
+    [4, 9], [5, 9], [5, 10],                                                                              // davant del saloon
+    [6, 8], [7, 8], [8, 8], [8, 9], [9, 9], [10, 9], [10, 10], [11, 10], [9, 10], [8, 10], [7, 10], [7, 11], // cap a les cabanes del sud
+    [6, 4], [7, 4], [8, 4], [7, 3], [8, 3], [8, 2], [9, 2], [9, 1], [10, 1], [11, 1], [12, 1], [12, 2], [12, 3], [13, 3], // cap a l'est
+    [13, 4], [14, 4], [14, 5], [15, 5],                                                                   // l'arc
   ],
-  porta: [13, 7],      // casella del ressort que toca el parc (la porteta)
-  entrada: [7, 13],    // l'arc del ressort, que dona a la carretera
-  // instal·lacions: (u, v) de la casella; la gent hi arriba des d'un camí del costat
+  // instal·lacions: [tipus, u, v, (piscina: quina aigua)]. La gent hi arriba des d'un camí del costat.
   llocs: [
-    ['resort-hotel', 4, 4], ['resort-hotel', 1, 8], ['resort-hotel', 12, 6],
-    ['resort-piscina', 4, 9], ['resort-piscina', 8, 11], ['resort-piscina', 7, 3],
-    ['resort-restaurant', 10, 3], ['resort-restaurant', 8, 10],
+    ['resort-hotel', 4, 3], ['resort-hotel', 1, 5], ['resort-hotel', 9, 0], ['resort-hotel', 11, 0],
+    ['resort-hotel', 9, 11], ['resort-hotel', 11, 11], ['resort-hotel', 6, 11],
+    ['resort-piscina', 3, 7, 'petita'], ['resort-piscina', 8, 5, 'gran'], ['resort-piscina', 11, 9, 'gran'],
+    ['resort-restaurant', 3, 9], ['resort-restaurant', 9, 8], ['resort-restaurant', 7, 2],
+    ['resort-botiga', 6, 10],
   ],
-  // on neden, per a cada piscina (mateix ordre que a 'llocs')
-  aigua: [
-    [[4.5, 9.5], [5.3, 9.6], [4.8, 10.4], [5.5, 10.5], [4.5, 11.2]],
-    [[6.5, 11.4], [7.3, 11.5], [6.8, 12.2], [7.6, 12.3], [8.3, 11.6]],
-    [[7.4, 2.5], [7.6, 3.4], [8.3, 3.4], [7.2, 2.1]],
-  ],
+  // punts de l'aigua on neden (u, v)
+  aigua: {
+    petita: [[3.0, 7.67], [3.38, 7.62], [3.64, 8.2], [3.6, 8.6], [3.96, 8.31], [3.86, 7.74], [2.17, 7.9], [1.56, 8.44], [3.38, 7.95], [2.73, 8.47], [1.44, 7.86]],
+    gran: [[9.47, 4.16], [12.53, 7.37], [12.09, 7.31], [12.3, 4.14], [12.23, 4.54], [9.33, 4.54], [10.91, 4.92], [10.58, 4.72], [10.05, 4.59], [11.65, 4.08], [9.45, 4.88], [11.86, 6.77], [11.42, 4.42], [11.96, 4.27], [9.75, 4.98], [12.53, 5.0], [11.69, 3.61], [11.78, 7.16], [9.88, 4.18], [11.29, 5.08], [11.53, 4.74], [12.74, 7.72], [12.62, 4.54], [9.72, 4.55], [11.91, 8.26], [12.27, 8.43], [12.05, 3.89], [10.43, 5.0], [10.16, 5.57], [11.15, 3.18], [12.25, 5.45], [12.36, 3.77], [10.36, 8.71], [10.19, 4.25]],
+  },
 };
 Object.assign(OBJECTES, {
   resort: { nom: 'Ressort del Far West', cat: 'ressort', img: 'resort', mida: 14, frac: 1, preu: RESSORT.preu, manteniment: RESSORT.manteniment, ressort: true, terra: true,
-    text: 'Hotels, cabanes, piscines i restaurants. La gent s\'hi passeja, s\'hi banya i s\'hi queda a dormir.' },
+    text: 'Hotel, cabanes, piscines, restaurants i botiga. La gent s\'hi passeja, s\'hi banya i s\'hi queda a dormir.' },
+  // dins: minuts que s'hi està la gent (a dins no se la veu; a la piscina es veu nedant)
   'resort-piscina': { nom: 'Piscina del ressort', cat: 'atraccio', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
-    capacitat: 25, durada: 25, atractiu: 7, emocio: 3, intensitat: 0, mareig: 0, preuJust: 3, text: 'Un bon bany per refrescar-se.' },
+    capacitat: 25, durada: 25, dins: 25, atractiu: 4, emocio: 3, intensitat: 0, mareig: 0, preuJust: 3, text: 'Un bon bany per refrescar-se.' },
   'resort-restaurant': { nom: 'Terrassa del ressort', cat: 'menjar', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
-    cost: 3, preuJust: 9, efecte: { gana: 70, set: 40 }, satisfa: 9, rapid: true, text: 'Menjar del Far West a la terrassa.' },
+    cost: 3, preuJust: 9, efecte: { gana: 70, set: 40 }, satisfa: 9, rapid: true, dins: 14, text: 'Menjar del Far West a la terrassa.' },
+  'resort-botiga': { nom: 'Botiga del ressort', cat: 'botiga', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
+    cost: 4, preuJust: 10, dins: 6, text: 'Barrets de vaquer, botes i records del Far West.' },
   'resort-hotel': { nom: 'Hotel del ressort', cat: 'hotel', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
     text: 'Habitacions per passar-hi la nit.' },
 });

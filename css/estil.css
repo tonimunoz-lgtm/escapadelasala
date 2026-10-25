@@ -778,3 +778,6 @@ body:has(.parc) .avisos { left: 50%; transform: translateX(-50%); top: calc(70px
   .parc-eina { width: 54px; font-size: .6rem; }
   .parc-cataleg, .parc-ajuda, .parc-xip { left: 126px; }
 }
+
+/* Oficines: la que toca ara durant la constitució */
+.fila-oferta.destacada { outline: 3px solid #f2891d; background: #fff5e8; }
