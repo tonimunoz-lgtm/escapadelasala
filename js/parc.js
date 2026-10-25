@@ -1738,10 +1738,15 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const cu = o.x + m / 2, cv = o.y + m / 2, r = [[], []];
     qui.forEach((v, i) => {
       let u = cu, w = cv, alt = 0;
-      if (o.t === 'llits-elastics') {
-        const e = OBJECTES[o.t].frac / 0.97;   // els saltadors segueixen la mida del llit
-        const [du, dw] = [[-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22]][i].map((q) => q * e);
-        u += du; w += dw; alt = 6 + Math.abs(Math.sin(t * 5 + i * 1.7)) * 26;
+      if (d.saltadors) {
+        // cadascú al seu trampolí, amb la mateixa escala i posició que la imatge de la vista que toca
+        const im = img(srcObjecte(o.t, o.gir)); if (!im) return;
+        const [px, py] = d.saltadors[(o.gir || 0) % 4][i % 4], c = iso(cu, cv);
+        const amp = WP * m, ww = amp * d.frac, k = ww / 360, hh = ww * im.naturalHeight / im.naturalWidth;
+        const esq = c.x - ww * (d.punta ?? 0.5), dalt = c.y + (amp / 4) * d.frac - hh;
+        alt = 1 + Math.abs(Math.sin(t * 5 + i * 1.7)) * 11;   // salts d'uns 60 cm a l'escala de la gent
+        r[1].push({ v, x: esq + px * k, y: dalt + py * k + 4 - alt });   // a sobre de la imatge: el trampolí és a terra
+        return;
       } else if (o.t === 'carrusel') {
         const a = t * 0.9 + (i / qui.length) * Math.PI * 2;
         u += Math.cos(a) * m * 0.3; w += Math.sin(a) * m * 0.3; alt = 14 + Math.sin(t * 3 + i) * 5;
