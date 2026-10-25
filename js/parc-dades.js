@@ -139,6 +139,13 @@ export const OBJECTES = {
       seients: [0.27, 0.56], velocitats: { canal: 0.9, pujada: 0.3, cim: 0.5, baixada: 2.6, esquitx: 1.2 },
       cami: [[208.1, 420.4, "canal"], [249.8, 412.1, "canal"], [333.0, 391.3, "canal"], [416.3, 366.3, "canal"], [482.9, 328.8, "pujada"], [532.8, 295.5, "pujada"], [574.4, 264.7, "pujada"], [607.7, 233.1, "pujada"], [636.9, 179.0, "pujada"], [666.0, 151.5, "cim"], [691.0, 195.6, "baixada"], [724.3, 266.4, "baixada"], [761.8, 349.7, "baixada"], [799.2, 432.9, "baixada"], [832.5, 507.8, "baixada"], [850.8, 546.1, "esquitx"], [890.8, 559.5, "canal"], [940.7, 572.8, "canal"], [969.9, 586.9, "canal"], [957.4, 601.1, "canal"], [899.1, 597.7, "canal"], [832.5, 592.8, "canal"], [749.3, 584.4, "canal"], [666.0, 574.4, "canal"], [582.8, 564.4, "canal"], [516.2, 557.8, "canal"], [449.6, 552.8, "canal"], [383.0, 539.5, "canal"], [316.4, 519.5, "canal"], [249.8, 497.8, "canal"], [199.8, 482.9, "canal"], [158.2, 466.2, "canal"], [131.5, 441.2, "canal"], [148.2, 416.3, "canal"], [179.0, 411.3, "canal"]] },
     capacitat: 72, durada: 12, atractiu: 13, emocio: 7, intensitat: 5, mareig: 2, preuJust: 7.5, text: 'Una gran baixada i... xof! Pot marejar.' },
+  // Muntanya russa de llançament: un sol vagó llarg (6 files) que surt disparat, puja la torre vertical i baixa en picat
+  llancadora: { nom: 'Torre llançadora', cat: 'atraccio', img: 'llancadora-base', mida: 4, frac: 0.97, preu: 160000, manteniment: 1300,
+    anim: { tipus: 'tren', base: 'llancadora-base', davant: 'llancadora-davant', loco: 'llancadora-vago', vago: 'llancadora-vago', vagons: 0,
+      llargada: 200, espai: 0, seients: [0.107, 0.221, 0.336, 0.441, 0.546, 0.651], cap: 0.075,
+      velocitats: { estacio: 0.35, corba: 0.8, llancament: 4, pujada: 1.6, cim: 0.35, baixada: 3.6, frenada: 0.7 },
+      cami: [[858, 954, "estacio"], [738, 934, "estacio"], [618, 914, "estacio"], [498, 894, "estacio"], [428, 879, "corba"], [358, 846, "corba"], [278, 821, "corba"], [218, 796, "corba"], [193, 771, "corba"], [213, 746, "llancament"], [278, 731, "llancament"], [378, 741, "llancament"], [478, 754, "llancament"], [578, 761, "llancament"], [678, 768, "llancament"], [758, 771, "llancament"], [818, 756, "pujada"], [853, 726, "pujada"], [873, 676, "pujada"], [888, 606, "pujada"], [898, 506, "pujada"], [906, 386, "pujada"], [912, 266, "pujada"], [916, 146, "pujada"], [918, 66, "cim"], [926, 26, "cim"], [943, 11, "cim"], [968, 14, "cim"], [986, 36, "baixada"], [990, 136, "baixada"], [991, 286, "baixada"], [992, 436, "baixada"], [993, 586, "baixada"], [990, 736, "baixada"], [983, 846, "frenada"], [968, 896, "frenada"], [938, 926, "frenada"], [898, 954, "estacio"]] },
+    capacitat: 12, durada: 5, atractiu: 18, emocio: 10, intensitat: 10, mareig: 4, preuJust: 10, text: 'Et dispara de 0 a 100 en dos segons i et puja per una torre vertical altíssima. Només per als més valents!' },
   'muntanya-russa-gegant': { nom: 'Muntanya russa gegant', cat: 'atraccio', img: 'muntanya-russa-gegant', mida: 4, frac: 0.97, preu: 140000, manteniment: 1100,
     // peces mòbils: la muntanya russa sense tren + un tren (locomotora i 4 vagons) que recorre el traçat de la via.
     // cami: punts de la via (en píxels de la imatge base) i el tipus de tram, que en marca la velocitat.
@@ -308,7 +315,7 @@ export const RECERCA_NIVELLS = {
 export const RECERCA_ORDRE = [
   ['sinia-gran', 4], ['torre-caiguda', 5], ['muntanya-russa-petita', 7], ['cascades', 8], ['restaurant-mediterrani', 3], ['restaurant-oest', 3],
   ['rius-rapids', 10], ['restaurant-pirates', 4], ['restaurant-selva', 4], ['troncs', 12], ['restaurant-medieval', 5],
-  ['restaurant-espai', 5], ['entrada-gran', 6], ['muntanya-russa-gegant', 16],
+  ['restaurant-espai', 5], ['entrada-gran', 6], ['muntanya-russa-gegant', 16], ['llancadora', 18],
 ];
 export const PER_INVESTIGAR = new Set(RECERCA_ORDRE.map(([t]) => t));
 

@@ -1988,10 +1988,12 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       ctx.translate(esq + p.x * k, dalt + p.y * k); ctx.rotate(p.ang);
       if (!p.loop && Math.cos(p.ang) < 0) ctx.scale(1, -1);   // anant cap a l'esquerra (fora dels loopings), el vagó va dret
       // dos passatgers per vagó, que treuen el cap per sobre dels seients
-      for (let j = 0; j < 2; j++) {
-        const v = passatgers[i * 2 + j];
+      // seients: on cau cada fila dins del vagó (per defecte, dos per vagó); cap: amplada de cada cap
+      const seients = a.seients || [0.2, 0.54], amplCap = lw * (a.cap || 0.22);
+      for (let j = 0; j < seients.length; j++) {
+        const v = passatgers[i * seients.length + j];
         const pim = v && img(`img/animacions/${v.img}.webp`);
-        if (pim) { const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4; ctx.drawImage(pim, fw, fh, fw, fh * 0.55, -lw / 2 + lw * (0.2 + j * 0.34), -lh * 1.05, lw * 0.22, lh * 0.55); }
+        if (pim) { const fw = pim.naturalWidth / 4, fh = pim.naturalHeight / 4, hc = a.seients ? amplCap * 1.4 : lh * 0.55; ctx.drawImage(pim, fw, fh, fw, fh * 0.55, -lw / 2 + lw * seients[j], a.seients ? -lh * 0.92 - hc * 0.6 : -lh * 1.05, amplCap, hc); }
       }
       ctx.drawImage(im, -lw / 2, -lh * 0.92, lw, lh);
       ctx.restore();

@@ -38,6 +38,9 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
 - `vistes: 4` a OBJECTES → imatges `img/parc/vistes/<img>-<0..3>.webp` (0 davant avall-esquerra, 1 avall-dreta, 2 amunt-dreta, 3 amunt-esquerra).
   `srcObjecte(t, gir)`, `girsDe(t)`; R o «↻ Gira» passen per les 4. Sense `vistes`, el gir continua sent un mirall.
   Amb 4 vistes: gelats, crispetes, hot-dogs, begudes, banc, casa-terror, primers-auxilis, caixer, globus, botiga-records, llits-elastics, lavabos.
+- Atracció nova: `llancadora` (Torre llançadora, 4x4, recerca 18 punts després de la gegant): anim `tren` amb un sol vagó
+  (`vagons: 0`, `seients` amb 6 files, `cap`), recorregut estació → corba → llançament → torre → cim → baixada → frenada.
+  Imatges `llancadora-base/-davant/-vago.webp` (fons blanc tret, també els forats tancats de la torre).
 - Atracció nova: `cascades` (Cascades encantades, 3x3, 4 vistes, sense peces mòbils, recerca 8 punts).
 - Pendent: muntanya russa de fusta i pavelló de xoc (cal base sense vehicles + recorregut/punts per a cada vista).
 
