@@ -82,8 +82,14 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
 - `prova.html` (parc sol), `prova-mon.html` (món sol). El joc sencer es prova amb Playwright interceptant `js/firebase-config.js` amb `apiKey: ''` (mode de prova).
 - `window.parcApi.aPantalla(u,v)` i `.estat()` (retorn d'`obrirParc`) per a proves automàtiques.
 
+## Mode nit
+- `foscor` (0 dia, 1 nit): automàtic entre les 17:00 i les 19:00 (minuts 420–540); botó 🕔/🌙/☀️ a la barra (auto, nit, dia).
+- `ctx.drawImage` està embolcallat: de nit, a cada imatge s'hi dibuixa a sobre la seva versió nocturna (`versioNit`: fosca i blavosa
+  menys els llums = grocs càlids molt brillants en taques petites; la densitat del voltant descarta camins de sorra i parets grogues)
+  i una lluentor difuminada amb 'lighter'. La gent i els cotxes no fan llum. El terra s'enfosqueix amb un vel abans dels objectes
+  (`nitActiva` controla quan s'aplica). Halos: fanals, clapes a terra sota atraccions, fars dels cotxes, de l'autobús i del tren.
+
 ## Pendent / idees
-- Mode nit (enfosquir cap al vespre, encendre `llums`, fanals i parades).
 - Animar la casa del terror.
 - Mostrar el ressort i el pàrquing a la miniatura del món.
 - Àrees temàtiques (Medieval, Far West, Pirates, Selva, Espai, Mediterrani).

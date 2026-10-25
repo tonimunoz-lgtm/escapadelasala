@@ -114,6 +114,13 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   const canvas = h('canvas', { class: 'parc-canvas', 'aria-label': 'El teu parc d\'atraccions' });
   let vEsdev = null, botoObrir = null, vValoracio = null, infoVisitant = null;
   const vDiners = h('strong', {}), vVisit = h('strong', {}), vSatisf = h('strong', {}), vDia = h('strong', {});
+  // mode nit: «auto» segueix el rellotge (fosqueja a partir de les 17:00); també es pot forçar dia o nit
+  let modeNit = 'auto';
+  const MODES_NIT = { auto: ['🕔', 'Llum segons l\'hora (fosqueja cap al vespre)'], nit: ['🌙', 'Sempre de nit'], dia: ['☀️', 'Sempre de dia'] };
+  const botoNit = h('button', { class: 'parc-vel parc-nit', title: MODES_NIT.auto[1], onclick: () => {
+    modeNit = { auto: 'nit', nit: 'dia', dia: 'auto' }[modeNit];
+    botoNit.textContent = MODES_NIT[modeNit][0]; botoNit.title = MODES_NIT[modeNit][1];
+  } }, MODES_NIT.auto[0]);
   const botoVel = [0, 1, 2, 4].map((v) => h('button', { class: 'parc-vel', title: v ? `Velocitat x${v}` : 'Pausa', onclick: () => posaVelocitat(v) }, v === 0 ? '⏸' : v === 1 ? '▶' : v === 2 ? '⏩' : '⏭'));
   const barra = h('header', { class: 'parc-barra' },
     h('button', { class: 'btn parc-tornar', onclick: tancar }, '← Món'),
@@ -128,7 +135,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       if (pas() !== 'obertura') return avis(pas() === 'atraccio' ? 'Abans d\'obrir, construeix una atracció i connecta-la amb un camí fins a l\'entrada.' : 'Abans d\'obrir, acaba els tràmits de l\'empresa.', 'error');
       parc.obert = true; obrePortes(); guarda(true); refrescaBarra();
     } }, '🎉 Obre el parc!'),
-    h('span', { class: 'parc-vels' }, ...botoVel));
+    h('span', { class: 'parc-vels' }, botoNit, ...botoVel));
   const EINES = [
     ['mou', '✋', 'Mou'],
     ['cami', '🟫', 'Camins'],
@@ -160,6 +167,72 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   const arrel = h('div', { class: `parc${nomesLectura ? ' parc-lectura' : ''}` }, canvas, barra, eines, cataleg, info, ajuda, xip, zoom);
   document.body.append(arrel);
   const ctx = canvas.getContext('2d');
+  // ---------- mode nit ----------
+  // De nit, cada imatge es dibuixa dues vegades: la normal i, a sobre (amb opacitat = foscor), una versió
+  // nocturna on tot és fosc i blavós menys els llums (finestres, bombetes, fanals: els colors grocs i
+  // taronges molt brillants), més una lluentor difuminada d'aquests llums. Es fa en un sol lloc:
+  // ctx.drawImage. El terra (prat, camins, carretera) s'enfosqueix amb un vel abans de dibuixar els objectes.
+  let foscor = 0, nitActiva = false;
+  const nits = new WeakMap();
+  function versioNit(im) {
+    if (!(im instanceof HTMLImageElement) || !im.naturalWidth) return null;
+    let n = nits.get(im); if (n !== undefined) return n;
+    const w = im.naturalWidth, h = im.naturalHeight;
+    const senseLlum = /animacions\/(persona|cotxe|familiar|cabrio)/.test(im.src);   // la gent i els cotxes no fan llum
+    try {
+      const tela = document.createElement('canvas'); tela.width = w; tela.height = h;
+      const c = tela.getContext('2d', { willReadFrequently: true }); c.drawImage(im, 0, 0);
+      const dades = c.getImageData(0, 0, w, h), p = dades.data;
+      const llum = new ImageData(w, h), q = llum.data;
+      let quants = 0;
+      // 1) com de «llum» és cada píxel: groc càlid molt brillant, amb una mica de blau (la pintura groga en té
+      //    molt poc, i la sorra i la palla no són tan brillants)
+      const punt = new Float32Array(w * h);
+      if (!senseLlum) for (let j = 0, i = 0; j < w * h; j++, i += 4) {
+        if (!p[i + 3]) continue;
+        const r = p[i], g = p[i + 1], b = p[i + 2];
+        punt[j] = Math.max(0, Math.min(1, (r - 236) / 14, (g - 172) / 30, (b - 55) / 30, (r - b - 62) / 30));
+      }
+      // 2) els llums són taques petites (finestres, bombetes, fanals): si al voltant gairebé tot és del mateix
+      //    color (un camí de sorra, una paret groga), no és un llum. Ho mirem amb una taula de sumes.
+      const rad = Math.max(4, Math.round(w / 220)), suma = new Float32Array((w + 1) * (h + 1));
+      for (let y = 0; y < h; y++) { let fila = 0; for (let x = 0; x < w; x++) { fila += punt[y * w + x] > 0.35 ? 1 : 0; suma[(y + 1) * (w + 1) + x + 1] = suma[y * (w + 1) + x + 1] + fila; } }
+      const densitat = (x, y) => {
+        const x0 = Math.max(0, x - rad), y0 = Math.max(0, y - rad), x1 = Math.min(w, x + rad + 1), y1 = Math.min(h, y + rad + 1);
+        return (suma[y1 * (w + 1) + x1] - suma[y0 * (w + 1) + x1] - suma[y1 * (w + 1) + x0] + suma[y0 * (w + 1) + x0]) / ((x1 - x0) * (y1 - y0));
+      };
+      for (let i = 0; i < p.length; i += 4) {
+        if (!p[i + 3]) continue;
+        const j = i / 4, r = p[i], g = p[i + 1], b = p[i + 2];
+        let sc = punt[j];
+        if (sc > 0) { const dn = densitat(j % w, (j / w) | 0); if (dn > 0.45) sc *= Math.max(0, (0.7 - dn) / 0.25); }
+        p[i] = r * 0.3 + 4 + (r - (r * 0.3 + 4)) * sc;
+        p[i + 1] = g * 0.34 + 6 + (g - (g * 0.34 + 6)) * sc;
+        p[i + 2] = b * 0.5 + 16 + (b - (b * 0.5 + 16)) * sc;
+        if (sc > 0.35) { q[i] = 255; q[i + 1] = Math.min(255, g + 30); q[i + 2] = Math.min(255, b + 20); q[i + 3] = p[i + 3] * sc; quants++; }
+      }
+      c.putImageData(dades, 0, 0);
+      let brill = null;
+      if (quants > 4) {
+        const m = document.createElement('canvas'); m.width = w; m.height = h; m.getContext('2d').putImageData(llum, 0, 0);
+        brill = document.createElement('canvas'); brill.width = w; brill.height = h;
+        const cb = brill.getContext('2d'); cb.filter = `blur(${Math.max(2, Math.round(w / 160))}px)`; cb.drawImage(m, 0, 0); cb.drawImage(m, 0, 0);
+      }
+      n = { nit: tela, brill };
+    } catch (e) { n = null; }   // (imatges d'un altre origen: no es poden llegir)
+    nits.set(im, n);
+    return n;
+  }
+  const dibuixaImatge = ctx.drawImage.bind(ctx);
+  ctx.drawImage = function (im, ...args) {
+    dibuixaImatge(im, ...args);
+    if (!nitActiva || foscor < 0.02) return;
+    const n = versioNit(im); if (!n) return;
+    const a = ctx.globalAlpha, op = ctx.globalCompositeOperation;
+    ctx.globalAlpha = a * foscor; dibuixaImatge(n.nit, ...args);
+    if (n.brill) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a * foscor * 0.85; dibuixaImatge(n.brill, ...args); }
+    ctx.globalAlpha = a; ctx.globalCompositeOperation = op;
+  };
 
   // ---------- estat d'execució (no es desa) ----------
   let velocitat = 1, eina = 'mou', aColocar = null, hover = null, movent = null, girNou = 0;
@@ -1547,6 +1620,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath();
   }
   function dibuixa() {
+    nitActiva = false;
     const { w, h: ht, dpr } = mida();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#3f6f2c'; ctx.fillRect(0, 0, w, ht);
@@ -1601,6 +1675,13 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       }
     }
     for (const p of setVies) { const [x, y] = p.split(',').map(Number); dibuixaVia(x, y); }
+    if (foscor > 0.01) {   // vel de nit sobre el terra (els objectes ja porten la seva versió de nit)
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(8,16,48,${0.66 * foscor})`; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+      dibuixaLlumsTerra();
+    }
+    nitActiva = true;
     dibuixaRessort();
     // previsualització del que es col·loca
     if (hover && (aColocar || eina === 'cami' || eina === 'vies' || eina === 'enderroca')) {
@@ -1646,6 +1727,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       if (!ok) { ctx.font = '800 22px "Baloo 2", system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#d6402f'; ctx.fillText(parc.diners < (movent ? movent.cost : OBJECTES[aColocar].preu) ? 'No tens prou diners' : 'Aquí no hi cap', c.x, c.y + 8); }
     });
     for (const d of [...capes.keys()].sort((a, b) => a - b)) for (const f of capes.get(d)) f();
+    nitActiva = false;
+    if (foscor > 0.01) dibuixaLlumsNit();
     dibuixaCrits();
     // textos flotants (diners)
     const ara = performance.now();
@@ -1907,6 +1990,43 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     ctx.drawImage(tela, a.x - WP / 2, a.y, WP, WP / 2 + E.gruix);
   }
 
+  // ---------- llums de nit ----------
+  // Un halo de llum (es suma als colors de sota)
+  function halo(x, y, r, color, alfa) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(${color},${alfa})`); g.addColorStop(0.35, `rgba(${color},${alfa * 0.45})`); g.addColorStop(1, `rgba(${color},0)`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  // a terra: les clapes de llum dels fanals i dels llums de les atraccions (sota els objectes)
+  function dibuixaLlumsTerra() {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const o of parc.objectes) {
+      if (!colocat(o)) continue;
+      const d = OBJECTES[o.t], m = d.mida;
+      if (o.t === 'fanal') { const c = iso(o.x + 0.5, o.y + 0.5); ctx.save(); ctx.translate(c.x, c.y); ctx.scale(1, 0.5); halo(0, 0, 150, '255,190,110', 0.32 * foscor); ctx.restore(); }
+      else if (d.cat === 'atraccio' || d.cat === 'menjar' || d.cat === 'botiga' || d.cat === 'fix') {
+        const c = iso(o.x + m / 2, o.y + m / 2); ctx.save(); ctx.translate(c.x, c.y); ctx.scale(1, 0.5); halo(0, 0, WP * m * 0.75, '255,200,130', 0.16 * foscor); ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+  // a sobre de tot: els vidres dels fanals i els fars dels cotxes
+  function dibuixaLlumsNit() {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const o of parc.objectes) {
+      if (o.t !== 'fanal' || !colocat(o)) continue;
+      const d = OBJECTES[o.t], im = img(srcObjecte(o.t)), c = iso(o.x + 0.5, o.y + 0.5);
+      const hh = im ? WP * d.frac * im.naturalHeight / im.naturalWidth : 90;
+      halo(c.x, c.y + (WP / 4) * d.frac - hh * 0.86, 46, '255,214,140', 0.75 * foscor);
+    }
+    if (tren) { const p = puntTren(0), n = Math.hypot(p.du, p.dv) || 1, q = iso(p.u + p.du / n * 0.45, p.v + p.dv / n * 0.45); halo(q.x, q.y - 26, 34, '255,236,180', 0.6 * foscor); }
+    for (const t of transit) {
+      const { u, v, dir } = posTransit(t), [du, dv] = [[0, 1], [1, 0], [0, -1], [-1, 0]][dir];
+      const p = iso(u + du * 0.55, v + dv * 0.55);
+      halo(p.x, p.y - 10, t.bus ? 40 : 28, '255,236,180', 0.55 * foscor * (t.alfa ?? 1));
+    }
+    ctx.restore();
+  }
   // ---------- paisatge del voltant ----------
   // Una il·lustració (muntanyes, rius, boscos) amb un gran prat al mig: el prat s'encaixa sobre tot l'espai on
   // pot créixer el parc (amb el ressort, la franja de fora i la carretera). Cantonades del prat a la imatge:
@@ -2860,11 +2980,15 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   function posaVelocitat(v) { velocitat = v; refrescaBarra(); }
 
   // ---------- bucle ----------
-  let comptadorBarra = 0, tempsAnim = 0, foscor = 0;   // foscor: 0 = dia, 1 = nit (per al futur mode nit)   // tempsAnim: segons d'animació (s'atura amb la pausa)
+  let comptadorBarra = 0, tempsAnim = 0;   // tempsAnim: segons d'animació (s'atura amb la pausa)
   function bucle(ara) {
     if (!viu) return;
     const dt = Math.min(0.25, (ara - darrerFrame) / 1000); darrerFrame = ara;
     if (velocitat && !informeObert) { tempsAnim += dt * Math.min(2, velocitat); mouTransit(dt * Math.min(2, velocitat)); }
+    // es fa fosc entre les 17:00 i les 19:00 (minuts 420 a 540 del dia)
+    const fosc = modeNit === 'nit' ? 1 : modeNit === 'dia' ? 0 : clamp((parc.minut - 420) / 120, 0, 1);
+    foscor += ((fosc * fosc * (3 - 2 * fosc)) - foscor) * Math.min(1, dt * 1.5);
+    if (Math.abs(foscor - fosc) < 0.002) foscor = fosc * fosc * (3 - 2 * fosc);
     if (velocitat && !informeObert && !movent) {   // mentre mous una cosa, el temps s'atura
       let dm = (dt / SEGONS_PER_MINUT) * velocitat;
       while (dm > 0) { const pas = Math.min(0.5, dm); simula(pas); dm -= pas; if (informeObert) break; }
