@@ -168,6 +168,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   let entradaAcces = [];
   let cotxes = 0;   // cotxes aparcats ara mateix (cada visitant en cotxe en compta 1/3)
   const placesPropies = () => parc.objectes.filter((o) => o.t === 'parquing' && colocat(o)).length * OBJECTES.parquing.places;
+  let pendentsBus = 0;   // visitants que vindran amb el pròxim autobús
   let pendentArribada = 0, darrerFrame = performance.now(), viu = true, darrerDesat = Date.now(), informeObert = false;
   parc.avui ??= nouDia();
   parc.avui.botigues ??= 0; parc.avui.altres ??= 0; parc.avui.parquing ??= 0; parc.avui.senseParquing ??= 0;
@@ -371,8 +372,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
 
   // ---------- visitants ----------
   // origen: 'parc' (per l'entrada del parc) o 'hotel' (hostes que han dormit al ressort)
-  function nouVisitant(origen = 'parc') {
-    if (origen !== 'parc') {
+  function nouVisitant(origen = 'parc', posBus = null) {
+    if (origen === 'hotel') {
       const llocs = hotelsRessort().flatMap((o) => acces.get(o.id) || []);
       if (!llocs.length) return;
       const [sx, sy] = llocs[Math.floor(Math.random() * llocs.length)];
@@ -390,8 +391,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       visitants.push(v);
       return;
     }
-    // la majoria arriben en cotxe: si no hi ha lloc per aparcar, se'n tornen
-    let enCotxe = Math.random() < Math.max(0.4, PART_EN_COTXE - 0.15 * quants('parada-bus')), pagaParquing = 0;
+    // la majoria arriben en cotxe: si no hi ha lloc per aparcar, se'n tornen (els de l'autobús, no)
+    let enCotxe = origen !== 'bus' && Math.random() < Math.max(0.4, PART_EN_COTXE - 0.15 * quants('parada-bus')), pagaParquing = 0;
     if (enCotxe) {
       const propies = placesPropies();
       if (cotxes + 1 / PERSONES_PER_COTXE > propies + PLACES_CARRER) {
@@ -408,8 +409,9 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const [sx, sy] = entradaAcces[Math.floor(Math.random() * entradaAcces.length)];
     // arriben caminant per l'esplanada des de la vorera de la carretera i entren per la porta
     const ent = entrada(), me = OBJECTES[ent?.t || 'entrada'].mida;
+    const exE = (ent?.x ?? ENTRADA.x) + 0.5 + Math.random() * (me - 1);
     const v = {
-      x: sx, y: sy, fx: (ent?.x ?? ENTRADA.x) + 0.5 + Math.random() * (me - 1), fy: CARRETERA.y - 0.3 - Math.random() * 0.5, ruta: [[sx, sy]], pas: 0,
+      x: sx, y: sy, fx: exE, fy: CARRETERA.y - 0.3 - Math.random() * 0.5, ruta: [[sx, sy]], pas: 0,
       estat: 'camina', objectiu: null, img: `persona-${1 + Math.floor(Math.random() * PERSONES)}`, dir: 2,
       gana: 5 + Math.random() * 35, set: 5 + Math.random() * 35, lavabo: Math.random() * 25, energia: 75 + Math.random() * 25,
       satisf: 62, pressupost: 15 + Math.random() * 45, brossa: 0, passos: 0, temps: 0, vist: new Set(), sense: {}, espera: 0,
@@ -418,6 +420,12 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       intMax: 3 + Math.random() * 7.5, mareigF: 0.5 + Math.random(), viatges: 0, gastat: parc.preus.entrada,
     };
     v.cotxe = enCotxe;
+    // els de l'autobús baixen per la porta de davant (just davant del morro, a la banda de la vorera),
+    // caminen per la vorera fins a l'esplanada i hi pugen
+    if (origen === 'bus' && posBus) {
+      v.fx = posBus[0] - BUS.llargada / 2 + 0.05 + Math.random() * 0.15; v.fy = CARRETERA.y - 0.1;
+      v.fy = CARRETERA.y - 0.05; v.previ = [[v.fx - 0.2, CARRETERA.y - 0.25], [exE, CARRETERA.y - 0.22 - Math.random() * 0.1]];
+    }
     v.intMin = Math.max(0, v.intMax - 6);
     parc.diners += parc.preus.entrada + pagaParquing; v.pressupost -= parc.preus.entrada + pagaParquing;
     if (pagaParquing) { parc.avui.parquing += pagaParquing; parc.totals.ingressos += pagaParquing; v.parquing = pagaParquing; }
@@ -616,6 +624,15 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       if (dist <= resta) { a.fx = tx; a.fy = ty; resta -= dist; a.pas += 1; a.x = nx; a.y = ny; a.passos = (a.passos || 0) + 1; }
       else { a.fx += (dx / dist) * resta; a.fy += (dy / dist) * resta; resta = 0; }
     }
+    // punts de pas abans d'entrar (els que baixen de l'autobús van per la vorera)
+    if (a.previ?.length && a.pas === 0 && a.ruta.length === 1) {
+      const [tx, ty] = a.previ[0], dx = tx - a.fx, dy = ty - a.fy, dist = Math.hypot(dx, dy);
+      if (Math.abs(dx) > Math.abs(dy)) a.dir = dx > 0 ? 1 : 3; else a.dir = dy > 0 ? 0 : 2;
+      const s = Math.min(1, (VEL * dm) / Math.max(dist, 1e-6));
+      a.fx += dx * s; a.fy += dy * s;
+      if (s >= 1) a.previ.shift();
+      return false;
+    }
     // primer tram des de la porta fins al camí
     if (a.pas === 0 && a.ruta.length === 1) {
       const tx = a.x + 0.5, ty = a.y + 0.5, dx = tx - a.fx, dy = ty - a.fy, dist = Math.hypot(dx, dy);
@@ -630,7 +647,12 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     parc.minut += dm;
     // arribades
     pendentArribada += ritmeArribades(m0) * dm;
-    while (pendentArribada >= 1 && visitants.length < 400) { pendentArribada -= 1; nouVisitant('parc'); }
+    while (pendentArribada >= 1 && visitants.length < 400) {
+      pendentArribada -= 1;
+      // si hi ha parada, una part de la gent ve amb l'autobús: espera que arribi i en baixa a la parada
+      if (quants('parada-bus') && pendentsBus < 40 && Math.random() < 0.3) pendentsBus += 1;
+      else nouVisitant('parc');
+    }
     // els hostes que han dormit al ressort surten de l'hotel al matí
     if (parc.ressort?.pendents > 0 && parc.obert && parc.minut < 180 && visitants.length < 400 && Math.random() < 0.6 * dm) { parc.ressort.pendents -= 1; nouVisitant('hotel'); }
     if (pendentArribada > 3) pendentArribada = 0;
@@ -751,7 +773,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   // ---------- final del dia: informe ----------
   function tancaDia() {
     for (const v of visitants) surt(v);
-    visitants.length = 0; cotxes = 0;
+    visitants.length = 0; cotxes = 0; pendentsBus = 0;
     for (const s of rt.values()) { s.cua = []; s.muntats = []; }
     const a = parc.avui;
     const manteniment = parc.objectes.reduce((t, o) => t + (OBJECTES[o.t].manteniment || 0), 0);
@@ -1483,7 +1505,10 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     }
     for (const v of visitants) if (!v.amagat) afegeix(Math.floor(v.fx) + Math.floor(v.fy) + 0.5, () => dibuixaPersona(v));
     for (const p of personal) afegeix(Math.floor(p.fx) + Math.floor(p.fy) + 0.5, () => dibuixaPersona(p));
-    for (const t of transit) { const { u, v, dir } = posTransit(t); afegeix(Math.floor(u) + Math.floor(v) + 0.6, () => dibuixaVehicle(t.img, u, v, dir, t.ample || 62, t.alfa)); }
+    for (const t of transit) {
+      const { u, v, dir } = posTransit(t);
+      afegeix(Math.floor(u) + Math.floor(v) + 0.6, () => (t.bus ? dibuixaBus(t.bus, u, v) : dibuixaVehicle(t.img, u, v, dir, t.ample || 62, t.alfa)));
+    }
     if (hover && aColocar) afegeix(hover.x + hover.y + 2 * (OBJECTES[aColocar].mida - 1) + 0.9, () => {
       const im = img(srcObjecte(aColocar)); if (!im) return;
       if (OBJECTES[aColocar].parcella) { const ok = potColocar(aColocar, hover.x, hover.y); rombe(hover.x, hover.y, BLOC, BLOC); ctx.fillStyle = ok ? 'rgba(60,157,50,.35)' : 'rgba(214,64,47,.25)'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = ok ? '#3c9d32' : '#d6402f'; ctx.stroke(); return; }
@@ -2191,6 +2216,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   function dibuixaObj(o) {
     if (!colocat(o)) return;
     if (OBJECTES[o.t].parcella) return dibuixaParquing(o);
+    if (o.t === 'parada-bus') return dibuixaParada(o);
     if (OBJECTES[o.t].terra) return;
     if (OBJECTES[o.t].invisible) { if (o.t === 'resort-piscina') dibuixaBanyistes(o); return; }
     const d = OBJECTES[o.t], m = d.mida, im = img(srcObjecte(o.t));
@@ -2223,7 +2249,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   // terra: carretera, voreres, esplanada de l'entrada i asfalt dels pàrquings (es dibuixa abans que els objectes)
   function dibuixaFora() {
     const X0 = -90, LL = 200, Y = CARRETERA.y, A = CARRETERA.amplada;
-    rombe(X0, Y - 0.25, LL, 0.25); ctx.fillStyle = '#cfc8b8'; ctx.fill();          // vorera
+    rombe(X0, Y - 0.45, LL, 0.45); ctx.fillStyle = '#cfc8b8'; ctx.fill();          // vorera (hi camina la gent de l'autobús)
     rombe(X0, Y, LL, A); ctx.fillStyle = '#4f5560'; ctx.fill();                        // asfalt
     rombe(X0, Y + A, LL, 0.25); ctx.fillStyle = '#cfc8b8'; ctx.fill();
     ctx.strokeStyle = '#f4f1e8'; ctx.lineWidth = 4; ctx.beginPath();
@@ -2308,7 +2334,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const lots = parc.objectes.filter((p) => p.t === 'parquing' && colocat(p));
     if (!lots.length || transit.filter((t) => t.lot).length > 6) return;
     const o = lots[Math.min(lots.length - 1, Math.floor(Math.max(0, cotxes - 0.01) / OBJECTES.parquing.places))];
-    const dreta = Math.random() < 0.5, yC = CARRETERA.y + (dreta ? 0.5 : 1.5);
+    const dreta = Math.random() < 0.5, yC = CARRETERA.y + (dreta ? 1.5 : 0.5);   // es circula per la dreta
     nouTransit({ img: COTXES[Math.floor(Math.random() * COTXES.length)], lot: o.id, vel: 3.2,
       pts: [[dreta ? XF[0] : XF[1], yC], [o.x + 3.5, yC], [o.x + 3.5, o.y + 6.6], [o.x + 3.5, o.y + 2.2]], fase: 'carretera' });
   }
@@ -2316,30 +2342,78 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (parc.obert) {
       if ((properTransit -= dt) <= 0) {
         properTransit = 2.5 + Math.random() * 4;
-        const dreta = Math.random() < 0.5, y = CARRETERA.y + (dreta ? 0.5 : 1.5);
-        nouTransit({ img: COTXES[Math.floor(Math.random() * COTXES.length)], vel: 3.4 + Math.random(), pts: dreta ? [[XF[0], y], [XF[1], y]] : [[XF[1], y], [XF[0], y]] });
+        const dreta = Math.random() < 0.5, y = CARRETERA.y + (dreta ? 1.5 : 0.5);
+        // de tant en tant, en lloc d'un cotxe passa un autobús de l'altre sentit (no para)
+        if (dreta && Math.random() < 0.12) nouTransit({ bus: 'davant', vel: 3, pts: [[XF[0], y], [XF[1], y]] });
+        else nouTransit({ img: COTXES[Math.floor(Math.random() * COTXES.length)], vel: 3.4 + Math.random(), pts: dreta ? [[XF[0], y], [XF[1], y]] : [[XF[1], y], [XF[0], y]] });
       }
+      // l'autobús de línia: ve per la dreta pel carril de la vorera, para davant de la marquesina,
+      // en baixa la gent que venia amb bus i torna a marxar
       const parada = parc.objectes.find((o) => o.t === 'parada-bus' && colocat(o));
-      if (parada && (properBus -= dt) <= 0) {
-        properBus = 22 + Math.random() * 10;
+      if (parada && !transit.some((t) => t.bus === 'darrere') && (properBus -= dt) <= 0) {
+        properBus = 12 + Math.random() * 6;
         const y = CARRETERA.y + 0.5;
-        nouTransit({ img: 'autobus', ample: 118, vel: 2.6, bus: true, pts: [[XF[0], y], [parada.x + 1, y], [XF[1], y]], paraA: 1 });
+        nouTransit({ bus: 'darrere', vel: 3, pts: [[XF[1], y], [parada.x + BUS.para, y], [XF[0], y]], paraA: 1, parada: parada.id });
       }
     }
+    const llarg = (t) => (t.bus ? BUS.llargada : 0.7);
     for (let k = transit.length - 1; k >= 0; k--) {
       const t = transit[k];
       if (t.espera > 0) { t.espera -= dt; continue; }
+      // a la carretera: si el de davant (mateix carril i sentit) és massa a prop, no avança
+      const p = posTransit(t), pb = t.pts[t.i + 1];
+      if (pb && pb[1] === p.v && p.v >= CARRETERA.y && p.v <= CARRETERA.y + CARRETERA.amplada) {
+        const sentit = Math.sign(pb[0] - p.u);
+        const davant = transit.some((q) => {
+          if (q === t) return false;
+          const pq = posTransit(q);
+          if (Math.abs(pq.v - p.v) > 0.2) return false;
+          const d = (pq.u - p.u) * sentit;
+          return d > 0 && d < (llarg(t) + llarg(q)) / 2 + 0.35;
+        });
+        if (davant) continue;
+      }
       const a = t.pts[t.i], b = t.pts[t.i + 1];
       if (!b) { transit.splice(k, 1); continue; }
       const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-      t.t += (t.vel * dt) / L;
+      // l'autobús frena quan s'acosta a la parada i arrenca a poc a poc
+      let vel = t.vel;
+      if (t.paraA != null) {
+        if (t.i === t.paraA - 1) vel = Math.max(0.35, Math.min(t.vel, (1 - t.t) * L * 0.9));
+        if (t.i === t.paraA) vel = Math.max(0.35, Math.min(t.vel, t.t * L * 1.2 + 0.35));
+      }
+      t.t += (vel * dt) / L;
       if (t.lot && t.i >= 1) t.fase = 'entra';
       if (t.lot && t.i >= 2) t.alfa = clamp(1 - t.t, 0, 1);   // es perd entre els cotxes aparcats
       if (t.t >= 1) {
         t.t = 0; t.i += 1;
-        if (t.paraA === t.i) t.espera = 3;   // l'autobús s'atura a la parada
+        if (t.paraA === t.i) {   // l'autobús s'atura a la parada: baixa la gent (un cada mig segon)
+          const n = Math.min(pendentsBus, 14);
+          pendentsBus -= n;
+          t.espera = 1.6 + n * 0.4;
+          for (let k = 0; k < n; k++) setTimeout(() => { if (viu) nouVisitant('bus', t.pts[t.i]); }, 700 + k * 400);
+        }
       }
     }
+  }
+  // Autobusos (imatges grans, d'una sola direcció): punt de terra del mig del bus a la imatge i
+  // amplada horitzontal del costat llarg, per escalar-lo a BUS.llargada caselles.
+  const BUS = {
+    llargada: 2.3, para: 1,
+    davant: { img: 'autobus-davant', centre: [255, 353], llarg: 375 },
+    darrere: { img: 'autobus-darrere', centre: [278.5, 351.5], llarg: 382 },
+  };
+  function dibuixaBus(tipus, u, v) {
+    const b = BUS[tipus], im = img(`img/animacions/${b.img}.webp`); if (!im) return;
+    const k = (BUS.llargada * WP / 2) / b.llarg, p = iso(u, v);
+    ctx.drawImage(im, p.x - b.centre[0] * k, p.y - b.centre[1] * k, im.naturalWidth * k, im.naturalHeight * k);
+  }
+  // Marquesina: punts de terra dels dos pals de davant a la imatge, que van a (x+0,15, y+0,95) i (x+1,85, y+0,95)
+  const MARQUESINA = { img: 'img/parc/parada-bus-v2.webp', esq: [107, 343], dre: [328.5, 457], u: [0.15, 1.85], v: 0.95 };
+  function dibuixaParada(o) {
+    const im = img(MARQUESINA.img); if (!im) return;
+    const m = MARQUESINA, p = iso(o.x + m.u[0], o.y + m.v), q = iso(o.x + m.u[1], o.y + m.v), k = (q.x - p.x) / (m.dre[0] - m.esq[0]);
+    ctx.drawImage(im, p.x - m.esq[0] * k, p.y - m.esq[1] * k, im.naturalWidth * k, im.naturalHeight * k);
   }
   function posTransit(t) {
     const a = t.pts[t.i], b = t.pts[t.i + 1] || a;
@@ -2440,5 +2514,5 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   }
   // per a les proves automàtiques: on cau a la pantalla una casella del món
   const aPantalla = (u, v) => { const p = iso(u, v), r = canvas.getBoundingClientRect(); return { x: r.left + despl.x + p.x * escala, y: r.top + despl.y + p.y * escala }; };
-  return { tancar, aPantalla, estat: () => ({ visitants: visitants.length, cotxes, transit: transit.length, dins: visitants.filter((v) => v.estat === 'dins').map((v) => objecte(v.dinsDe)?.t), aRessort: visitants.filter((v) => esZonaRessort(v.x, v.y)).length }) };
+  return { tancar, aPantalla, estat: () => ({ visitants: visitants.length, cotxes, transit: transit.length, busos: transit.filter((t) => t.bus).map((t) => ({ bus: t.bus, i: t.i, t: +t.t.toFixed(2), espera: +t.espera.toFixed(1), pos: posTransit(t) })), pendentsBus, dins: visitants.filter((v) => v.estat === 'dins').map((v) => objecte(v.dinsDe)?.t), aRessort: visitants.filter((v) => esZonaRessort(v.x, v.y)).length }) };
 }

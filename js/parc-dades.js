@@ -175,7 +175,7 @@ export const OBJECTES = {
     text: '40 places en una parcel·la de fora del parc, amb una sola entrada des de la carretera i la guixeta on es cobra. Sense pàrquing, només hi ha 15 places al carrer. Tu decideixes quant costa aparcar (0 € = gratis).' },
   // ja no es construeix: ara la guixeta forma part de cada pàrquing (es manté per a les partides antigues)
   'parquing-caseta': { nom: 'Caseta del pàrquing', cat: 'servei', img: 'parquing-caseta', mida: 1, frac: 0.82, preu: 2500, manteniment: 40, sensecami: true, obsolet: true },
-  'parada-bus': { nom: 'Parada d\'autobús', cat: 'servei', img: 'parada-bus', mida: 2, frac: 0.95, preu: 15000, manteniment: 120, sensecami: true, exterior: true, carretera: true,
+  'parada-bus': { nom: 'Parada d\'autobús', cat: 'servei', img: 'parada-bus-v2', mida: 2, frac: 0.7, preu: 15000, manteniment: 120, sensecami: true, exterior: true, carretera: true,
     text: 'Va a fora del parc, a la vorera de la carretera. Una línia d\'autobús des de la ciutat: ve més gent i menys gent necessita aparcar.' },
   lavabos: { nom: 'Lavabos', cat: 'servei', img: 'lavabos', mida: 1, frac: 0.92, preu: 4000, manteniment: 45,
     text: 'Sense lavabos, els visitants s\'enfaden molt (i marxen).' },

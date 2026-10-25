@@ -19,7 +19,10 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
 - Fons del parc: `img/parc/fons-parc.webp` encaixat amb `PAISATGE` (prat sobre x -28..29, y -15..31).
 - Fora del parc (`EXTERIOR`: y 21..27, parcel·les bx -3..3) i carretera (`CARRETERA`: y 28..29).
   - Pàrquing: parcel·la sencera 7x7 (`parcella: true`), 40 places, una entrada amb guixeta i barrera; cobra si preu > 0.
-  - Parada d'autobús: `exterior` + `carretera` (ha de tocar la carretera). Passa un autobús que hi para.
+  - Parada d'autobús: `exterior` + `carretera` (ha de tocar la carretera). Marquesina `parada-bus-v2.webp` (`MARQUESINA`, dibuix propi).
+    Autobús de línia (`autobus-darrere.webp`, cap a −x pel carril de la vorera): frena, para, en baixen fins a 14 visitants
+    (`pendentsBus`: el 30 % de les arribades si hi ha parada) per la porta de davant, caminen per la vorera i entren. L'altre sentit: `autobus-davant.webp`.
+    Es circula per la dreta (+x pel carril de fora, y = 29,5; −x pel de la vorera, y = 28,5) i els vehicles fan cua (no s'atravessen).
   - Trànsit (`transit`): cotxes que passen, cotxes que entren al pàrquing, autobús.
   - Esplanada del portal fins a la carretera (`ocup = -2`): la gent hi arriba caminant.
   - Els pàrquings/casetes/parades antics es retiren i es retornen els diners (`migraExterior`).
