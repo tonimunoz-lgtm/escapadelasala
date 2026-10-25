@@ -2591,9 +2591,12 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const [darrere, davant] = d.cat === 'atraccio' && !d.anim && rt.get(o.id) ? passatgers(o, rt.get(o.id)) : [[], []];   // les animades ja hi dibuixen la seva gent
     darrere.forEach(dibuixaPassatger);
     if (d.cantonades && im) {
-      // la llosa de la imatge (esquerra, baix, dreta) va a les cantonades de les caselles; en mirall, s'intercanvien
-      const E = iso(o.x, o.y + m), B = iso(o.x + m, o.y + m), D = iso(o.x + m, o.y);
-      encaixaImatge(im, d.cantonades, o.gir ? D : E, B, o.gir ? E : D);
+      // sense deformar: l'amplada de la llosa (d'esquerra a dreta) fa l'amplada de les caselles i la punta
+      // de davant de la llosa va a la cantonada de davant. En mirall, es gira al voltant d'aquest punt.
+      const [[lx], [bx, by], [rx]] = d.cantonades, k = (WP * m) / (rx - lx), B = iso(o.x + m, o.y + m);
+      ctx.save(); ctx.translate(B.x, B.y); if (o.gir) ctx.scale(-1, 1);
+      ctx.drawImage(im, -bx * k, -by * k, im.naturalWidth * k, im.naturalHeight * k);
+      ctx.restore();
     } else if (d.porta && im) {
       // les entrades estan dibuixades gairebé de cara: s'encaixen pel mig de la porta, que va al mig del forat de la muralla
       const k = (WP * m * d.frac) / im.naturalWidth, p = iso(o.x + m / 2, o.y + m);
