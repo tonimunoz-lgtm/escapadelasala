@@ -1604,7 +1604,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   function obreRessort() {
     if (!parc.ressort) {
       return panell('Ressort del Far West',
-        h('img', { src: 'img/parc/resort.webp', alt: '', class: 'parc-info-img' }),
+        h('img', { src: 'img/parc/resort-v3.webp', alt: '', class: 'parc-info-img' }),
         h('p', {}, OBJECTES.resort.text),
         h('p', { class: 'nota' }, `Ocupa un terreny nou de 14x14 caselles a l'esquerra del parc, unit per una passarel·la. Té ${RESSORT.habitacions} habitacions: els visitants contents s'hi poden quedar a dormir (i pagar la nit), i l'endemà ja són dins del parc.`),
         h('dl', { class: 'dades' }, h('dt', {}, 'Preu'), h('dd', {}, eur(RESSORT.preu)), h('dt', {}, 'Manteniment'), h('dd', {}, `${eur(RESSORT.manteniment)} / dia`)),
@@ -1612,7 +1612,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     }
     const ahir = parc.historial.at(-1) || {};
     panell('Ressort del Far West',
-      h('img', { src: 'img/parc/resort.webp', alt: '', class: 'parc-info-img' }),
+      h('img', { src: 'img/parc/resort-v3.webp', alt: '', class: 'parc-info-img' }),
       h('dl', { class: 'dades' },
         h('dt', {}, 'Habitacions'), h('dd', {}, String(RESSORT.habitacions)),
         h('dt', {}, 'Reserves per aquesta nit'), h('dd', {}, String(parc.ressort.dema || 0)),

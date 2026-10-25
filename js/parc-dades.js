@@ -316,7 +316,7 @@ export const CARRETERA = { y: 28, amplada: 2 };                 // la carretera 
 // Tot es dona en caselles relatives (u, v) a partir de la cantonada (x0, y0).
 export const RESSORT = {
   preu: 280000, manteniment: 2600, mida: 14, habitacions: 90, preuNit: 75, atractiu: 6,
-  img: 'resort', versio: 3,
+  img: 'resort-v3', versio: 3,
   // posició fixa: prou lluny perquè hi càpiga la parcel·la esquerra del parc (x = -7) i quedi espai entremig
   x0: -26, y0: 7,
   // cantonades de terra a la imatge: esquerra (0,14), baix (14,14) i dreta (14,0)
@@ -348,15 +348,15 @@ export const RESSORT = {
   },
 };
 Object.assign(OBJECTES, {
-  resort: { nom: 'Ressort del Far West', cat: 'ressort', img: 'resort', mida: 14, frac: 1, preu: RESSORT.preu, manteniment: RESSORT.manteniment, ressort: true, terra: true,
+  resort: { nom: 'Ressort del Far West', cat: 'ressort', img: 'resort-v3', mida: 14, frac: 1, preu: RESSORT.preu, manteniment: RESSORT.manteniment, ressort: true, terra: true,
     text: 'Hotel, cabanes, piscines, restaurants i botiga. La gent s\'hi passeja, s\'hi banya i s\'hi queda a dormir.' },
   // dins: minuts que s'hi està la gent (a dins no se la veu; a la piscina es veu nedant)
-  'resort-piscina': { nom: 'Piscina del ressort', cat: 'atraccio', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
+  'resort-piscina': { nom: 'Piscina del ressort', cat: 'atraccio', img: 'resort-v3', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
     capacitat: 25, durada: 25, dins: 25, atractiu: 4, emocio: 3, intensitat: 0, mareig: 0, preuJust: 3, text: 'Un bon bany per refrescar-se.' },
-  'resort-restaurant': { nom: 'Terrassa del ressort', cat: 'menjar', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
+  'resort-restaurant': { nom: 'Terrassa del ressort', cat: 'menjar', img: 'resort-v3', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
     cost: 3, preuJust: 9, efecte: { gana: 70, set: 40 }, satisfa: 9, rapid: true, dins: 14, text: 'Menjar del Far West a la terrassa.' },
-  'resort-botiga': { nom: 'Botiga del ressort', cat: 'botiga', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
+  'resort-botiga': { nom: 'Botiga del ressort', cat: 'botiga', img: 'resort-v3', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
     cost: 4, preuJust: 10, dins: 6, text: 'Barrets de vaquer, botes i records del Far West.' },
-  'resort-hotel': { nom: 'Hotel del ressort', cat: 'hotel', img: 'resort', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
+  'resort-hotel': { nom: 'Hotel del ressort', cat: 'hotel', img: 'resort-v3', mida: 1, frac: 1, preu: 0, manteniment: 0, ressort: true, invisible: true,
     text: 'Habitacions per passar-hi la nit.' },
 });
