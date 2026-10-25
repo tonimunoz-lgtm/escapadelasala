@@ -11,7 +11,7 @@ import { faseEconomica } from './joc.js';
 import {
   RECERCA_NIVELLS, RECERCA_ORDRE, PER_INVESTIGAR, CAMPANYES, NOMS_VISITANTS,
   MIDA_TOTAL, RESSORT, EXTERIOR, CARRETERA, ORIGEN, COST_TRAM_MURALLA, COST_TORRE, ATRACTIU_MURALLA, BLOC, LIMITS_BLOCS, BLOCS_INICIALS, preuParcella, PLACES_CARRER, PART_EN_COTXE, PERSONES_PER_COTXE, ENTRADA, MINUTS_DIA, SEGONS_PER_MINUT, HORA_OBERTURA, ULTIMA_ENTRADA, INTERES_DIARI,
-  COST_CAMI, RETORN_ENDERROC, PERSONAL_PARC, CATEGORIES, OBJECTES, srcObjecte, dibuixaObjecte,
+  COST_CAMI, RETORN_ENDERROC, PERSONAL_PARC, CATEGORIES, OBJECTES, srcObjecte, girsDe, dibuixaObjecte,
 } from './parc-dades.js';
 
 const WP = 128;                       // amplada d'una casella del parc (unitats del món)
@@ -204,6 +204,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   let setEsplanada = new Set();
   let setCamins = camins();
   const esCami = (x, y) => setCamins.has(k2(x, y));
+  // per dibuixar les vores: l'esplanada i els camins es toquen sense vora entremig
+  const esCamiOEsplanada = (x, y) => (setCamins.has(k2(x, y)) && !esZonaRessort(x, y)) || setEsplanada.has(k2(x, y));
   function recalcula() {
     blocs = new Set(parc.blocs); blocsParc = blocs;
     calculaPassarella();
@@ -820,7 +822,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (publica) publicar?.({
       nom: parc.nom,
       camins: parc.camins.join(';'),
-      objectes: parc.objectes.filter((o) => colocat(o) && !OBJECTES[o.t].exterior && !OBJECTES[o.t].ressort && dinsParc(o.x, o.y)).map((o) => `${o.t},${o.x},${o.y}${o.gir ? ',1' : ''}`).join(';'),
+      objectes: parc.objectes.filter((o) => colocat(o) && !OBJECTES[o.t].exterior && !OBJECTES[o.t].ressort && dinsParc(o.x, o.y)).map((o) => `${o.t},${o.x},${o.y}${o.gir ? `,${o.gir}` : ''}`).join(';'),
       atraccions: parc.objectes.filter((o) => OBJECTES[o.t].cat === 'atraccio').length,
       blocs: parc.blocs.join(';'),
       reputacio: Math.round(parc.reputacio),
@@ -954,7 +956,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     parc.diners -= d.preu; parc.totals.despeses += d.preu;
     const o = { id: parc.seguentId++, t, x, y };
     if (t === 'torre-caiguda') o.mida2 = true;
-    if (girNou) o.gir = 1;
+    if (girNou % girsDe(t)) o.gir = girNou % girsDe(t);
     if (d.cat === 'atraccio') o.preu = 0; else if (d.cat === 'menjar' || d.cat === 'botiga') o.preu = d.preuJust;
     parc.objectes.push(o);
     recalcula();
@@ -1036,14 +1038,17 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       : d.parcella ? `${d.nom} (${eur(d.preu)}): toca una parcel·la de la franja de fora del parc, entre la muralla i la carretera.`
       : d.exterior ? `${d.nom} (${eur(d.preu)}): toca la vorera de la carretera, a fora del parc (${d.mida}x${d.mida}).`
       : `${d.nom} (${eur(d.preu)}): toca la gespa on la vols posar${d.mida > 1 ? ` (${d.mida}x${d.mida})` : ''}. Pots arrossegar el mapa.`;
-    xip.replaceChildren(...[h('img', { src: srcObjecte(aColocar), alt: '', style: (movent ? movent.o.gir : girNou) ? 'transform: scaleX(-1)' : '' }), h('span', {}, text),
+    const girXip = movent ? movent.o.gir || 0 : girNou;
+    xip.replaceChildren(...[h('img', { src: srcObjecte(aColocar, girXip), alt: '', style: girXip && !OBJECTES[aColocar].vistes ? 'transform: scaleX(-1)' : '' }), h('span', {}, text),
       h('button', { class: 'btn', title: 'Gira (tecla R)', onclick: giraNou }, '↔ Gira'),
       movent ? null : h('button', { class: 'btn', onclick: () => { aColocar = null; xip.hidden = true; cataleg.hidden = false; refrescaCataleg(); } }, 'Canvia'),
       h('button', { class: 'btn btn-principal', onclick: () => { if (movent) cancelaMoure(); else { aColocar = null; xip.hidden = true; cataleg.hidden = false; refrescaCataleg(); } } }, movent ? 'Cancel·la' : 'Fet')].filter(Boolean));
   }
   // Girar (com en un mirall) el que estàs col·locant o movent
   function giraNou() {
-    if (movent) movent.o.gir = movent.o.gir ? 0 : 1; else girNou = girNou ? 0 : 1;
+    // els objectes amb 4 vistes van passant per les 4 orientacions; la resta, mirall sí o no
+    const t = movent ? movent.o.t : aColocar, n = t ? girsDe(t) : 2;
+    if (movent) movent.o.gir = ((movent.o.gir || 0) + 1) % n; else girNou = (girNou + 1) % n;
     mostraXip();
   }
   // Moure un objecte ja construït: gratis si encara no l'ha fet servir ningú (o és decoració)
@@ -1087,7 +1092,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   function obreObjecte(o) {
     if (OBJECTES[o.t]?.ressort) return obreRessort();
     const d = OBJECTES[o.t], s = rt.get(o.id);
-    const cos = [h('img', { src: srcObjecte(o.t), alt: '', class: 'parc-info-img' })];
+    const cos = [h('img', { src: srcObjecte(o.t, o.gir), alt: '', class: 'parc-info-img' })];
     if (esEntrada(o)) {
       const a = atractiu();
       const millores = Object.entries(OBJECTES).filter(([t, x]) => x.cat === 'fix' && x.preu > d.preu).map(([t, x]) =>
@@ -1147,7 +1152,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       } else if (d.cat === 'servei') cos.push(h('p', { class: 'nota' }, `Usos: ${fmt.format(o.usos || 0)} · Manteniment: ${eur(d.manteniment)} / dia${o.t === 'caixer' ? ` · Comissions: ${eur2(o.ingressos || 0)}` : ''}`));
       const cm = costMoure(o);
       cos.push(h('div', { class: 'fila-botons' },
-        h('button', { class: 'btn', onclick: () => { o.gir = o.gir ? 0 : 1; guardaAviat(); } }, '↔ Gira'),
+        h('button', { class: 'btn', onclick: () => { o.gir = ((o.gir || 0) + 1) % girsDe(o.t); guardaAviat(); const im = document.querySelector('.parc-info-img'); if (im) im.src = srcObjecte(o.t, o.gir); } }, OBJECTES[o.t].vistes ? '↻ Gira' : '↔ Gira'),
         h('button', { class: 'btn', onclick: () => comencaMoure(o) }, cm ? `Mou-la (${eur(cm)})` : 'Mou-la (gratis)'),
         h('button', { class: 'btn', onclick: () => enderroca(o.x, o.y) }, `Enderroca (+${eur(Math.round(d.preu * RETORN_ENDERROC))})`)),
       h('p', { class: 'nota' }, cm ? 'Com que ja s\'ha fet servir, moure-la costa un 10 % del preu (desmuntar i tornar a muntar).' : 'Encara no l\'ha fet servir ningú: la pots moure gratis.'));
@@ -1399,7 +1404,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     const wx = (sx - r.left - despl.x) / escala, wy = (sy - r.top - despl.y) / escala;
     const ordre = [...parc.objectes].filter((o) => colocat(o) && !OBJECTES[o.t].parcella && !OBJECTES[o.t].invisible && !OBJECTES[o.t].terra).sort((a, b) => (b.x + b.y + 2 * OBJECTES[b.t].mida) - (a.x + a.y + 2 * OBJECTES[a.t].mida));
     for (const o of ordre) {
-      const d = OBJECTES[o.t], im = img(srcObjecte(o.t));
+      const d = OBJECTES[o.t], im = img(srcObjecte(o.t, o.gir));
       if (!im) continue;
       const c = iso(o.x + d.mida / 2, o.y + d.mida / 2), w = WP * d.mida * d.frac, hh = w * (im.naturalHeight / im.naturalWidth);
       const baix = c.y + (WP * d.mida / 4) * d.frac;
@@ -1462,14 +1467,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     for (const p of setCamins) {
       const [x, y] = p.split(',').map(Number);
       if (esZonaRessort(x, y)) continue;
-      rombe(x, y); ctx.fillStyle = '#e9dbb8'; ctx.fill();
-      ctx.strokeStyle = '#c4ad7f'; ctx.lineWidth = 3; ctx.beginPath();
-      const a = iso(x, y), b = iso(x + 1, y), c = iso(x + 1, y + 1), d = iso(x, y + 1);
-      if (!esCami(x, y - 1)) { ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
-      if (!esCami(x + 1, y)) { ctx.moveTo(b.x, b.y); ctx.lineTo(c.x, c.y); }
-      if (!esCami(x, y + 1)) { ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); }
-      if (!esCami(x - 1, y)) { ctx.moveTo(d.x, d.y); ctx.lineTo(a.x, a.y); }
-      ctx.stroke();
+      dibuixaPedra(x, y, esCamiOEsplanada);
       const b2 = parc.brossa[p];
       if (b2) {
         for (let i = 0; i < b2; i++) {
@@ -1510,7 +1508,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       afegeix(Math.floor(u) + Math.floor(v) + 0.6, () => (t.bus ? dibuixaBus(t.bus, u, v) : dibuixaVehicle(t.img, u, v, dir, t.ample || 62, t.alfa)));
     }
     if (hover && aColocar) afegeix(hover.x + hover.y + 2 * (OBJECTES[aColocar].mida - 1) + 0.9, () => {
-      const im = img(srcObjecte(aColocar)); if (!im) return;
+      const im = img(srcObjecte(aColocar, movent ? movent.o.gir : girNou)); if (!im) return;
       if (OBJECTES[aColocar].parcella) { const ok = potColocar(aColocar, hover.x, hover.y); rombe(hover.x, hover.y, BLOC, BLOC); ctx.fillStyle = ok ? 'rgba(60,157,50,.35)' : 'rgba(214,64,47,.25)'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = ok ? '#3c9d32' : '#d6402f'; ctx.stroke(); return; }
       const m = OBJECTES[aColocar].mida, c = iso(hover.x + m / 2, hover.y + m / 2);
       const ok = potColocar(aColocar, hover.x, hover.y) && parc.diners >= (movent ? movent.cost : OBJECTES[aColocar].preu);
@@ -1553,6 +1551,70 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     ctx.drawImage(im, 0, 0);
     ctx.restore();
   }
+  // ---------- camins de llambordes ----------
+  // Cada casella de camí es dibuixa amb llambordes i una vora de peces clares als costats on el camí
+  // no continua (i una peça petita a les cantonades de dins), de manera que els girs, les T i les creus
+  // surten sols. Cada combinació de veïns es dibuixa una vegada en una petita tela i es reutilitza.
+  const PEDRA = { R: 2, vora: 0.16, gruix: 5, n: 4,
+    colors: ['#cdb69c', '#b2aaa6', '#dcc6aa', '#a8a09c', '#c6ab90', '#bdb3ad'], junta: '#8c7b69',
+    vora1: '#f1dfc8', vora2: '#d9c2a5', costat1: '#b89d7f', costat2: '#9f8569' };
+  const cachePedra = new Map();
+  function telaPedra(mascara, variant) {
+    const clau = mascara * 4 + variant;
+    let tela = cachePedra.get(clau); if (tela) return tela;
+    const { R, vora: bw, gruix, n } = PEDRA, W = WP, H = WP / 2;
+    tela = document.createElement('canvas'); tela.width = W * R; tela.height = (H + gruix) * R;
+    const c = tela.getContext('2d');
+    // de (u, v) dins la casella (0..1) a la tela
+    c.setTransform(R * W / 2, R * H / 2, -R * W / 2, R * H / 2, R * W / 2, 0);
+    const [obU0, obU1, obV0, obV1, dU0V0, dU1V0, dU1V1, dU0V1] = [0, 1, 2, 3, 4, 5, 6, 7].map((b) => (mascara >> b) & 1);
+    const roda = (x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
+    c.fillStyle = PEDRA.junta; c.fillRect(0, 0, 1, 1);
+    // llambordes
+    const g = 0.02, mida = 1 / n;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const k = (i * 7 + j * 13 + variant * 5 + ((i * j + variant) % 3)) % PEDRA.colors.length;
+      roda(i * mida + g, j * mida + g, mida - 2 * g, mida - 2 * g, 0.035); c.fillStyle = PEDRA.colors[k]; c.fill();
+      roda(i * mida + g * 2, j * mida + g * 2, mida - 4 * g, mida * 0.45, 0.03); c.fillStyle = 'rgba(255,255,255,.12)'; c.fill();
+    }
+    // vores: peces clares al llarg dels costats sense veí
+    const tira = (x, y, w, h, llarg) => {
+      c.fillStyle = PEDRA.junta; c.fillRect(x, y, w, h);
+      const peces = 5, hor = llarg === 'u';
+      for (let p = 0; p < peces; p++) {
+        const a = p / peces, b = (p + 1) / peces;
+        if (hor) roda(x + a * w + 0.012, y + 0.012, (b - a) * w - 0.024, h - 0.024, 0.03);
+        else roda(x + 0.012, y + a * h + 0.012, w - 0.024, (b - a) * h - 0.024, 0.03);
+        c.fillStyle = p % 2 ? PEDRA.vora1 : PEDRA.vora2; c.fill();
+      }
+    };
+    if (!obV0) tira(0, 0, 1, bw, 'u');
+    if (!obV1) tira(0, 1 - bw, 1, bw, 'u');
+    if (!obU0) tira(0, 0, bw, 1, 'v');
+    if (!obU1) tira(1 - bw, 0, bw, 1, 'v');
+    // cantonades de dins (els dos costats continuen però la diagonal no)
+    const peca = (x, y) => { c.fillStyle = PEDRA.junta; c.fillRect(x, y, bw, bw); roda(x + 0.012, y + 0.012, bw - 0.024, bw - 0.024, 0.03); c.fillStyle = PEDRA.vora1; c.fill(); };
+    if (obU0 && obV0 && !dU0V0) peca(0, 0);
+    if (obU1 && obV0 && !dU1V0) peca(1 - bw, 0);
+    if (obU1 && obV1 && !dU1V1) peca(1 - bw, 1 - bw);
+    if (obU0 && obV1 && !dU0V1) peca(0, 1 - bw);
+    // gruix de la llosa als costats que es veuen (avall a la dreta i avall a l'esquerra)
+    c.setTransform(R, 0, 0, R, 0, 0);
+    const P = (u, v) => [W / 2 + (u - v) * W / 2, (u + v) * H / 2];
+    const cara = (a, b, color) => { c.beginPath(); c.moveTo(...a); c.lineTo(...b); c.lineTo(b[0], b[1] + gruix); c.lineTo(a[0], a[1] + gruix); c.closePath(); c.fillStyle = color; c.fill(); };
+    if (!obU1) cara(P(1, 0), P(1, 1), PEDRA.costat1);
+    if (!obV1) cara(P(1, 1), P(0, 1), PEDRA.costat2);
+    cachePedra.set(clau, tela);
+    return tela;
+  }
+  // vei(x, y): si aquella casella també és camí
+  function dibuixaPedra(x, y, vei) {
+    const m = (vei(x - 1, y) ? 1 : 0) | (vei(x + 1, y) ? 2 : 0) | (vei(x, y - 1) ? 4 : 0) | (vei(x, y + 1) ? 8 : 0)
+      | (vei(x - 1, y - 1) ? 16 : 0) | (vei(x + 1, y - 1) ? 32 : 0) | (vei(x + 1, y + 1) ? 64 : 0) | (vei(x - 1, y + 1) ? 128 : 0);
+    const tela = telaPedra(m, ((x * 3 + y * 5) % 4 + 4) % 4), a = iso(x, y);
+    ctx.drawImage(tela, a.x - WP / 2, a.y, WP, WP / 2 + PEDRA.gruix);
+  }
+
   // ---------- paisatge del voltant ----------
   // Una il·lustració (muntanyes, rius, boscos) amb un gran prat al mig: el prat s'encaixa sobre tot l'espai on
   // pot créixer el parc (amb el ressort, la franja de fora i la carretera). Cantonades del prat a la imatge:
@@ -1695,7 +1757,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
       if (Math.random() > 0.35) continue;
       const tipus = /troncs|rius/.test(o.t) ? 'aigua' : (d.intensitat ?? 3) >= 5 ? 'fort' : 'suau';
       const llista = CRITS[tipus];
-      const im = img(srcObjecte(o.t)), m = d.mida;
+      const im = img(srcObjecte(o.t, o.gir)), m = d.mida;
       const alt = im ? WP * m * d.frac * (im.naturalHeight / im.naturalWidth) * 0.75 : WP * m * 0.5;
       crits.push({ x: o.x + m / 2 + (Math.random() - 0.5) * m * 0.6, y: o.y + m / 2 + (Math.random() - 0.5) * m * 0.6, alt, text: llista[Math.floor(Math.random() * llista.length)], ini: ara });
     }
@@ -2220,7 +2282,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (o.t === 'parada-bus') return dibuixaParada(o);
     if (OBJECTES[o.t].terra) return;
     if (OBJECTES[o.t].invisible) { if (o.t === 'resort-piscina') dibuixaBanyistes(o); return; }
-    const d = OBJECTES[o.t], m = d.mida, im = img(srcObjecte(o.t));
+    const d = OBJECTES[o.t], m = d.mida, im = img(srcObjecte(o.t, o.gir));
     const c = iso(o.x + m / 2, o.y + m / 2);
     const [darrere, davant] = d.cat === 'atraccio' && !d.anim && rt.get(o.id) ? passatgers(o, rt.get(o.id)) : [[], []];   // les animades ja hi dibuixen la seva gent
     darrere.forEach(dibuixaPassatger);
@@ -2257,10 +2319,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     for (let x = X0; x < X0 + LL; x += 1) { const a = iso(x + 0.15, Y + A / 2), b = iso(x + 0.6, Y + A / 2); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
     ctx.stroke();
     // esplanada de l'entrada: llambordes fins a la carretera
-    for (const p of setEsplanada) {
-      const [x, y] = p.split(',').map(Number);
-      rombe(x, y); ctx.fillStyle = (x + y) % 2 ? '#e9dbb8' : '#e2d2ab'; ctx.fill();
-    }
+    for (const p of setEsplanada) { const [x, y] = p.split(',').map(Number); dibuixaPedra(x, y, esCamiOEsplanada); }
     for (const o of parc.objectes) if (o.t === 'parquing' && colocat(o)) dibuixaTerraParquing(o);
     // on es poden posar les coses de fora (quan en tens una a la mà)
     const d = aColocar && OBJECTES[aColocar];

@@ -107,10 +107,10 @@ export function crearMon({ canvas, onClic }) {
       const objs = (parc.objectes || '').split(';').filter(Boolean).map((o) => {
         const [tt, px, py, gir] = o.split(','); const m = OBJECTES[tt]?.mida || 1;
         const [lx, ly] = giraObjecte(Number(px), Number(py), m, t.costat);
-        return { t: tt, lx, ly, m, gir: gir === '1' ? 1 : 0 };
+        return { t: tt, lx, ly, m, gir: Number(gir) || 0 };
       }).filter((o) => OBJECTES[o.t] && !OBJECTES[o.t].ressort && !OBJECTES[o.t].exterior).sort((x, y) => (x.lx + x.ly + x.m) - (y.lx + y.ly + y.m));
       for (const o of objs) {
-        const im = img(srcObjecte(o.t)); if (!im) continue;
+        const im = img(srcObjecte(o.t, o.gir)); if (!im) continue;
         const c = P(t.a + (o.lx + o.m / 2) * k, t.b + (o.ly + o.m / 2) * k);
         dibuixaObjecte(ctx, im, o.t, c.x, c.y, 2 * k * o.m * 1.5, o.gir);   // una mica més grans perquè es vegin
       }

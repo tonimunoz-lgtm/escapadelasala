@@ -29,6 +29,16 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
 - Muralla: torres només a les cantonades; porta on arriba la passarel·la del ressort.
 - Atraccions animades: vegeu camp `anim` a OBJECTES (gronxa, roda, tren, barques, raiers, carrusel, tasses, xoc, torre) i `llums`.
 
+## Camins de llambordes i objectes amb 4 vistes
+- Camins dibuixats per codi (`telaPedra`/`dibuixaPedra` a parc.js): llambordes + vora clara als costats sense veí + peça a les cantonades
+  de dins + gruix de la llosa. Màscara de 8 veïns × 4 variants, desades en teles petites (una sola `drawImage` per casella).
+  L'esplanada de l'entrada fa servir el mateix dibuix.
+- `vistes: 4` a OBJECTES → imatges `img/parc/vistes/<img>-<0..3>.webp` (0 davant avall-esquerra, 1 avall-dreta, 2 amunt-dreta, 3 amunt-esquerra).
+  `srcObjecte(t, gir)`, `girsDe(t)`; R o «↻ Gira» passen per les 4. Sense `vistes`, el gir continua sent un mirall.
+  Amb 4 vistes: gelats, crispetes, hot-dogs, begudes, banc, casa-terror, primers-auxilis, caixer, globus, botiga-records, llits-elastics, lavabos.
+- Atracció nova: `cascades` (Cascades encantades, 3x3, 4 vistes, sense peces mòbils, recerca 8 punts).
+- Pendent: muntanya russa de fusta i pavelló de xoc (cal base sense vehicles + recorregut/punts per a cada vista).
+
 ## Proporcions (referència: persona = 30 px = 1,7 m → ~17,6 px/m; 1 casella ≈ 4 m)
 - `ESCALA_ATRACCIONS = 0.8` (parc-dades.js): atraccions, parades de menjar 1x1 i botigues es dibuixen al 80 % (les imatges tenien taquilles i torniquets al doble de mida). Lavabos, restaurants, entrades i decoració no es toquen.
 - Bus: `BUS.llargada = 1.2` caselles (~2 cotxes). Marquesina: pals a u 0,7–1,3, v 1,6. Guixeta del pàrquing a `WP * 0.6`.
