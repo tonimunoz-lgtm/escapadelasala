@@ -202,6 +202,11 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     return r;
   }
   let setEsplanada = new Set();
+  // caselles que fan de base d'un objecte (enllosat): tot el que es construeix al parc, menys la natura
+  let setBases = new Set();
+  const SENSE_BASE = new Set(['arbre', 'bardissa', 'flors']);
+  const ambBase = (o) => { const d = OBJECTES[o.t]; return colocat(o) && !d.exterior && !d.ressort && d.cat !== 'fix' && !SENSE_BASE.has(o.t) && dinsParc(o.x, o.y); };
+  const esBase = (x, y) => setBases.has(k2(x, y));
   let setCamins = camins();
   const esCami = (x, y) => setCamins.has(k2(x, y));
   // per dibuixar les vores: l'esplanada i els camins es toquen sense vora entremig
@@ -211,6 +216,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     calculaPassarella();
     setCamins = camins();
     setEsplanada = esplanada();
+    setBases = new Set();
+    for (const o of parc.objectes) if (ambBase(o)) { const m = OBJECTES[o.t].mida; for (let dx = 0; dx < m; dx++) for (let dy = 0; dy < m; dy++) setBases.add(k2(o.x + dx, o.y + dy)); }
     ocup = new Int32Array(M * M);
     for (const p of setCamins) { const [x, y] = p.split(',').map(Number); if (dins(x, y)) ocup[idx(x, y)] = -1; }
     for (const p of setEsplanada) { const [x, y] = p.split(',').map(Number); if (aLaGraella(x, y)) ocup[idx(x, y)] = -2; }   // -2: no es pot fer servir
@@ -1463,6 +1470,8 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     }
     ctx.stroke();
     dibuixaFora();
+    // bases de les atraccions i els edificis (sota els camins: es toquen sense vora entremig)
+    for (const p of setBases) { const [x, y] = p.split(',').map(Number); dibuixaPedra(x, y, esBase, TERRA); }
     // camins
     for (const p of setCamins) {
       const [x, y] = p.split(',').map(Number);
@@ -1555,37 +1564,42 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
   // Cada casella de camí es dibuixa amb llambordes i una vora de peces clares als costats on el camí
   // no continua (i una peça petita a les cantonades de dins), de manera que els girs, les T i les creus
   // surten sols. Cada combinació de veïns es dibuixa una vegada en una petita tela i es reutilitza.
-  const PEDRA = { R: 2, vora: 0.16, gruix: 5, n: 4,
+  const PEDRA = { nom: 'pedra', R: 2, vora: 0.16, gruix: 5, n: 4,
     colors: ['#cdb69c', '#b2aaa6', '#dcc6aa', '#a8a09c', '#c6ab90', '#bdb3ad'], junta: '#8c7b69',
     vora1: '#f1dfc8', vora2: '#d9c2a5', costat1: '#b89d7f', costat2: '#9f8569' };
+  // Enllosat de les bases (sota atraccions, parades, botigues i serveis): lloses de color sorra, com els
+  // camins del ressort, amb una vora de rajola de terracota on la base s'acaba.
+  const TERRA = { nom: 'terra', R: 2, vora: 0.1, gruix: 4, n: 3,
+    colors: ['#ecc995', '#e2b982', '#f2d5a8', '#dcb07a', '#e8c28d', '#f0cf9c'], junta: '#c39866',
+    vora1: '#cf8f5e', vora2: '#bd7c4e', costat1: '#a8784e', costat2: '#94683f' };
   const cachePedra = new Map();
-  function telaPedra(mascara, variant) {
-    const clau = mascara * 4 + variant;
+  function telaPedra(mascara, variant, E = PEDRA) {
+    const clau = `${E.nom}:${mascara * 4 + variant}`;
     let tela = cachePedra.get(clau); if (tela) return tela;
-    const { R, vora: bw, gruix, n } = PEDRA, W = WP, H = WP / 2;
+    const { R, vora: bw, gruix, n } = E, W = WP, H = WP / 2;
     tela = document.createElement('canvas'); tela.width = W * R; tela.height = (H + gruix) * R;
     const c = tela.getContext('2d');
     // de (u, v) dins la casella (0..1) a la tela
     c.setTransform(R * W / 2, R * H / 2, -R * W / 2, R * H / 2, R * W / 2, 0);
     const [obU0, obU1, obV0, obV1, dU0V0, dU1V0, dU1V1, dU0V1] = [0, 1, 2, 3, 4, 5, 6, 7].map((b) => (mascara >> b) & 1);
     const roda = (x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
-    c.fillStyle = PEDRA.junta; c.fillRect(0, 0, 1, 1);
+    c.fillStyle = E.junta; c.fillRect(0, 0, 1, 1);
     // llambordes
     const g = 0.02, mida = 1 / n;
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
-      const k = (i * 7 + j * 13 + variant * 5 + ((i * j + variant) % 3)) % PEDRA.colors.length;
-      roda(i * mida + g, j * mida + g, mida - 2 * g, mida - 2 * g, 0.035); c.fillStyle = PEDRA.colors[k]; c.fill();
+      const k = (i * 7 + j * 13 + variant * 5 + ((i * j + variant) % 3)) % E.colors.length;
+      roda(i * mida + g, j * mida + g, mida - 2 * g, mida - 2 * g, 0.035); c.fillStyle = E.colors[k]; c.fill();
       roda(i * mida + g * 2, j * mida + g * 2, mida - 4 * g, mida * 0.45, 0.03); c.fillStyle = 'rgba(255,255,255,.12)'; c.fill();
     }
     // vores: peces clares al llarg dels costats sense veí
     const tira = (x, y, w, h, llarg) => {
-      c.fillStyle = PEDRA.junta; c.fillRect(x, y, w, h);
+      c.fillStyle = E.junta; c.fillRect(x, y, w, h);
       const peces = 5, hor = llarg === 'u';
       for (let p = 0; p < peces; p++) {
         const a = p / peces, b = (p + 1) / peces;
         if (hor) roda(x + a * w + 0.012, y + 0.012, (b - a) * w - 0.024, h - 0.024, 0.03);
         else roda(x + 0.012, y + a * h + 0.012, w - 0.024, (b - a) * h - 0.024, 0.03);
-        c.fillStyle = p % 2 ? PEDRA.vora1 : PEDRA.vora2; c.fill();
+        c.fillStyle = p % 2 ? E.vora1 : E.vora2; c.fill();
       }
     };
     if (!obV0) tira(0, 0, 1, bw, 'u');
@@ -1593,7 +1607,7 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     if (!obU0) tira(0, 0, bw, 1, 'v');
     if (!obU1) tira(1 - bw, 0, bw, 1, 'v');
     // cantonades de dins (els dos costats continuen però la diagonal no)
-    const peca = (x, y) => { c.fillStyle = PEDRA.junta; c.fillRect(x, y, bw, bw); roda(x + 0.012, y + 0.012, bw - 0.024, bw - 0.024, 0.03); c.fillStyle = PEDRA.vora1; c.fill(); };
+    const peca = (x, y) => { c.fillStyle = E.junta; c.fillRect(x, y, bw, bw); roda(x + 0.012, y + 0.012, bw - 0.024, bw - 0.024, 0.03); c.fillStyle = E.vora1; c.fill(); };
     if (obU0 && obV0 && !dU0V0) peca(0, 0);
     if (obU1 && obV0 && !dU1V0) peca(1 - bw, 0);
     if (obU1 && obV1 && !dU1V1) peca(1 - bw, 1 - bw);
@@ -1602,17 +1616,17 @@ export function obrirParc({ estat, desar = () => {}, publicar, onTanca, nomesLec
     c.setTransform(R, 0, 0, R, 0, 0);
     const P = (u, v) => [W / 2 + (u - v) * W / 2, (u + v) * H / 2];
     const cara = (a, b, color) => { c.beginPath(); c.moveTo(...a); c.lineTo(...b); c.lineTo(b[0], b[1] + gruix); c.lineTo(a[0], a[1] + gruix); c.closePath(); c.fillStyle = color; c.fill(); };
-    if (!obU1) cara(P(1, 0), P(1, 1), PEDRA.costat1);
-    if (!obV1) cara(P(1, 1), P(0, 1), PEDRA.costat2);
+    if (!obU1) cara(P(1, 0), P(1, 1), E.costat1);
+    if (!obV1) cara(P(1, 1), P(0, 1), E.costat2);
     cachePedra.set(clau, tela);
     return tela;
   }
   // vei(x, y): si aquella casella també és camí
-  function dibuixaPedra(x, y, vei) {
+  function dibuixaPedra(x, y, vei, E = PEDRA) {
     const m = (vei(x - 1, y) ? 1 : 0) | (vei(x + 1, y) ? 2 : 0) | (vei(x, y - 1) ? 4 : 0) | (vei(x, y + 1) ? 8 : 0)
       | (vei(x - 1, y - 1) ? 16 : 0) | (vei(x + 1, y - 1) ? 32 : 0) | (vei(x + 1, y + 1) ? 64 : 0) | (vei(x - 1, y + 1) ? 128 : 0);
-    const tela = telaPedra(m, ((x * 3 + y * 5) % 4 + 4) % 4), a = iso(x, y);
-    ctx.drawImage(tela, a.x - WP / 2, a.y, WP, WP / 2 + PEDRA.gruix);
+    const tela = telaPedra(m, ((x * 3 + y * 5) % 4 + 4) % 4, E), a = iso(x, y);
+    ctx.drawImage(tela, a.x - WP / 2, a.y, WP, WP / 2 + E.gruix);
   }
 
   // ---------- paisatge del voltant ----------

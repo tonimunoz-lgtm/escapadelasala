@@ -33,6 +33,8 @@ Fitxers clau: `js/parc.js` (simulació, editor i dibuix del parc), `js/parc-dade
 - Camins dibuixats per codi (`telaPedra`/`dibuixaPedra` a parc.js): llambordes + vora clara als costats sense veí + peça a les cantonades
   de dins + gruix de la llosa. Màscara de 8 veïns × 4 variants, desades en teles petites (una sola `drawImage` per casella).
   L'esplanada de l'entrada fa servir el mateix dibuix.
+- Bases enllosades (`TERRA`, mateix generador amb un altre estil): lloses color sorra amb vora de terracota sota tot el que
+  es construeix al parc (menys arbres, bardisses, flors, entrades, exterior i ressort). `setBases` es calcula a recalcula().
 - `vistes: 4` a OBJECTES → imatges `img/parc/vistes/<img>-<0..3>.webp` (0 davant avall-esquerra, 1 avall-dreta, 2 amunt-dreta, 3 amunt-esquerra).
   `srcObjecte(t, gir)`, `girsDe(t)`; R o «↻ Gira» passen per les 4. Sense `vistes`, el gir continua sent un mirall.
   Amb 4 vistes: gelats, crispetes, hot-dogs, begudes, banc, casa-terror, primers-auxilis, caixer, globus, botiga-records, llits-elastics, lavabos.
